@@ -68,3 +68,32 @@ No external server required.
 ---
 
 ## Architecture
+
+SoleSense/
+├── hardware/
+│   ├── cad/          # Fusion 360 files and STL exports
+│   ├── electrical/   # Wiring diagrams and schematics
+│   └── pcb/          # PCB design files
+├── firmware/         # ESP32C3 C++ firmware
+├── software/
+│   └── frontend/     # HTML, CSS, JavaScript web app
+├── docs/             # Engineering report and research
+├── assets/           # Images and diagrams
+└── README.md
+
+## Team
+
+| Name | Role |
+|---|---|
+| Jordan Chan | Mechanical Lead |
+| Kiara Peters | Mechanical |
+| James Kim | Mechanical |
+| Daniel Grivennikov | Mechanical |
+| Ethan Kim | Mechanical |
+| Maxim Varakuta | Mechanical |
+| Norton Hoong | Electrical & Firmware Lead |
+| Dao Doan | Firmware / Software |
+| Andony Velasquez | Software Lead |
+| Jasmine Dhaliwal | Software |
+| Natalie Dai | Software |
+
