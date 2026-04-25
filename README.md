@@ -69,7 +69,7 @@ No external server required.
 
 ## Architecture
 
-'''
+```
 SoleSense/
 ├── hardware/
 │   ├── cad/          # Fusion 360 files and STL exports
@@ -81,8 +81,7 @@ SoleSense/
 ├── docs/             # Engineering report and research
 ├── assets/           # Images and diagrams
 └── README.md
-'''
-
+```
 ## Team
 
 | Name | Role |
