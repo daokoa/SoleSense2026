@@ -91,7 +91,7 @@ SoleSense/
 | James Kim | Mechanical |
 | Daniel Grivennikov | Mechanical |
 | Ethan Kim | Mechanical |
-| Maxim Varakuta | Mechanical |
+| Maxim Varakuta | Electrical & Firmware |
 | Norton Hoong | Electrical & Firmware Lead |
 | Dao Doan | Firmware / Software |
 | Andony Velasquez | Software Lead |
