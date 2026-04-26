@@ -19,7 +19,7 @@ patterns and how to fix your running form.
 
 1. Insert SoleSense into your running shoe
 2. Run normally 8 FSR pressure sensors and an IMU record
-   14 channels of data at 25Hz (every 40ms) to onboard flash memory
+   14 channels of data at 50Hz (every 20ms) to onboard flash memory
 3. After you run the insole connects to WiFi and transmits your data
 4. Open the SoleSense web app on any device
 5. Provides Biomechanical results
