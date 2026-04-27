@@ -47,7 +47,7 @@ All 7 flags are sourced from peer-reviewed biomechanics literature.
 | Seeed XIAO ESP32C3 | Microcontroller — reads all sensors at up to 160hz, transmits data over WiFi |
 | MPU6050 IMU | 3-axis accelerometer + 3-axis gyroscope |
 | FSR 402 x8 | Pressure sensors distributed across insole |
-| LIR2032 x3 per insole | 3.6V rechargeable coin cell batteries |
+| EEMB LIR2032H x3 per insole | 3.7V rechargeable coin cell batteries |
 | TPU 85A | Insole material — honeycomb or gyroid infill 20–25% |
 
 ---
