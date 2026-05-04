@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SoleSense Test Panel</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 540px; margin: 24px auto; padding: 0 16px; color: #111; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #666; margin-bottom: 24px; font-size: 14px; }
+  button { font-size: 15px; padding: 10px 14px; margin: 4px 6px 4px 0; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 8px; cursor: pointer; }
+  button.ghost { background: white; color: #2563eb; }
+  button.danger { background: #ef4444; border-color: #ef4444; }
+  pre { background: #f3f4f6; padding: 12px; border-radius: 8px; font-size: 12px; overflow: auto; white-space: pre-wrap; }
+  section { margin: 18px 0; }
+  h2 { font-size: 14px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.04em; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <h1>SoleSense Test Panel</h1>
+  <div class="sub">v0.1 placeholder — drop in real SPA later</div>
+
+  <section>
+    <h2>Recording</h2>
+    <button onclick="api('POST','/api/start')">Start Run</button>
+    <button class="danger" onclick="api('POST','/api/stop')">Stop Run</button>
+  </section>
+
+  <section>
+    <h2>Calibrate (insole off the foot)</h2>
+    <button class="ghost" onclick="api('POST','/api/calibrate/zero')">FSR zero</button>
+    <button class="ghost" onclick="api('POST','/api/calibrate/imu')">IMU zero</button>
+  </section>
+
+  <section>
+    <h2>Data</h2>
+    <button class="ghost" onclick="window.location='/data.csv'">Download CSV</button>
+    <button class="danger" onclick="api('POST','/api/data/clear')">Clear data</button>
+  </section>
+
+  <section>
+    <h2>Device</h2>
+    <button class="ghost" onclick="api('GET','/api/device')">/api/device</button>
+    <button class="danger" onclick="if(confirm('Sleep now?'))api('POST','/api/sleep')">Sleep</button>
+  </section>
+
+  <pre id="out">Waiting for action...</pre>
+
+<script>
+const out = document.getElementById('out');
+async function api(method, path, body) {
+  out.textContent = method + ' ' + path + ' ...';
+  try {
+    const res = await fetch(path, { method, body });
+    const text = await res.text();
+    out.textContent = res.status + ' ' + path + '\n\n' + text;
+  } catch (e) {
+    out.textContent = 'ERR ' + e.message;
+  }
+}
+api('GET','/api/device');
+</script>
+</body>
+</html>
