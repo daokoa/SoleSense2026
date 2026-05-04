@@ -66,12 +66,12 @@ Everything runs on-device. No external dependencies at runtime.
   - USB-C, Arduino-compatible
 
 ### Pressure Sensing
-- **7× FSR 402** force sensing resistors
-- Read through **CD74HC4051** 8-channel analog mux
+- **6× FSR 402** force sensing resistors
+- Read through **CD74HC4051** 8-channel analog mux (channels 0–5 populated, 6–7 unused)
   - 1 ADC pin (`GPIO2 / A0`)
   - 3 select pins (`GPIO3/4/5` → S0/S1/S2)
   - 12-bit ADC resolution → 0–4095 per sensor
-- Channel-to-zone mapping:
+- Channel-to-zone mapping (matches Choi et al. 2024 validated 6-zone layout):
 
 | Channel | Zone |
 |---|---|
@@ -80,8 +80,7 @@ Everything runs on-device. No external dependencies at runtime.
 | 2 | Medial Mid |
 | 3 | Ball Lateral |
 | 4 | Ball Medial |
-| 5 | Toe 2 |
-| 6 | Toe 1 |
+| 5 | Toe 1 (hallux) |
 
 ### IMU
 - **MPU-6050** 6-axis IMU on I2C
@@ -91,9 +90,9 @@ Everything runs on-device. No external dependencies at runtime.
   - Gyro range: ±250°/s → 131 LSB/(°/s) → converted to °/s
 
 ### Power
-- **3× EEMB LIR2032H** 3.7V rechargeable coin cells per insole
-- ~120mAh total capacity
-- Active draw (ESP32-C3 + WiFi AP): ~80–160mA → 45–90 min active
+- **2× LIR2450** 3.7V 120mAh rechargeable Li-ion coin cells, **wired in parallel** per insole
+- ~240mAh total capacity
+- Active draw (ESP32-C3 + WiFi AP): ~80–160mA → 90–180 min active
 - Deep sleep draw: ~5µA → weeks of standby
 - **Deep sleep + physical wake button** is the required power strategy
 
@@ -134,7 +133,7 @@ IDLE  ──/api/start──▶  RECORDING  ──/api/stop──▶  IDLE
 - 50Hz hardware timer (ESP32 `timerBegin` / `timerAlarm`)
 - Timer ISR sets `gNewSample` flag only — no work in ISR
 - `loop()` checks flag, calls `takeSample()`
-- `takeSample()` reads all 7 FSRs via mux + IMU via I2C → formats CSV row → writes to open file
+- `takeSample()` reads all 6 FSRs via mux + IMU via I2C → formats CSV row → writes to open file
 
 ### Buffered Writes
 - 25-row RAM buffer, flush every 0.5 seconds
@@ -195,14 +194,14 @@ IDLE  ──/api/start──▶  RECORDING  ──/api/stop──▶  IDLE
 
 ## 6. Data Pipeline
 
-### CSV Format (50Hz)
+### CSV Format (50Hz, 13 columns)
 ```
-timestamp_ms, fsr1, fsr2, fsr3, fsr4, fsr5, fsr6, fsr7,
+timestamp_ms, fsr1, fsr2, fsr3, fsr4, fsr5, fsr6,
 accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 ```
 
 - `timestamp_ms` — `millis()` since boot
-- `fsr1–7` — ADC counts 0–4095, zero-offset applied
+- `fsr1–6` — ADC counts 0–4095, zero-offset applied (channels 0–5 of mux: heel, lateral mid, medial mid, ball lateral, ball medial, toe 1)
 - `accel_x/y/z` — m/s², calibration offset applied, gravity on Z
 - `gyro_x/y/z` — °/s, calibration offset applied
 
@@ -216,8 +215,8 @@ CSV text
   → ground contact time (contact frames / total frames × duration / steps)
   → loading rate (max dForce/dt across all rows)
   → pronation (gyro_x integration over stance, averaged per step)
-  → L/R balance (sum left zones vs right zones)
-  → zone averages (normalized 0–100%)
+  → L/R balance (sum left zones vs right zones across the 6 FSRs)
+  → zone averages (6 zones normalized 0–100%)
   → evaluate 7 injury flags
   → sort flags high → medium → low
   → render report
@@ -259,20 +258,20 @@ Each flag card shows:
 - Most demanding flag (heel strike) resolves over ~50ms → 20Hz sufficient
 - 100Hz doubles storage consumption with no clinical benefit for running under 6 m/s
 
-### Storage Math
+### Storage Math (13-col CSV, ~90 chars/row)
 
 | Strategy | Write rate | KB/min | 1.5MB endurance |
 |---|---|---|---|
-| Raw CSV 50Hz | 50 rows/sec | 180 KB/min | ~8 min |
-| Raw CSV 50Hz buffered | 2 flushes/sec | 180 KB/min | ~8 min |
-| Averaged CSV 5Hz | 5 rows/sec | 18 KB/min | ~83 min |
-| Averaged + peaks 5Hz | 5 rows/sec | 24 KB/min | ~60 min |
+| Raw CSV 50Hz | 50 rows/sec | 270 KB/min | ~5.5 min |
+| Raw CSV 50Hz buffered | 2 flushes/sec | 270 KB/min | ~5.5 min |
+| Averaged CSV 5Hz | 5 rows/sec | 27 KB/min | ~55 min |
+| Averaged + peaks 5Hz | 5 rows/sec | 36 KB/min | ~40 min |
 
 ### Recommended: 50Hz internal, 5Hz averaged writes with peak preservation
 - Sample at 50Hz into RAM
 - Average every 10 samples → write 1 row at 5Hz
-- Also store `fsr_peak[7]` and `gyro_peak_x` per window
-- 60+ minutes recording on 1.5MB partition
+- Also store `fsr_peak[6]` and `gyro_peak_x` per window
+- 40+ minutes recording on 1.5MB partition
 - Averaging acts as a free low-pass filter — removes ADC jitter, mux switching transients, TPU material vibration
 - Validated by Choi et al. (2024, *Sensors*): averaged FSR data improves downstream GRF/CoP prediction accuracy
 
@@ -289,8 +288,8 @@ Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)
 ### Strategy: Deep Sleep + Physical Wake Button
 
 **Why:**
-- 3× LIR2032H = ~120mAh
-- Active + WiFi: 80–160mA → 45–90 min if always on
+- 2× LIR2450 in parallel = ~240mAh
+- Active + WiFi: 80–160mA → 90–180 min if always on
 - Deep sleep: ~5µA → weeks of standby
 - Without sleep, insole is dead before the user puts it on if left powered
 
@@ -447,7 +446,7 @@ Arduino IDE → `Cmd+Shift+P` → **Upload LittleFS** → Enter
 - **Zifchock et al. (2006)** *Clinical Biomechanics* — bilateral asymmetry > 10%
 
 ### FSR Sensor Placement & Averaging
-- **Choi et al. (2024)** *Sensors* (MDPI), "Calibrating Low-Cost Smart Insole Sensors with Recurrent Neural Networks for Accurate Prediction of Center of Pressure" — 6-FSR insole validated against F-Scan ($20K system); FSR data fed into an RNN/LSTM model improves GRF/CoP prediction accuracy by 30%+. SoleSense 7-sensor layout matches their validated zone configuration. Supports 50Hz sampling and averaging strategy.
+- **Choi et al. (2024)** *Sensors* (MDPI), "Calibrating Low-Cost Smart Insole Sensors with Recurrent Neural Networks for Accurate Prediction of Center of Pressure" — 6-FSR insole validated against F-Scan ($20K system); FSR data fed into an RNN/LSTM model improves GRF/CoP prediction accuracy by 30%+. SoleSense's 6-sensor layout matches their validated zone configuration. Supports 50Hz sampling and averaging strategy.
 - **Claverie et al. (2016)** *Medical Engineering & Physics* — discrete sensor distribution for plantar pressure analysis
 
 ### Commercial Benchmarks

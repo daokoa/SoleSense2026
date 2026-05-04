@@ -8,7 +8,7 @@ status: design — ready for implementation plan
 
 # SoleSense Firmware Design — v0.1
 
-C++ Arduino firmware skeleton for the Seeed XIAO ESP32-C3, implementing all 10 HTTP endpoints, 50 Hz sampling with buffered LittleFS writes, FSR + IMU calibration, NVS-backed settings, and physical-button deep-sleep.
+C++ Arduino firmware skeleton for the Seeed XIAO ESP32-C3, implementing all 10 HTTP endpoints, 50 Hz sampling of 6 FSRs + MPU-6050 with buffered LittleFS writes, FSR + IMU calibration, NVS-backed settings, and physical-button deep-sleep.
 
 This document is the firmware-side companion to `SOLESENSE.md`. Where the two disagree, this document wins for v0.1.
 
@@ -18,7 +18,7 @@ This document is the firmware-side companion to `SOLESENSE.md`. Where the two di
 
 In scope for v0.1:
 - WiFi AP, LittleFS mount, AsyncWebServer with all 10 endpoints
-- 50 Hz hardware-timer sampling with 25-row RAM ring buffer (raw CSV, matches `SOLESENSE.md` §6 schema)
+- 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050 with 25-row RAM ring buffer (raw 13-column CSV, matches `SOLESENSE.md` §6 schema)
 - FSR zero + IMU offset calibration, persisted to NVS
 - Threshold settings, persisted to NVS
 - Physical-button deep sleep + wake
@@ -30,7 +30,7 @@ Out of scope for v0.1 (deferred to v0.2):
 - OTA updates
 - ESP-NOW pairing
 
-The frontend `index.html` is not part of this design — it already exists and consumes the raw 14-column CSV defined in `SOLESENSE.md` §6.
+The frontend `index.html` is not part of this design — it already exists and consumes the raw 13-column CSV defined in `SOLESENSE.md` §6. (The frontend's analysis pipeline will need a one-time update to read 6 FSR columns instead of 7; that's a frontend task, not firmware.)
 
 ---
 
@@ -124,9 +124,9 @@ int readFsr(uint8_t channel) {
 }
 ```
 
-Loop channels 0..6, store into `int16_t gFsr[7]`. ~50 µs per channel × 7 = ~350 µs total.
+Loop channels 0..5, store into `int16_t gFsr[6]`. ~50 µs per channel × 6 = ~300 µs total. Mux channels 6 and 7 are unused.
 
-Channel-to-zone mapping per `SOLESENSE.md` §3.
+Channel-to-zone mapping per `SOLESENSE.md` §3 (heel, lateral mid, medial mid, ball lateral, ball medial, toe 1).
 
 ### 5.2 MPU-6050 via I²C
 
@@ -144,7 +144,7 @@ Convert to physical units after applying offsets:
 
 ~350 µs over I²C.
 
-Total `takeSample()` budget: ~700 µs, well under the 20 ms timer window.
+Total `takeSample()` budget: ~650 µs, well under the 20 ms timer window.
 
 ---
 
@@ -152,13 +152,13 @@ Total `takeSample()` budget: ~700 µs, well under the 20 ms timer window.
 
 ### 6.1 FSR zero (`POST /api/calibrate/zero`)
 
-Insole assumed unloaded. For each channel 0..6:
+Insole assumed unloaded. For each channel 0..5:
 - Sample 32 times with ~1 ms spacing between samples (10 µs mux settle is already in `readFsr()`)
 - Average → `gFsrZero[channel]` (int)
 
-Persist all 7 zeros to NVS. Return as JSON:
+Persist all 6 zeros to NVS. Return as JSON:
 ```json
-{ "ok": true, "fsrZero": [123, 118, ...] }
+{ "ok": true, "fsrZero": [123, 118, 109, 142, 130, 121] }
 ```
 
 ### 6.2 IMU zero (`POST /api/calibrate/imu`)
@@ -182,7 +182,7 @@ Persist to NVS. Return offsets as JSON.
 ### 7.1 Ring buffer
 
 ```cpp
-static char     gRowBuf[25][104];   // 25 rows × ~100 chars = 2.6 KB RAM
+static char     gRowBuf[25][96];    // 25 rows × ~90 chars = 2.4 KB RAM
 static uint8_t  gRowCount = 0;
 static uint32_t gLastFlushMs = 0;
 ```
@@ -192,13 +192,13 @@ static uint32_t gLastFlushMs = 0;
 Called by `loop()` when `gNewSample` is set, only while `gState == RECORDING`:
 
 1. Clear `gNewSample`.
-2. Read all 7 FSRs (mux loop).
+2. Read all 6 FSRs (mux loop).
 3. Read MPU-6050 (14-byte I²C burst, convert to m/s² + °/s, apply offsets).
 4. `snprintf` one row into `gRowBuf[gRowCount++]`:
    ```
-   "%lu,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n"
+   "%lu,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n"
    ```
-   14 columns, matches `SOLESENSE.md` §6 schema exactly.
+   13 columns, matches `SOLESENSE.md` §6 schema exactly.
 5. If `gRowCount >= 25` OR `(millis() - gLastFlushMs) >= 500`:
    - One `gFile.write()` of all queued rows in a single call
    - Reset `gRowCount = 0`, update `gLastFlushMs`
@@ -207,7 +207,7 @@ One `file.write()` per flush → ~2 syscalls/sec to LittleFS instead of 50.
 
 ### 7.3 Storage budget
 
-~95 chars/row × 50 rows/sec = ~4.7 KB/sec. On the 1.5 MB partition that gives **~5 minutes** of recording before the file grows past partition. (`SOLESENSE.md` §8's "8 min" figure was optimistic on row width.) Adequate for v0.1 demo runs. The averaged 5 Hz path lands in v0.2 to extend this to 60+ minutes.
+~90 chars/row × 50 rows/sec = ~4.5 KB/sec. On the 1.5 MB partition that gives **~5.5 minutes** of recording. Matches `SOLESENSE.md` §8's updated 13-col storage table. Adequate for v0.1 demo runs. The averaged 5 Hz path lands in v0.2 to extend this to 40+ minutes.
 
 ### 7.4 Hardware timer
 
@@ -240,7 +240,7 @@ WiFi AP: `WiFi.softAP("SoleSense", "solesense")`.
 | `GET` | `/data.csv` | `request->send(LittleFS, "/data.csv", "text/csv")` (chunked) | 404 if no recording yet, 409 if RECORDING |
 | `POST` | `/api/start` | If IDLE: `gStartRequested = true`, return `{"ok":true}` | 409 if already RECORDING |
 | `POST` | `/api/stop` | If RECORDING: `gStopRequested = true`, return `{"ok":true}` | 409 if IDLE |
-| `POST` | `/api/calibrate/zero` | Block 32 × 7 samples → `gFsrZero[]`, persist NVS, return offsets | 409 if RECORDING |
+| `POST` | `/api/calibrate/zero` | Block 32 × 6 samples → `gFsrZero[]`, persist NVS, return offsets | 409 if RECORDING |
 | `POST` | `/api/calibrate/imu` | Block 64 samples → `gImuOffset[6]`, persist NVS, return offsets | 409 if RECORDING |
 | `POST` | `/api/settings` | Parse form-urlencoded, validate, update RAM thresholds, persist NVS | 400 on out-of-range |
 | `POST` | `/api/data/clear` | `LittleFS.remove("/data.csv")`, return `{"ok":true}` | 409 if RECORDING |
@@ -303,7 +303,7 @@ ESP32 Arduino built-in `Preferences` library. Single namespace `"solesense"`.
 | `proneMin` | int | −8 | threshold |
 | `gct` | int | 300 | threshold |
 | `cadenceMin` | int | 160 | threshold |
-| `fsrZ0` … `fsrZ6` | int | 0 | FSR zero per channel |
+| `fsrZ0` … `fsrZ5` | int | 0 | FSR zero per channel |
 | `imuOax`, `imuOay`, `imuOaz` | float | 0.0 | accel offset (m/s²) |
 | `imuOgx`, `imuOgy`, `imuOgz` | float | 0.0 | gyro offset (°/s) |
 
@@ -411,7 +411,7 @@ Arduino code is hard to unit-test. Verification path for v0.1:
    curl -X POST http://192.168.4.1/api/stop
    curl http://192.168.4.1/data.csv | head
    ```
-   Expect: clean JSON, then 14-column CSV with ~500 rows for a 10-second run.
+   Expect: clean JSON, then 13-column CSV with ~500 rows for a 10-second run.
 4. **Frontend integration:** open `http://192.168.4.1/` on phone, full Start → Stop → Report flow against real CSV.
 5. **Error states:** `POST /api/start` while recording → 409. `POST /api/settings` with `cadenceMin=999` → 400.
 6. **Deep sleep:** `POST /api/sleep` while idle, observe board goes silent (~5 µA on a multimeter), press BOOT button, AP comes back in ~1 s.

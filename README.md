@@ -18,8 +18,8 @@ patterns and how to fix your running form.
 ## How It Works
 
 1. Insert SoleSense into your running shoe
-2. Run normally 8 FSR pressure sensors and an IMU record
-   14 channels of data at 50Hz (every 20ms) to onboard flash memory
+2. Run normally 6 FSR pressure sensors and an IMU record
+   13 channels of data at 50Hz (every 20ms) to onboard flash memory
 3. After you run the insole connects to WiFi and transmits your data
 4. Open the SoleSense web app on any device
 5. Provides Biomechanical results
@@ -46,8 +46,8 @@ All 7 flags are sourced from peer-reviewed biomechanics literature.
 |---|---|
 | Seeed XIAO ESP32C3 | Microcontroller — reads all sensors at up to 160hz, transmits data over WiFi |
 | MPU6050 IMU | 3-axis accelerometer + 3-axis gyroscope |
-| FSR 402 x7 | Pressure sensors distributed across insole |
-| EEMB LIR2032H x3 per insole | 3.7V rechargeable coin cell batteries |
+| FSR 402 x6 | Pressure sensors distributed across insole (heel, lateral mid, medial mid, ball lateral, ball medial, toe 1) |
+| LIR2450 x2 per insole, parallel | 3.7V 120mAh rechargeable Li-ion coin cells (~240mAh combined) |
 | TPU 85A | Insole material — honeycomb or gyroid infill 20–25% |
 
 ---
