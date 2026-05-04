@@ -328,37 +328,8 @@
       <div class="rec-label">Recording</div>
     </div>
 
-    <div class="live-grid">
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveAx">0.00</div>
-        <div class="live-chip-label">Accel X</div>
-      </div>
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveAy">0.00</div>
-        <div class="live-chip-label">Accel Y</div>
-      </div>
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveAz">0.00</div>
-        <div class="live-chip-label">Accel Z</div>
-      </div>
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveGx">0.00</div>
-        <div class="live-chip-label">Gyro X</div>
-      </div>
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveGy">0.00</div>
-        <div class="live-chip-label">Gyro Y</div>
-      </div>
-      <div class="live-chip">
-        <div class="live-chip-val" id="liveGz">0.00</div>
-        <div class="live-chip-label">Gyro Z</div>
-      </div>
-    </div>
+    
 
-    <div class="fsr-section">
-      <div class="fsr-title">FSR Pressure Sensors</div>
-      <div id="fsrBars"></div>
-    </div>
 
     <button class="stop-btn" onclick="stopRun()">■ Stop Recording</button>
   </div>
@@ -410,16 +381,23 @@
 
   // ── RECORDING ──
   function startRun() {
-    recSeconds = 0;
+      recSeconds = 0;
     sensorData = [];
-    buildFsrBars();
     recInterval = setInterval(() => {
       recSeconds++;
       const m = String(Math.floor(recSeconds/60)).padStart(2,'0');
       const s = String(recSeconds%60).padStart(2,'0');
       document.getElementById('recTimer').textContent = m + ':' + s;
     }, 1000);
-    pollInterval = setInterval(fetchSensor, 200);
+    pollInterval = setInterval(collectSensor, 200);
+  }
+
+async function collectSensor() {
+    try {
+      const r = await fetch('/api/sensor');
+      const d = await r.json();
+      sensorData.push({t: recSeconds, ...d});
+    } catch(e) {}
   }
 
   function stopRun() {
@@ -463,11 +441,11 @@
 
   // ── REPORT ──
   function renderReport() {
-    if (sensorData.length === 0) {
-      document.getElementById('reportMeta').textContent = 'No data yet — complete a run first.';
-      document.getElementById('reportBody').style.display = 'none';
-      return;
-    }
+   if (recSeconds === 0 || sensorData.length === 0) {
+  document.getElementById('reportMeta').textContent = 'No data — complete a run to view report.';
+  document.getElementById('reportBody').style.display = 'none';
+  return;
+}
 
     document.getElementById('reportMeta').textContent =
       `${recSeconds}s · ${sensorData.length} samples`;
@@ -538,9 +516,10 @@
   }
 
   // ── CLEAR DATA ──
-  function clearData() {
+function clearData() {
     if (!confirm('Delete all recorded data?')) return;
     sensorData = [];
+    recSeconds = 0;  // ✅ add this line
     toast('Data cleared');
   }
 
