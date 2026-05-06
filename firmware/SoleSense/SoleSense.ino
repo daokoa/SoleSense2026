@@ -36,6 +36,10 @@ AsyncWebServer server(80);
 
 enum State { IDLE, RECORDING };
 volatile State gState = IDLE;
+volatile bool gStartRequested = false;
+volatile bool gStopRequested  = false;
+
+File gFile;
 
 struct Thresholds {
   int hlr        = 100;
@@ -108,14 +112,14 @@ static void readAllFsr() {
 
 static void readImu() {
   Wire.beginTransmission(MPU6050_ADDR);
-  Wire.write(0x3B);                    // ACCEL_XOUT_H
+  Wire.write(0x3B);
   Wire.endTransmission(false);
   Wire.requestFrom((uint8_t)MPU6050_ADDR, (uint8_t)14);
 
   int16_t ax = (Wire.read() << 8) | Wire.read();
   int16_t ay = (Wire.read() << 8) | Wire.read();
   int16_t az = (Wire.read() << 8) | Wire.read();
-  Wire.read(); Wire.read();            // discard temp
+  Wire.read(); Wire.read();
   int16_t gx = (Wire.read() << 8) | Wire.read();
   int16_t gy = (Wire.read() << 8) | Wire.read();
   int16_t gz = (Wire.read() << 8) | Wire.read();
@@ -129,25 +133,23 @@ static void readImu() {
 }
 
 static void initSensors() {
-  // mux selects + sig input
   pinMode(PIN_MUX_S0, OUTPUT);
   pinMode(PIN_MUX_S1, OUTPUT);
   pinMode(PIN_MUX_S2, OUTPUT);
   pinMode(PIN_MUX_SIG, INPUT);
   analogReadResolution(12);
 
-  // I2C + MPU-6050 wake
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(400000);
   Wire.beginTransmission(MPU6050_ADDR);
-  Wire.write(0x6B); Wire.write(0x00);    // PWR_MGMT_1 = 0 (wake, default clock)
+  Wire.write(0x6B); Wire.write(0x00);
   Wire.endTransmission();
   delay(10);
   Wire.beginTransmission(MPU6050_ADDR);
-  Wire.write(0x1B); Wire.write(0x00);    // GYRO_CONFIG = 0 -> +/-250 dps
+  Wire.write(0x1B); Wire.write(0x00);
   Wire.endTransmission();
   Wire.beginTransmission(MPU6050_ADDR);
-  Wire.write(0x1C); Wire.write(0x00);    // ACCEL_CONFIG = 0 -> +/-2g
+  Wire.write(0x1C); Wire.write(0x00);
   Wire.endTransmission();
   Serial.println("[Sensors] mux + MPU-6050 initialised");
 }
@@ -171,7 +173,6 @@ static void saveImuOffsets() {
 }
 
 static void calibrateFsrZero() {
-  // Zero the offsets so readFsr returns raw ADC during calibration
   for (int i = 0; i < 6; i++) gFsrZero[i] = 0;
 
   long acc[6] = {0,0,0,0,0,0};
@@ -187,7 +188,6 @@ static void calibrateFsrZero() {
 }
 
 static void calibrateImu() {
-  // Zero the offsets so readImu returns offset-free physical values during calibration
   for (int i = 0; i < 6; i++) gImuOffset[i] = 0;
 
   double acc[6] = {0,0,0,0,0,0};
@@ -200,7 +200,7 @@ static void calibrateImu() {
   }
   gImuOffset[0] = (float)(acc[0] / N);
   gImuOffset[1] = (float)(acc[1] / N);
-  gImuOffset[2] = (float)(acc[2] / N) - G_TO_MS2;     // gravity stays on Z
+  gImuOffset[2] = (float)(acc[2] / N) - G_TO_MS2;
   gImuOffset[3] = (float)(acc[3] / N);
   gImuOffset[4] = (float)(acc[4] / N);
   gImuOffset[5] = (float)(acc[5] / N);
@@ -209,6 +209,37 @@ static void calibrateImu() {
   Serial.printf("[Cal] IMU offsets accel %.2f %.2f %.2f gyro %.2f %.2f %.2f\n",
     gImuOffset[0],gImuOffset[1],gImuOffset[2],
     gImuOffset[3],gImuOffset[4],gImuOffset[5]);
+}
+
+// =============================================================================
+// State machine
+// =============================================================================
+
+static void enterRecording() {
+  gFile = LittleFS.open("/data.csv", "w");
+  if (!gFile) {
+    Serial.println("[REC] open /data.csv FAILED");
+    return;
+  }
+  gState = RECORDING;
+  Serial.println("[REC] started");
+}
+
+static void exitRecording() {
+  if (gFile) { gFile.flush(); gFile.close(); }
+  gState = IDLE;
+  Serial.println("[REC] stopped");
+}
+
+static void processRequests() {
+  if (gStartRequested) {
+    gStartRequested = false;
+    if (gState == IDLE) enterRecording();
+  }
+  if (gStopRequested) {
+    gStopRequested = false;
+    if (gState == RECORDING) exitRecording();
+  }
 }
 
 static String stateName(State s) { return s == IDLE ? "idle" : "recording"; }
@@ -241,7 +272,7 @@ static const Range R_CAD        = {60, 300};
 
 static bool readIntParam(AsyncWebServerRequest* req, const char* key, Range r,
                          int& out, String& err) {
-  if (!req->hasParam(key, true)) return true;       // optional, leave unchanged
+  if (!req->hasParam(key, true)) return true;
   int v = req->getParam(key, true)->value().toInt();
   if (v < r.lo || v > r.hi) {
     err = String(key) + " out of range";
@@ -297,6 +328,24 @@ static void handleCalibrateImu(AsyncWebServerRequest* req) {
   req->send(200, "application/json", body);
 }
 
+static void handleStart(AsyncWebServerRequest* req) {
+  if (gState != IDLE) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"already recording\"}");
+    return;
+  }
+  gStartRequested = true;
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
+static void handleStop(AsyncWebServerRequest* req) {
+  if (gState != RECORDING) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"not recording\"}");
+    return;
+  }
+  gStopRequested = true;
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -320,11 +369,14 @@ void setup() {
   server.on("/api/settings",        HTTP_POST, handleSettings);
   server.on("/api/calibrate/zero",  HTTP_POST, handleCalibrateZero);
   server.on("/api/calibrate/imu",   HTTP_POST, handleCalibrateImu);
+  server.on("/api/start",           HTTP_POST, handleStart);
+  server.on("/api/stop",            HTTP_POST, handleStop);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
   Serial.println("[HTTP] server started");
 }
 
 void loop() {
+  processRequests();
   delay(1);
 }
