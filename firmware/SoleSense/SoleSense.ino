@@ -12,13 +12,21 @@
 // Pins
 // =============================================================================
 
-#define PIN_SDA       6
-#define PIN_SCL       7
-#define PIN_MUX_SIG   2      // GPIO2 / A0 - analog mux output
-#define PIN_MUX_S0    3      // GPIO3 (D0 on XIAO)
-#define PIN_MUX_S1    4      // GPIO4 (D1 on XIAO)
-#define PIN_MUX_S2    5      // GPIO5 (D2 on XIAO)
-#define PIN_WAKE      9
+#define PIN_SDA       6      // I2C - MPU-6050
+#define PIN_SCL       7      // I2C - MPU-6050
+
+// FSR matrix: 6 sensors in 2 sets of 3 (A, B, C). No multiplexer.
+// Each FSR's pin 2 sits in a voltage divider:
+//     <PWR_SETx pin> -- FSR -- <ADC_x pin> -- 10kΩ -- GND
+// Two FSRs share each analog input (one from each set). Cross-talk is
+// minimised by setting the unpowered set's GPIO to INPUT (high-Z).
+#define PIN_ADC_A     2      // GPIO2 / A0 - analog A (FSR 1A and 2A)
+#define PIN_ADC_B     3      // GPIO3      - analog B (FSR 1B and 2B)
+#define PIN_ADC_C     4      // GPIO4      - analog C (FSR 1C and 2C)
+#define PIN_PWR_SET1  5      // GPIO5  - digital power for Set 1 (1A, 1B, 1C)
+#define PIN_PWR_SET2  10     // GPIO10 - digital power for Set 2 (2A, 2B, 2C)
+
+#define PIN_WAKE      9      // GPIO9 - on-board BOOT button doubles as wake button
 
 #define MPU6050_ADDR  0x68
 #define ACCEL_LSB_PER_G   16384.0f
@@ -112,16 +120,35 @@ static void saveThresholds() {
 // Sensor reads
 // =============================================================================
 
-static int readFsr(uint8_t channel) {
-  digitalWrite(PIN_MUX_S0, channel & 0x01);
-  digitalWrite(PIN_MUX_S1, (channel >> 1) & 0x01);
-  digitalWrite(PIN_MUX_S2, (channel >> 2) & 0x01);
-  delayMicroseconds(10);
-  return analogRead(PIN_MUX_SIG) - gFsrZero[channel];
-}
-
+// Channel-to-FSR mapping (6 FSRs across 2 sets of 3):
+//   gFsr[0] = Set 1 A = Heel
+//   gFsr[1] = Set 1 B = Lateral Mid
+//   gFsr[2] = Set 1 C = Medial Mid
+//   gFsr[3] = Set 2 A = Ball Lateral
+//   gFsr[4] = Set 2 B = Ball Medial
+//   gFsr[5] = Set 2 C = Toe 1
 static void readAllFsr() {
-  for (uint8_t ch = 0; ch < 6; ch++) gFsr[ch] = readFsr(ch);
+  // Activate Set 1 (Set 2 high-Z)
+  pinMode(PIN_PWR_SET2, INPUT);
+  pinMode(PIN_PWR_SET1, OUTPUT);
+  digitalWrite(PIN_PWR_SET1, HIGH);
+  delayMicroseconds(50);                              // FSR + cap settle
+  gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];
+  gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];
+  gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];
+
+  // Activate Set 2 (Set 1 high-Z)
+  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET2, OUTPUT);
+  digitalWrite(PIN_PWR_SET2, HIGH);
+  delayMicroseconds(50);
+  gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];
+  gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];
+  gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];
+
+  // Park both high-Z between samples
+  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET2, INPUT);
 }
 
 static void readImu() {
@@ -147,10 +174,12 @@ static void readImu() {
 }
 
 static void initSensors() {
-  pinMode(PIN_MUX_S0, OUTPUT);
-  pinMode(PIN_MUX_S1, OUTPUT);
-  pinMode(PIN_MUX_S2, OUTPUT);
-  pinMode(PIN_MUX_SIG, INPUT);
+  // FSR power lines park at high-Z until first read; analog inputs are inputs
+  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET2, INPUT);
+  pinMode(PIN_ADC_A, INPUT);
+  pinMode(PIN_ADC_B, INPUT);
+  pinMode(PIN_ADC_C, INPUT);
   analogReadResolution(12);
 
   Wire.begin(PIN_SDA, PIN_SCL);
@@ -165,7 +194,7 @@ static void initSensors() {
   Wire.beginTransmission(MPU6050_ADDR);
   Wire.write(0x1C); Wire.write(0x00);
   Wire.endTransmission();
-  Serial.println("[Sensors] mux + MPU-6050 initialised");
+  Serial.println("[Sensors] FSR sets + MPU-6050 initialised");
 }
 
 // =============================================================================

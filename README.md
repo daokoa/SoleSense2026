@@ -68,22 +68,32 @@ XIAO ESP32-C3 → MPU-6050 (I²C):
   GND         → GND
   GND         → AD0   (sets I²C address to 0x68)
 
-XIAO → CD74HC4051 mux:
-  D0 (GPIO2/A0) → Y    (analog signal in)
-  D1 (GPIO3)    → S0
-  D2 (GPIO4)    → S1
-  D3 (GPIO5)    → S2
-  3V3           → VCC
-  GND           → GND, INH, VEE
+XIAO → 6 FSRs (no multiplexer — 2 sets of 3 with shared analog reads):
+  Power lines (digital, one per set):
+    GPIO5  (D3)  → Set 1 power (FSRs 1A, 1B, 1C)
+    GPIO10 (D10) → Set 2 power (FSRs 2A, 2B, 2C)
+  Analog inputs (shared between sets):
+    GPIO2  (A0)  → ADC A — reads FSR 1A or 2A (whichever set is powered)
+    GPIO3  (D1)  → ADC B — reads FSR 1B or 2B
+    GPIO4  (D2)  → ADC C — reads FSR 1C or 2C
 
-Mux Y0..Y5 → 6 FSRs (each in a 10kΩ voltage divider to GND):
-  Y0 → Heel
-  Y1 → Lateral Mid
-  Y2 → Medial Mid
-  Y3 → Ball Lateral
-  Y4 → Ball Medial
-  Y5 → Toe 1
-  Y6, Y7 → unused
+Per-FSR wiring (each FSR identical):
+    Pin 1 → its set's digital power pin (Set 1's GPIO5 or Set 2's GPIO10)
+    Pin 2 → its set's analog input AND through a 10kΩ pull-down to GND
+            (standard FSR voltage divider — the resistor is required)
+
+FSR-to-zone mapping:
+    FSR 1A (Set 1, ADC A) → Heel
+    FSR 1B (Set 1, ADC B) → Lateral Mid
+    FSR 1C (Set 1, ADC C) → Medial Mid
+    FSR 2A (Set 2, ADC A) → Ball Lateral
+    FSR 2B (Set 2, ADC B) → Ball Medial
+    FSR 2C (Set 2, ADC C) → Toe 1 (hallux)
+
+Read sequence (firmware does this automatically per sample):
+    1. Drive PIN_PWR_SET1 HIGH (Set 2 high-Z) → read ADC A/B/C → gFsr[0..2]
+    2. Drive PIN_PWR_SET2 HIGH (Set 1 high-Z) → read ADC A/B/C → gFsr[3..5]
+    3. Both high-Z between samples
 
 Wake button:
   GPIO9 — uses the on-board BOOT button on the XIAO; no extra hardware

@@ -92,17 +92,20 @@ volatile State gState = IDLE;
 
 ## 4. Pin Assignments
 
-From `SOLESENSE.md` §4, plus one new addition:
+Updated for the no-multiplexer wiring scheme — 6 FSRs split into 2 sets of 3, each set powered by its own digital pin, with 3 shared analog inputs:
 
 ```cpp
-#define PIN_SDA       6     // I²C — MPU-6050
-#define PIN_SCL       7     // I²C — MPU-6050
-#define PIN_MUX_SIG   A0    // GPIO2 — analog mux output
-#define PIN_MUX_S0    D0    // GPIO3 — mux select bit 0
-#define PIN_MUX_S1    D1    // GPIO4 — mux select bit 1
-#define PIN_MUX_S2    D2    // GPIO5 — mux select bit 2
-#define PIN_WAKE      9     // GPIO9 — on-board BOOT button, doubles as wake button (v0.1)
+#define PIN_SDA       6      // I²C — MPU-6050
+#define PIN_SCL       7      // I²C — MPU-6050
+#define PIN_ADC_A     2      // GPIO2 / A0 - shared analog A (FSR 1A and 2A)
+#define PIN_ADC_B     3      // GPIO3      - shared analog B (FSR 1B and 2B)
+#define PIN_ADC_C     4      // GPIO4      - shared analog C (FSR 1C and 2C)
+#define PIN_PWR_SET1  5      // GPIO5  - digital power for Set 1 (1A, 1B, 1C)
+#define PIN_PWR_SET2  10     // GPIO10 - digital power for Set 2 (2A, 2B, 2C)
+#define PIN_WAKE      9      // GPIO9 — on-board BOOT button doubles as wake button
 ```
+
+Per-FSR wiring: pin 1 → digital power for its set, pin 2 → shared analog input AND through a 10 kΩ pull-down resistor to GND (standard voltage divider). The unpowered set's GPIO is set to INPUT (high-Z) during reads to minimize cross-talk through the unpowered FSRs.
 
 **Wake pin rationale:** `SOLESENSE.md` §9 calls for a tactile-to-GND wake button but does not pick a pin. The XIAO ESP32-C3 board includes an on-board BOOT button on GPIO9 that is already a momentary-to-GND switch. Reusing it for v0.1 means hardware (Norton/Jordan) does not need to add a button to demo deep sleep. If a dedicated button is wired later, change `PIN_WAKE`.
 
@@ -112,21 +115,37 @@ GPIO9 is configured `INPUT_PULLUP` in `setup()`. Active low.
 
 ## 5. Sensor Reads
 
-### 5.1 FSR via CD74HC4051 mux
+### 5.1 FSR via set scanning (no multiplexer)
 
 ```cpp
-int readFsr(uint8_t channel) {
-  digitalWrite(PIN_MUX_S0, channel & 0x01);
-  digitalWrite(PIN_MUX_S1, (channel >> 1) & 0x01);
-  digitalWrite(PIN_MUX_S2, (channel >> 2) & 0x01);
-  delayMicroseconds(10);                        // mux settle
-  return analogRead(PIN_MUX_SIG) - gFsrZero[channel];
+static void readAllFsr() {
+  // Activate Set 1 (Set 2 high-Z)
+  pinMode(PIN_PWR_SET2, INPUT);
+  pinMode(PIN_PWR_SET1, OUTPUT);
+  digitalWrite(PIN_PWR_SET1, HIGH);
+  delayMicroseconds(50);                              // FSR + cap settle
+  gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];      // Heel
+  gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];      // Lateral Mid
+  gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];      // Medial Mid
+
+  // Activate Set 2 (Set 1 high-Z)
+  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET2, OUTPUT);
+  digitalWrite(PIN_PWR_SET2, HIGH);
+  delayMicroseconds(50);
+  gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];      // Ball Lateral
+  gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];      // Ball Medial
+  gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];      // Toe 1
+
+  // Park both high-Z between samples
+  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET2, INPUT);
 }
 ```
 
-Loop channels 0..5, store into `int16_t gFsr[6]`. ~50 µs per channel × 6 = ~300 µs total. Mux channels 6 and 7 are unused.
+Two 50 µs settle delays + 6 ADC reads ≈ ~150 µs total. Stored into `int16_t gFsr[6]`. Channel-to-zone mapping per `SOLESENSE.md` §3.
 
-Channel-to-zone mapping per `SOLESENSE.md` §3 (heel, lateral mid, medial mid, ball lateral, ball medial, toe 1).
+**Cross-talk note:** when Set 1 is powered HIGH, the unpowered Set 2's FSRs share the analog read node via their pin 2. Setting Set 2's GPIO to INPUT (high-Z) breaks the active current path through those FSRs, but if a Set 2 FSR is heavily pressed at the same time as a Set 1 FSR sharing its analog pin, residual leakage through MCU input protection can affect the reading. Acceptable noise at 50 Hz scanning; flag if real-world data looks anomalous during double-support phases.
 
 ### 5.2 MPU-6050 via I²C
 

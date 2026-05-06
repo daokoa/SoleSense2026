@@ -66,21 +66,21 @@ Everything runs on-device. No external dependencies at runtime.
   - USB-C, Arduino-compatible
 
 ### Pressure Sensing
-- **6× FSR 402** force sensing resistors
-- Read through **CD74HC4051** 8-channel analog mux (channels 0–5 populated, 6–7 unused)
-  - 1 ADC pin (`GPIO2 / A0`)
-  - 3 select pins (`GPIO3/4/5` → S0/S1/S2)
-  - 12-bit ADC resolution → 0–4095 per sensor
-- Channel-to-zone mapping (matches Choi et al. 2024 validated 6-zone layout):
+- **6× FSR 402** force sensing resistors, **no multiplexer** — wired in two sets of three (each set time-multiplexed via a digital power line)
+- 2 digital power pins (`GPIO5`, `GPIO10`) — one per set
+- 3 shared analog inputs (`GPIO2/A0`, `GPIO3`, `GPIO4`) — analog A, B, C
+- 12-bit ADC resolution → 0–4095 per sensor
+- Per-FSR wiring: pin 1 → digital power for that set; pin 2 → analog input AND through a 10 kΩ pull-down resistor to GND (voltage divider)
+- Read sequence per sample: power Set 1 HIGH (Set 2 high-Z) → read ADC A/B/C → power Set 2 HIGH (Set 1 high-Z) → read ADC A/B/C → both high-Z
 
-| Channel | Zone |
-|---|---|
-| 0 | Heel |
-| 1 | Lateral Mid |
-| 2 | Medial Mid |
-| 3 | Ball Lateral |
-| 4 | Ball Medial |
-| 5 | Toe 1 (hallux) |
+| FSR | Set / Position | Reads on | Zone |
+|---|---|---|---|
+| 1A | Set 1, slot A | ADC A (`GPIO2`) | Heel |
+| 1B | Set 1, slot B | ADC B (`GPIO3`) | Lateral Mid |
+| 1C | Set 1, slot C | ADC C (`GPIO4`) | Medial Mid |
+| 2A | Set 2, slot A | ADC A (`GPIO2`) | Ball Lateral |
+| 2B | Set 2, slot B | ADC B (`GPIO3`) | Ball Medial |
+| 2C | Set 2, slot C | ADC C (`GPIO4`) | Toe 1 (hallux) |
 
 ### IMU
 - **MPU-6050** 6-axis IMU on I2C
