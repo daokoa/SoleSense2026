@@ -152,6 +152,65 @@ static void initSensors() {
   Serial.println("[Sensors] mux + MPU-6050 initialised");
 }
 
+// =============================================================================
+// Calibration
+// =============================================================================
+
+static void saveFsrZeros() {
+  static const char* keys[6] = {"fsrZ0","fsrZ1","fsrZ2","fsrZ3","fsrZ4","fsrZ5"};
+  for (int i = 0; i < 6; i++) gPrefs.putInt(keys[i], gFsrZero[i]);
+}
+
+static void saveImuOffsets() {
+  gPrefs.putFloat("imuOax", gImuOffset[0]);
+  gPrefs.putFloat("imuOay", gImuOffset[1]);
+  gPrefs.putFloat("imuOaz", gImuOffset[2]);
+  gPrefs.putFloat("imuOgx", gImuOffset[3]);
+  gPrefs.putFloat("imuOgy", gImuOffset[4]);
+  gPrefs.putFloat("imuOgz", gImuOffset[5]);
+}
+
+static void calibrateFsrZero() {
+  // Zero the offsets so readFsr returns raw ADC during calibration
+  for (int i = 0; i < 6; i++) gFsrZero[i] = 0;
+
+  long acc[6] = {0,0,0,0,0,0};
+  for (int s = 0; s < 32; s++) {
+    for (uint8_t ch = 0; ch < 6; ch++) acc[ch] += readFsr(ch);
+    delay(1);
+  }
+  for (int i = 0; i < 6; i++) gFsrZero[i] = (int)(acc[i] / 32);
+  saveFsrZeros();
+
+  Serial.printf("[Cal] FSR zeros: %d %d %d %d %d %d\n",
+    gFsrZero[0],gFsrZero[1],gFsrZero[2],gFsrZero[3],gFsrZero[4],gFsrZero[5]);
+}
+
+static void calibrateImu() {
+  // Zero the offsets so readImu returns offset-free physical values during calibration
+  for (int i = 0; i < 6; i++) gImuOffset[i] = 0;
+
+  double acc[6] = {0,0,0,0,0,0};
+  const int N = 64;
+  for (int s = 0; s < N; s++) {
+    readImu();
+    acc[0] += gAccel[0]; acc[1] += gAccel[1]; acc[2] += gAccel[2];
+    acc[3] += gGyro[0];  acc[4] += gGyro[1];  acc[5] += gGyro[2];
+    delay(2);
+  }
+  gImuOffset[0] = (float)(acc[0] / N);
+  gImuOffset[1] = (float)(acc[1] / N);
+  gImuOffset[2] = (float)(acc[2] / N) - G_TO_MS2;     // gravity stays on Z
+  gImuOffset[3] = (float)(acc[3] / N);
+  gImuOffset[4] = (float)(acc[4] / N);
+  gImuOffset[5] = (float)(acc[5] / N);
+  saveImuOffsets();
+
+  Serial.printf("[Cal] IMU offsets accel %.2f %.2f %.2f gyro %.2f %.2f %.2f\n",
+    gImuOffset[0],gImuOffset[1],gImuOffset[2],
+    gImuOffset[3],gImuOffset[4],gImuOffset[5]);
+}
+
 static String stateName(State s) { return s == IDLE ? "idle" : "recording"; }
 
 static void handleDevice(AsyncWebServerRequest* req) {
@@ -209,6 +268,35 @@ static void handleSettings(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
+static void handleCalibrateZero(AsyncWebServerRequest* req) {
+  if (gState != IDLE) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  calibrateFsrZero();
+  String json = "{\"ok\":true,\"fsrZero\":[";
+  for (int i = 0; i < 6; i++) {
+    json += String(gFsrZero[i]);
+    if (i < 5) json += ",";
+  }
+  json += "]}";
+  req->send(200, "application/json", json);
+}
+
+static void handleCalibrateImu(AsyncWebServerRequest* req) {
+  if (gState != IDLE) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  calibrateImu();
+  char body[200];
+  snprintf(body, sizeof(body),
+    "{\"ok\":true,\"accel\":[%.4f,%.4f,%.4f],\"gyro\":[%.4f,%.4f,%.4f]}",
+    gImuOffset[0],gImuOffset[1],gImuOffset[2],
+    gImuOffset[3],gImuOffset[4],gImuOffset[5]);
+  req->send(200, "application/json", body);
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -228,8 +316,10 @@ void setup() {
   IPAddress ip = WiFi.softAPIP();
   Serial.printf("[WiFi] AP '%s' up at %s\n", AP_SSID, ip.toString().c_str());
 
-  server.on("/api/device",   HTTP_GET,  handleDevice);
-  server.on("/api/settings", HTTP_POST, handleSettings);
+  server.on("/api/device",          HTTP_GET,  handleDevice);
+  server.on("/api/settings",        HTTP_POST, handleSettings);
+  server.on("/api/calibrate/zero",  HTTP_POST, handleCalibrateZero);
+  server.on("/api/calibrate/imu",   HTTP_POST, handleCalibrateImu);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
   Serial.println("[HTTP] server started");
