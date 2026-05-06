@@ -151,9 +151,11 @@ solesense/
 │
 ├── software/                         ← all browser/host-side code, see software/README.md
 │   ├── README.md
-│   └── frontend/                     ← canonical SPA source-of-truth, see frontend/README.md
+│   └── frontend/                     ← two parallel UIs, see frontend/README.md
 │       ├── README.md
-│       └── index.html
+│       ├── mock-server.py            ← Python http.server simulating the firmware
+│       ├── dao/index.html            ← Dao's white/blue UI (currently active on device)
+│       └── andony/index.html         ← Andony's dark SPA
 │
 ├── hardware/
 │   ├── cad/FSR Cutout.SLDPRT         ← SolidWorks CAD
@@ -210,9 +212,12 @@ Then quit and reopen Arduino IDE.
 
 1. Open `firmware/SoleSense/SoleSense.ino` in Arduino IDE.
 2. Click `→` (Upload). Wait for "Done uploading."
-3. **If the frontend changed**, sync the source from `software/frontend/` to the firmware's LittleFS data folder. From the repo root:
+3. **If the frontend changed**, sync your chosen UI to the firmware's LittleFS data folder. From the repo root:
    ```bash
-   cp software/frontend/index.html firmware/SoleSense/data/index.html
+   # Dao's UI:
+   cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
+   # or Andony's UI:
+   cp software/frontend/andony/index.html firmware/SoleSense/data/index.html
    ```
 4. **Close Serial Monitor** (it holds the port).
 5. `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter.

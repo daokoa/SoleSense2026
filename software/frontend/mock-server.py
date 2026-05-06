@@ -3,8 +3,9 @@
 SoleSense mock server — simulates the firmware backend so you can see
 the frontend live in a browser without flashing the XIAO.
 
-Run from the repo root or from this folder:
-    python3 software/frontend/mock-server.py
+Run from the repo root or from this folder. Default serves Dao's UI:
+    python3 software/frontend/mock-server.py             # dao/ (white & blue)
+    python3 software/frontend/mock-server.py andony      # andony/ (dark SPA)
 
 Then open http://localhost:8080/ in any browser.
 
@@ -40,6 +41,15 @@ from urllib.parse import urlparse
 
 PORT = 8080
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Pick which UI to serve: default is "dao", pass "andony" as the first CLI arg
+# to serve the dark SPA instead.
+UI = sys.argv[1] if len(sys.argv) > 1 else "dao"
+SERVE_DIR = os.path.join(THIS_DIR, UI)
+if not os.path.isdir(SERVE_DIR):
+    print(f"error: no UI folder at {SERVE_DIR}", file=sys.stderr)
+    print("expected one of: dao, andony", file=sys.stderr)
+    sys.exit(1)
 
 # Server "state" (mock — not persisted, not enforced)
 state = {
@@ -127,7 +137,7 @@ def mock_csv():
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=THIS_DIR, **kwargs)
+        super().__init__(*args, directory=SERVE_DIR, **kwargs)
 
     def log_message(self, fmt, *args):
         # Quieter than the default — one line per request, no timestamps
@@ -214,7 +224,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     print(f"SoleSense mock server")
-    print(f"  Serving frontend from: {THIS_DIR}")
+    print(f"  UI: {UI}")
+    print(f"  Serving frontend from: {SERVE_DIR}")
     print(f"  Open in browser: http://localhost:{PORT}/")
     print(f"  Ctrl+C to stop.\n")
     socketserver.TCPServer.allow_reuse_address = True
