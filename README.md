@@ -265,7 +265,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [ ] MPU-6050 soldered and reading real motion
 
 ### v0.2 — *post-demo*
-- [ ] **Move all run state onto the MCU. No browser-side storage.** Replace raw-CSV recording with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a multi-slot ring buffer in flash. WiFi disconnects become recoverable. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
+- [ ] **Move all run state onto the MCU. No browser-side storage.** Replace raw-CSV recording with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a multi-slot ring buffer in flash. Run timer is derived from the latest valid flash slot — not a JS wall-clock — so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO)
 - [ ] Pick canonical frontend (dao or andony — only one survives)
 - [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet)
