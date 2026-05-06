@@ -6,6 +6,24 @@
 #include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
+#include <Wire.h>
+
+// =============================================================================
+// Pins
+// =============================================================================
+
+#define PIN_SDA       6      // I2C - MPU-6050
+#define PIN_SCL       7      // I2C - MPU-6050
+#define PIN_MUX_SIG   A0     // GPIO2 - analog mux output
+#define PIN_MUX_S0    D0     // GPIO3
+#define PIN_MUX_S1    D1     // GPIO4
+#define PIN_MUX_S2    D2     // GPIO5
+#define PIN_WAKE      9      // GPIO9 - on-board BOOT button doubles as wake button
+
+#define MPU6050_ADDR  0x68
+#define ACCEL_LSB_PER_G   16384.0f
+#define G_TO_MS2          9.80665f
+#define GYRO_LSB_PER_DPS  131.0f
 
 static const char* AP_SSID = "SoleSense";
 static const char* AP_PASS = "solesense";
@@ -28,6 +46,15 @@ struct Thresholds {
 };
 Thresholds gThresholds;
 
+// FSR state
+int     gFsrZero[6]   = {0,0,0,0,0,0};
+int16_t gFsr[6]       = {0,0,0,0,0,0};
+
+// IMU state — offsets in physical units (m/s2 and deg/s)
+float gImuOffset[6]   = {0,0,0,0,0,0};   // ax, ay, az, gx, gy, gz
+float gAccel[3]       = {0,0,0};
+float gGyro[3]        = {0,0,0};
+
 // =============================================================================
 // NVS settings (Preferences)
 // =============================================================================
@@ -41,9 +68,18 @@ static void loadSettings() {
   gThresholds.proneMin   = gPrefs.getInt("proneMin",   -8);
   gThresholds.gct        = gPrefs.getInt("gct",        300);
   gThresholds.cadenceMin = gPrefs.getInt("cadenceMin", 160);
-  Serial.printf("[NVS] thresholds loaded: hlr=%d proneMax=%d proneMin=%d gct=%d cadMin=%d\n",
-    gThresholds.hlr, gThresholds.proneMax, gThresholds.proneMin,
-    gThresholds.gct, gThresholds.cadenceMin);
+
+  static const char* fsrKeys[6] = {"fsrZ0","fsrZ1","fsrZ2","fsrZ3","fsrZ4","fsrZ5"};
+  for (int i = 0; i < 6; i++) gFsrZero[i] = gPrefs.getInt(fsrKeys[i], 0);
+
+  gImuOffset[0] = gPrefs.getFloat("imuOax", 0);
+  gImuOffset[1] = gPrefs.getFloat("imuOay", 0);
+  gImuOffset[2] = gPrefs.getFloat("imuOaz", 0);
+  gImuOffset[3] = gPrefs.getFloat("imuOgx", 0);
+  gImuOffset[4] = gPrefs.getFloat("imuOgy", 0);
+  gImuOffset[5] = gPrefs.getFloat("imuOgz", 0);
+
+  Serial.println("[NVS] thresholds + calibration loaded");
 }
 
 static void saveThresholds() {
@@ -52,6 +88,68 @@ static void saveThresholds() {
   gPrefs.putInt("proneMin",   gThresholds.proneMin);
   gPrefs.putInt("gct",        gThresholds.gct);
   gPrefs.putInt("cadenceMin", gThresholds.cadenceMin);
+}
+
+// =============================================================================
+// Sensor reads
+// =============================================================================
+
+static int readFsr(uint8_t channel) {
+  digitalWrite(PIN_MUX_S0, channel & 0x01);
+  digitalWrite(PIN_MUX_S1, (channel >> 1) & 0x01);
+  digitalWrite(PIN_MUX_S2, (channel >> 2) & 0x01);
+  delayMicroseconds(10);
+  return analogRead(PIN_MUX_SIG) - gFsrZero[channel];
+}
+
+static void readAllFsr() {
+  for (uint8_t ch = 0; ch < 6; ch++) gFsr[ch] = readFsr(ch);
+}
+
+static void readImu() {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x3B);                    // ACCEL_XOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom((uint8_t)MPU6050_ADDR, (uint8_t)14);
+
+  int16_t ax = (Wire.read() << 8) | Wire.read();
+  int16_t ay = (Wire.read() << 8) | Wire.read();
+  int16_t az = (Wire.read() << 8) | Wire.read();
+  Wire.read(); Wire.read();            // discard temp
+  int16_t gx = (Wire.read() << 8) | Wire.read();
+  int16_t gy = (Wire.read() << 8) | Wire.read();
+  int16_t gz = (Wire.read() << 8) | Wire.read();
+
+  gAccel[0] = (ax / ACCEL_LSB_PER_G) * G_TO_MS2 - gImuOffset[0];
+  gAccel[1] = (ay / ACCEL_LSB_PER_G) * G_TO_MS2 - gImuOffset[1];
+  gAccel[2] = (az / ACCEL_LSB_PER_G) * G_TO_MS2 - gImuOffset[2];
+  gGyro[0]  = gx / GYRO_LSB_PER_DPS - gImuOffset[3];
+  gGyro[1]  = gy / GYRO_LSB_PER_DPS - gImuOffset[4];
+  gGyro[2]  = gz / GYRO_LSB_PER_DPS - gImuOffset[5];
+}
+
+static void initSensors() {
+  // mux selects + sig input
+  pinMode(PIN_MUX_S0, OUTPUT);
+  pinMode(PIN_MUX_S1, OUTPUT);
+  pinMode(PIN_MUX_S2, OUTPUT);
+  pinMode(PIN_MUX_SIG, INPUT);
+  analogReadResolution(12);
+
+  // I2C + MPU-6050 wake
+  Wire.begin(PIN_SDA, PIN_SCL);
+  Wire.setClock(400000);
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x6B); Wire.write(0x00);    // PWR_MGMT_1 = 0 (wake, default clock)
+  Wire.endTransmission();
+  delay(10);
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x1B); Wire.write(0x00);    // GYRO_CONFIG = 0 -> +/-250 dps
+  Wire.endTransmission();
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x1C); Wire.write(0x00);    // ACCEL_CONFIG = 0 -> +/-2g
+  Wire.endTransmission();
+  Serial.println("[Sensors] mux + MPU-6050 initialised");
 }
 
 static String stateName(State s) { return s == IDLE ? "idle" : "recording"; }
@@ -123,6 +221,7 @@ void setup() {
                   (unsigned)LittleFS.usedBytes(), (unsigned)LittleFS.totalBytes());
   }
 
+  initSensors();
   loadSettings();
 
   WiFi.softAP(AP_SSID, AP_PASS);
