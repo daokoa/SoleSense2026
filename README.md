@@ -126,41 +126,49 @@ solesense/
 ├── SOLESENSE.md                      ← canonical project spec
 ├── .gitignore
 │
-├── firmware/
-│   ├── SoleSense/                    ← Arduino IDE sketch (CANONICAL FIRMWARE)
-│   │   ├── SoleSense.ino             ← 522-line v0.1 firmware (working)
+├── firmware/                         ← BOTH firmware paths grouped, see firmware/README.md
+│   ├── README.md                     ← explains arduino-ide vs platformio choice
+│   ├── SoleSense/                    ← (Arduino IDE) WORKING firmware
+│   │   ├── SoleSense.ino             ← v0.1 firmware, ~520 lines, flashed and verified
 │   │   └── data/
-│   │       └── index.html            ← frontend SPA, uploaded via LittleFS plugin
-│   └── pseudocode                    ← high-level system pseudocode (Andony)
+│   │       └── index.html            ← canonical frontend SPA (LittleFS source)
+│   └── platformio/                   ← (PlatformIO) parallel stub firmware
+│       ├── platformio.ini
+│       ├── src/main.cpp              ← Andony's stub: dummy data, OTA, alt SSID
+│       ├── include/
+│       ├── lib/
+│       └── test/
 │
-├── src/main.cpp                      ← parallel PlatformIO firmware stub (not the active path)
-├── platformio.ini                    ← PlatformIO config
-├── include/, lib/, test/             ← PlatformIO scaffold
+├── data/                             ← duplicate of firmware/SoleSense/data/, see data/README.md
+│   ├── README.md
+│   └── index.html
 │
-├── data/index.html                   ← duplicate of firmware/SoleSense/data/index.html
 ├── software/
-│   ├── frontend/                     ← reserved for future component-based frontend
-│   └── pseudocode                    ← expanded system pseudocode with injury-flag analysis
+│   └── frontend/                     ← reserved for future component-based frontend (empty)
 │
 ├── hardware/
 │   ├── cad/FSR Cutout.SLDPRT         ← SolidWorks CAD
 │   ├── electrical/Solesense_WD.*     ← KiCad schematic + PCB
-│   └── pcb/                          ← reserved for production PCB files
+│   └── pcb/                          ← reserved for production PCB files (empty)
 │
 ├── docs/
+│   ├── pseudocode/                   ← BOTH pseudocode files grouped, see docs/pseudocode/README.md
+│   │   ├── README.md
+│   │   ├── system-flow.md            ← high-level system flow (137 lines)
+│   │   └── injury-analysis.md        ← detailed injury-flag algorithms (437 lines)
 │   └── superpowers/
 │       ├── specs/                    ← v0.1 firmware design doc
 │       └── plans/                    ← v0.1 implementation plan
 │
-└── assets/                           ← images, diagrams (reserved)
+└── assets/                           ← images, diagrams (reserved, empty)
 ```
 
 ### Note on the two firmwares
 
-There are currently two parallel firmware implementations in this repo:
+Both live under [`firmware/`](firmware/) — see [`firmware/README.md`](firmware/README.md) for the breakdown. TL;DR:
 
-- **`firmware/SoleSense/SoleSense.ino`** (Arduino IDE) — the working v0.1 firmware. 522 lines. Implements all 10 endpoints, 50 Hz hardware-timer sampling, NVS-backed thresholds + sensor calibration, deep sleep. **This is what's flashed on the XIAO right now.**
-- **`src/main.cpp`** (PlatformIO) — an early scaffold that returns dummy random data, uses a different SSID (`XIAO-ESP32`) and password (`12345678`), and includes OTA. Not currently used. Future direction is a team decision.
+- **`firmware/SoleSense/SoleSense.ino`** (Arduino IDE) — the working v0.1 firmware. ~520 lines. All 10 endpoints, 50 Hz hardware-timer sampling, NVS-backed thresholds + sensor calibration, deep sleep. **This is what's flashed on the XIAO right now.**
+- **`firmware/platformio/src/main.cpp`** (PlatformIO) — an early scaffold returning dummy random data, with a different SSID (`XIAO-ESP32`) and password (`12345678`), plus ArduinoOTA. Not currently used.
 
 Pick one before v0.2.
 
@@ -264,6 +272,7 @@ Phone → connect to WiFi `SoleSense` (password `solesense`, no internet — exp
 ## Documentation
 
 - [`SOLESENSE.md`](SOLESENSE.md) — canonical project spec (hardware, firmware, frontend, data pipeline, injury flags, research basis)
+- [`firmware/README.md`](firmware/README.md) — Arduino IDE vs PlatformIO firmware breakdown
 - [`docs/superpowers/specs/2026-05-04-solesense-firmware-design.md`](docs/superpowers/specs/2026-05-04-solesense-firmware-design.md) — v0.1 firmware design doc
 - [`docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md`](docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md) — v0.1 implementation plan
-- [`firmware/pseudocode`](firmware/pseudocode), [`software/pseudocode`](software/pseudocode) — system-level pseudocode (Andony)
+- [`docs/pseudocode/`](docs/pseudocode/) — Andony's system-level pseudocode (high-level flow + detailed injury analysis)
