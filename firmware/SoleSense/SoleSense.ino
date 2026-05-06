@@ -14,10 +14,10 @@
 
 #define PIN_SDA       6
 #define PIN_SCL       7
-#define PIN_MUX_SIG   A0
-#define PIN_MUX_S0    D0
-#define PIN_MUX_S1    D1
-#define PIN_MUX_S2    D2
+#define PIN_MUX_SIG   2      // GPIO2 / A0 - analog mux output
+#define PIN_MUX_S0    3      // GPIO3 (D0 on XIAO)
+#define PIN_MUX_S1    4      // GPIO4 (D1 on XIAO)
+#define PIN_MUX_S2    5      // GPIO5 (D2 on XIAO)
 #define PIN_WAKE      9
 
 #define MPU6050_ADDR  0x68
@@ -56,6 +56,15 @@ struct Thresholds {
   int cadenceMin = 160;
 };
 Thresholds gThresholds;
+
+// Forward-declared up here so Arduino IDE's auto-generated prototype
+// for readIntParam() can see it.
+struct Range { int lo, hi; };
+static const Range R_HLR        = {1, 10000};
+static const Range R_PRONE_MAX  = {0, 90};
+static const Range R_PRONE_MIN  = {-90, 0};
+static const Range R_GCT        = {50, 2000};
+static const Range R_CAD        = {60, 300};
 
 int     gFsrZero[6]   = {0,0,0,0,0,0};
 int16_t gFsr[6]       = {0,0,0,0,0,0};
@@ -348,13 +357,6 @@ static void handleDevice(AsyncWebServerRequest* req) {
   json += "}}";
   req->send(200, "application/json", json);
 }
-
-struct Range { int lo, hi; };
-static const Range R_HLR        = {1, 10000};
-static const Range R_PRONE_MAX  = {0, 90};
-static const Range R_PRONE_MIN  = {-90, 0};
-static const Range R_GCT        = {50, 2000};
-static const Range R_CAD        = {60, 300};
 
 static bool readIntParam(AsyncWebServerRequest* req, const char* key, Range r,
                          int& out, bool& touched, String& err) {
