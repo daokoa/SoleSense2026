@@ -466,6 +466,25 @@ static void handleSleep(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
+// Live sensor snapshot for the frontend's 5 Hz polling UI.
+// When IDLE the sample loop is quiet, so we read fresh values here.
+// When RECORDING the 50 Hz timer keeps gFsr/gAccel/gGyro current; we just read them.
+static void handleSensor(AsyncWebServerRequest* req) {
+  if (gState == IDLE) {
+    readAllFsr();
+    readImu();
+  }
+  char body[256];
+  snprintf(body, sizeof(body),
+    "{\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
+    "\"gx\":%.3f,\"gy\":%.3f,\"gz\":%.3f,"
+    "\"fsr\":[%d,%d,%d,%d,%d,%d]}",
+    gAccel[0], gAccel[1], gAccel[2],
+    gGyro[0],  gGyro[1],  gGyro[2],
+    gFsr[0], gFsr[1], gFsr[2], gFsr[3], gFsr[4], gFsr[5]);
+  req->send(200, "application/json", body);
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -495,6 +514,7 @@ void setup() {
   server.on("/data.csv",            HTTP_GET,  handleDataCsv);
   server.on("/api/data/clear",      HTTP_POST, handleDataClear);
   server.on("/api/sleep",           HTTP_POST, handleSleep);
+  server.on("/api/sensor",          HTTP_GET,  handleSensor);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
   Serial.println("[HTTP] server started");
