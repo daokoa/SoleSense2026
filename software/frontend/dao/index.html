@@ -638,14 +638,14 @@ body{
     </div>
 
     <div class="section">
-      <div class="section-title">Average Pressure by Zone</div>
+      <div class="section-title">Pressure Distribution by Zone</div>
       <div class="zone-card" id="zone-bars"></div>
     </div>
 
     <button class="btn-done" onclick="showScreen('home')">Done</button>
 
     <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--text3)">
-      SoleSense · legacy · UCI · Spring 2026
+      SoleSense · UCI · Spring 2026
     </div>
 
   </div>
@@ -685,48 +685,12 @@ body{
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Thresholds</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Cadence warning</div>
-            <div class="settings-desc">Flag if below this value</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-cadence" value="160" min="120" max="200" onchange="saveThreshold('cadenceMin',this.value)">
-            <span style="font-size:12px;color:var(--text3)">spm</span>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Pronation warning</div>
-            <div class="settings-desc">Flag if angle exceeds this</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-pronate" value="15" min="5" max="30" onchange="saveThreshold('proneMax',this.value)">
-            <span style="font-size:12px;color:var(--text3)">°</span>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Contact time warning</div>
-            <div class="settings-desc">Flag if above this value</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-contact" value="300" min="200" max="400" onchange="saveThreshold('gct',this.value)">
-            <span style="font-size:12px;color:var(--text3)">ms</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-group">
       <div class="settings-group-title">Device Info</div>
       <div class="settings-card">
         <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">—</div></div>
         <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">—</div></div>
         <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">50 Hz</div></div>
-        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">7× FSR + IMU</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6× FSR + IMU</div></div>
       </div>
     </div>
 
@@ -735,7 +699,7 @@ body{
     </div>
 
     <div style="text-align:center;margin-top:24px;font-size:12px;color:var(--text3);padding-bottom:12px">
-      SoleSense · legacy · UCI · Spring 2026
+      SoleSense · UCI · Spring 2026
     </div>
 
   </div>
@@ -906,9 +870,12 @@ function render(r){
   set('m-pronate',fmt(r.pronate,1));
   set('m-balance',fmt(r.lPct,0)+'% L / '+fmt(r.rPct,0)+'% R');
   set('m-steps',r.steps);
-  const zones=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Ball',val:r.zoneAvg.ball},{label:'Toe',val:r.zoneAvg.toe}];
-  const zMax=Math.max(...zones.map(z=>z.val),1);
-  document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${(z.val/zMax*100).toFixed(1)}%"></div></div><span class="zone-pct">${z.val.toFixed(0)}%</span></div>`).join('');
+  // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
+  // This is more meaningful than % of ADC max — it shows how the runner distributed load.
+  const zoneRaw=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Ball',val:r.zoneAvg.ball},{label:'Toe',val:r.zoneAvg.toe}];
+  const zoneSum=zoneRaw.reduce((s,z)=>s+z.val,0)||1;
+  const zones=zoneRaw.map(z=>({label:z.label,pct:z.val/zoneSum*100}));
+  document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${z.pct.toFixed(1)}%"></div></div><span class="zone-pct">${z.pct.toFixed(0)}%</span></div>`).join('');
   const container=document.getElementById('flags-container');
   if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">✓</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
   const order={high:0,medium:1,low:2};
@@ -933,7 +900,6 @@ function render(r){
 /* ── SETTINGS ── */
 async function zeroSensors(){try{await fetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
 async function zeroIMU(){try{await fetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
-async function saveThreshold(key,val){try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`${encodeURIComponent(key)}=${encodeURIComponent(val)}`});toast('Saved');}catch{toast('Error saving');}}
 async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await fetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 

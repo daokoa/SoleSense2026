@@ -1,26 +1,26 @@
 # SoleSense Frontend
 
-Two parallel UIs for the SoleSense web app, kept side by side. Both connect to the same firmware HTTP API; only the visual design and code differ.
+Two parallel UIs for the SoleSense web app, kept side by side. Both connect to the same firmware HTTP API; only the visual design and feature scope differ.
 
 ```
 software/frontend/
 ├── README.md           ← this file
 ├── mock-server.py      ← Python http.server that simulates the firmware backend
 ├── dao/
-│   └── index.html      ← Dao's UI: white background, blue accent, minimal API panel
+│   └── index.html      ← Dao's UI: white & blue, full home/recording/report/settings flow
 └── andony/
-    └── index.html      ← Andony's UI: dark theme, animated orbs, full SPA
+    └── index.html      ← Andony's UI: dark theme with animated orbs, live-poll-style demo
 ```
 
-Each UI is a self-contained `index.html` (no external assets except Andony's Google Fonts import). Both are served by the XIAO ESP32-C3 over its `SoleSense` WiFi AP at `http://192.168.4.1` — but only one at a time, since LittleFS only stores one `index.html`.
+Both are self-contained single files. Andony's pulls Google Fonts via `@import`; Dao's uses system fonts. Each is served by the XIAO ESP32-C3 over its `SoleSense` WiFi AP at `http://192.168.4.1` — but only one at a time, since LittleFS only stores one `index.html`.
 
 ## Which UI is currently flashed
 
-The active UI lives at `firmware/SoleSense/data/index.html` (it's the file the Arduino LittleFS plugin uploads). **Right now that's a copy of `dao/index.html`** — Dao's white/blue UI.
+The active UI lives at `firmware/SoleSense/data/index.html` (the Arduino LittleFS plugin uploads from there). **Right now it's a copy of `dao/index.html`.**
 
 ## Switch the active UI
 
-Edit `firmware/SoleSense/data/index.html` to be whichever you want, then re-upload LittleFS. Easiest:
+Sync the chosen UI into the firmware data folder, then re-flash LittleFS:
 
 ```bash
 # Use Dao's UI:
@@ -28,9 +28,12 @@ cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
 
 # Use Andony's UI:
 cp software/frontend/andony/index.html firmware/SoleSense/data/index.html
+
+# Then flash:
+bash firmware/SoleSense/flash-littlefs.sh
 ```
 
-Then in Arduino IDE: close Serial Monitor → `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32`.
+(See [`firmware/README.md`](../../firmware/README.md) for the flash script options.)
 
 ## Preview a UI locally without flashing
 
@@ -38,25 +41,41 @@ Then in Arduino IDE: close Serial Monitor → `Cmd+Shift+P` → `Upload LittleFS
 
 ```bash
 # From the repo root:
-python3 software/frontend/mock-server.py            # serves dao/ (default)
+python3 software/frontend/mock-server.py            # serves dao/  (default)
 python3 software/frontend/mock-server.py andony     # serves andony/
 ```
 
-Then open `http://localhost:8080/`. The mock server implements the same HTTP API as the real firmware (per `SOLESENSE.md` §10), so the UI behaves identically to how it would on the device. Ctrl+C to stop.
+Then open <http://localhost:8080/>. The mock implements the same HTTP API as the real firmware (per `SOLESENSE.md` §10), so the UI behaves identically to how it would on the device. Ctrl+C to stop.
 
 ## Edit each UI
 
-Edit `software/frontend/dao/index.html` for the white/blue UI, `software/frontend/andony/index.html` for the dark SPA. Don't edit `firmware/SoleSense/data/index.html` directly — it's a deployment artifact that gets overwritten via the `cp` command above.
+Edit the source file in `dao/` or `andony/` directly. Don't edit `firmware/SoleSense/data/index.html` — it's a deployment artifact that gets overwritten via the `cp` step above.
 
-## What each UI talks to
+## What each UI does
 
-Both UIs use a subset of the firmware's HTTP API. The full surface is documented in the root [`README.md`](../../README.md#api).
+| Feature | `dao/` | `andony/` |
+|---|---|---|
+| Home, Recording, Report, Settings screens | ✓ | ✓ (no Settings) |
+| `POST /api/start` / `/api/stop` (server-side recording) | ✓ | (records client-side) |
+| `GET /data.csv` (download recorded run from device flash) | ✓ | — |
+| Live FSR + IMU readout during recording | — | ✓ (5 Hz poll of `/api/sensor`) |
+| Injury-flag analysis (7 flags) | ✓ | ✓ |
+| `POST /api/calibrate/zero` & `/api/calibrate/imu` UI buttons | ✓ | — |
+| `POST /api/data/clear` UI button | ✓ | — |
+| Pressure distribution by zone (% of total foot load) | ✓ | — |
 
-- **`dao/index.html`** — has buttons for every endpoint (`/api/start`, `/api/stop`, calibrate, settings, sleep, device, data clear, CSV download). Auto-fetches `/api/device` on load. Best for backend smoke testing.
-- **`andony/index.html`** — polls `/api/sensor` at 5 Hz for the live FSR + IMU readout, runs recording client-side (5 Hz JS poll loop, in-memory samples, JS-built CSV export). Best for production-style demo.
+The full HTTP API surface is documented in the root [`README.md`](../../README.md#api).
+
+## Pressure Distribution by Zone (Dao's report)
+
+Dao's report shows four zone bars — Heel, Midfoot, Ball, Toe — with a percentage. Each value is **the share of total foot pressure that zone carried during the run**, not raw ADC values. The four percentages sum to 100% (e.g., Heel 38%, Midfoot 19%, Ball 28%, Toe 15%). This is biomechanically meaningful — you can see "this runner heel-strikes hard" or "this runner is forefoot-dominant" at a glance.
+
+## Thresholds are hardcoded
+
+Dao's UI does not let users tune injury-flag thresholds. The thresholds (cadence < 160 spm, GCT > 300 ms, pronation > 15°, supination < −8°, loading-rate > 60 BW/s, asymmetry > 10%) come from peer-reviewed biomechanics research (sources in `SOLESENSE.md` §13) and shouldn't be a per-user setting. The firmware still has a `/api/settings` endpoint and an NVS-backed thresholds struct for future tooling, but no UI is wired to it.
 
 ## Known limitations (v0.1)
 
 - **Andony's UI loads Google Fonts** via `@import` — fails on the SoleSense AP (no internet) and falls back to system fonts.
-- **Andony's recording is client-side only** at 5 Hz. The firmware's 50 Hz LittleFS recording (`POST /api/start` / `/api/stop` / `GET /data.csv`) isn't wired into either UI yet.
-- **Calibration endpoints** (`POST /api/calibrate/zero` and `/api/calibrate/imu`) are exposed in `dao/` but not `andony/`. Use Dao's UI or `curl` for calibration.
+- **Andony's recording is client-side only** at 5 Hz, in browser memory. The firmware's 50 Hz LittleFS recording isn't wired into Andony's UI.
+- **The dao and andony layouts cover overlapping but not identical feature sets.** Pick one as canonical for v0.2 and merge the missing pieces in.

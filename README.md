@@ -7,11 +7,11 @@
 
 ## Status
 
-**v0.1 firmware deployed and verified on hardware.** XIAO ESP32-C3 boots, hosts a WiFi access point, serves the frontend SPA from LittleFS, and exposes a 10-endpoint HTTP API. End-to-end frontend + backend integration verified (page loads on phone, polls live sensor endpoint).
+**v0.1 firmware deployed and verified on hardware.** XIAO ESP32-C3 boots, hosts a WiFi access point, serves the frontend from LittleFS, and exposes a 10-endpoint HTTP API. End-to-end frontend ↔ backend verified — page loads, recording flow works, report renders with cadence / GCT / pronation / L-R balance / injury flags.
 
 What's not yet wired up:
-- FSR pressure sensors and CD74HC4051 multiplexer (parts pending)
-- IMU connected to XIAO (parts in hand, soldering pending)
+- 6 FSR pressure sensors (parts pending)
+- MPU-6050 IMU connected to XIAO (parts in hand, soldering pending)
 - Final 3D-printed TPU shell
 
 See **[Roadmap](#roadmap)** for the path to v1.0.
@@ -27,7 +27,7 @@ A self-contained biomechanical analysis insole that records pressure and motion 
 2. User connects phone to AP → opens `http://192.168.4.1`
 3. Taps **Start Run** → firmware records at 50 Hz to LittleFS as CSV
 4. Taps **Stop** → frontend fetches CSV, runs JS analysis pipeline
-5. Report screen shows cadence, ground contact time, pronation, L/R balance, and up to 7 injury risk flags
+5. Report screen shows cadence, ground contact time, pronation, L/R balance, pressure distribution by zone, and up to 7 injury risk flags
 
 ---
 
@@ -43,6 +43,8 @@ Sourced from peer-reviewed biomechanics literature (full citations in [`SOLESENS
 - Bilateral asymmetry
 - Long ground contact time
 
+Thresholds are baked in from research; not user-tunable in the UI.
+
 ---
 
 ## Hardware
@@ -52,7 +54,6 @@ Sourced from peer-reviewed biomechanics literature (full citations in [`SOLESENS
 | Seeed XIAO ESP32-C3 | MCU — reads sensors, hosts WiFi AP, serves SPA | in hand, flashed |
 | MPU-6050 | 3-axis accel + 3-axis gyro (I²C) | in hand, soldering pending |
 | FSR 402 × 6 | Pressure sensors (heel, lateral/medial mid, lateral/medial ball, toe 1) | pending |
-| CD74HC4051 | 8-channel analog mux to read all 6 FSRs from 1 ADC pin | pending |
 | LIR2450 × 2 in parallel | 3.7 V 120 mAh Li-ion coin cells (~240 mAh combined) | pending |
 | TPU 85A filament | 3D-printed insole shell, gyroid 20–25% infill | pending |
 
@@ -110,15 +111,15 @@ All endpoints served at `http://192.168.4.1` once connected to the `SoleSense` W
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Serves the frontend SPA from LittleFS |
-| `GET` | `/api/device` | Device info: firmware, board, state, fs bytes, hasData, thresholds |
-| `GET` | `/api/sensor` | Live FSR + IMU snapshot (frontend polls this) |
+| `GET` | `/api/device` | Device info: firmware/version, board, sample rate, free heap, state, fs bytes, hasData, thresholds |
+| `GET` | `/api/sensor` | Live FSR + IMU snapshot |
 | `POST` | `/api/start` | Begin server-side 50 Hz recording to `/data.csv` |
 | `POST` | `/api/stop` | End recording, flush + close file |
 | `GET` | `/data.csv` | Stream the recorded CSV (409 while recording) |
 | `POST` | `/api/data/clear` | Delete `/data.csv` |
 | `POST` | `/api/calibrate/zero` | Zero the 6 FSRs (insole unloaded), persist to NVS |
 | `POST` | `/api/calibrate/imu` | Zero accel + gyro offsets (insole flat), persist to NVS |
-| `POST` | `/api/settings` | Update injury-flag thresholds (validated, persisted) |
+| `POST` | `/api/settings` | Update injury-flag thresholds (validated, persisted; not currently exposed in UI) |
 | `POST` | `/api/sleep` | Enter deep sleep; wake on GPIO9 LOW |
 
 CSV schema (13 columns, 50 Hz):
@@ -137,17 +138,16 @@ solesense/
 ├── .gitignore
 │
 ├── firmware/                         ← BOTH firmware paths grouped, see firmware/README.md
-│   ├── README.md                     ← explains arduino-ide vs platformio choice
+│   ├── README.md
 │   ├── SoleSense/                    ← (Arduino IDE) WORKING firmware
 │   │   ├── SoleSense.ino             ← v0.1 firmware, ~520 lines, flashed and verified
+│   │   ├── flash-littlefs.sh         ← terminal-based LittleFS flash script
 │   │   └── data/
-│   │       └── index.html            ← LittleFS deployment copy of software/frontend/
+│   │       └── index.html            ← LittleFS deployment copy of software/frontend/<ui>/index.html
 │   └── platformio/                   ← (PlatformIO) parallel stub firmware
 │       ├── platformio.ini
-│       ├── src/main.cpp              ← Andony's stub: dummy data, OTA, alt SSID
-│       ├── include/
-│       ├── lib/
-│       └── test/
+│       ├── src/main.cpp
+│       ├── include/, lib/, test/
 │
 ├── software/                         ← all browser/host-side code, see software/README.md
 │   ├── README.md
@@ -163,10 +163,10 @@ solesense/
 │   └── pcb/                          ← reserved for production PCB files (empty)
 │
 ├── docs/
-│   ├── pseudocode/                   ← BOTH pseudocode files grouped, see docs/pseudocode/README.md
+│   ├── pseudocode/                   ← system-level pseudocode (system-flow + injury-analysis)
 │   │   ├── README.md
-│   │   ├── system-flow.md            ← high-level system flow (137 lines)
-│   │   └── injury-analysis.md        ← detailed injury-flag algorithms (437 lines)
+│   │   ├── system-flow.md
+│   │   └── injury-analysis.md
 │   └── superpowers/
 │       ├── specs/                    ← v0.1 firmware design doc
 │       └── plans/                    ← v0.1 implementation plan
@@ -176,18 +176,18 @@ solesense/
 
 ### Note on the two firmwares
 
-Both live under [`firmware/`](firmware/) — see [`firmware/README.md`](firmware/README.md) for the breakdown. TL;DR:
+Both live under [`firmware/`](firmware/) — see [`firmware/README.md`](firmware/README.md) for the breakdown:
 
 - **`firmware/SoleSense/SoleSense.ino`** (Arduino IDE) — the working v0.1 firmware. ~520 lines. All 10 endpoints, 50 Hz hardware-timer sampling, NVS-backed thresholds + sensor calibration, deep sleep. **This is what's flashed on the XIAO right now.**
-- **`firmware/platformio/src/main.cpp`** (PlatformIO) — an early scaffold returning dummy random data, with a different SSID (`XIAO-ESP32`) and password (`12345678`), plus ArduinoOTA. Not currently used.
+- **`firmware/platformio/src/main.cpp`** (PlatformIO) — early scaffold returning dummy random data, with a different SSID (`XIAO-ESP32`) and password (`12345678`), plus ArduinoOTA. Not currently used.
 
 Pick one before v0.2.
 
 ---
 
-## Setup & Flashing (Arduino IDE)
+## Setup & Flashing
 
-### One-time setup
+### One-time Arduino IDE setup
 
 **Arduino IDE 2.3.8+.** Tools menu:
 - Board: `ESP32 Arduino → ESP32C3 Dev Module` (or `XIAO_ESP32C3`)
@@ -202,33 +202,41 @@ Pick one before v0.2.
 
 (`WiFi`, `LittleFS`, `Preferences`, `Wire` are built into the ESP32 Arduino core.)
 
-**LittleFS upload plugin:** download the `.vsix` from [arduino-littlefs-upload releases](https://github.com/earlephilhower/arduino-littlefs-upload/releases) and run:
+### Flashing the sketch
+
+In Arduino IDE: open `firmware/SoleSense/SoleSense.ino` → click Upload (`→`).
+
+### Flashing the LittleFS data (frontend)
+
+Two paths — pick whichever works on your machine.
+
+**Terminal (recommended, more reliable):**
 ```bash
-mkdir -p ~/.arduinoIDE/plugins && mv ~/Downloads/arduino-littlefs-upload-*.vsix ~/.arduinoIDE/plugins/
+# Pick which UI you want flashed:
+cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
+# or:
+cp software/frontend/andony/index.html firmware/SoleSense/data/index.html
+
+# Then build + flash:
+bash firmware/SoleSense/flash-littlefs.sh
 ```
-Then quit and reopen Arduino IDE.
 
-### Each upload
+The script auto-detects `mklittlefs`, `esptool`, and the XIAO's USB port. Close Serial Monitor first — it locks the port.
 
-1. Open `firmware/SoleSense/SoleSense.ino` in Arduino IDE.
-2. Click `→` (Upload). Wait for "Done uploading."
-3. **If the frontend changed**, sync your chosen UI to the firmware's LittleFS data folder. From the repo root:
-   ```bash
-   # Dao's UI:
-   cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
-   # or Andony's UI:
-   cp software/frontend/andony/index.html firmware/SoleSense/data/index.html
-   ```
-4. **Close Serial Monitor** (it holds the port).
-5. `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter.
-6. Re-open Serial Monitor at 115200 baud, tap reset on the XIAO.
+**Arduino IDE plugin:**
+1. Sync your chosen UI as above
+2. Close Serial Monitor
+3. `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter
+
+(The plugin needs to be installed first — see `firmware/README.md`.)
 
 ### Expected boot output
 
+Open Serial Monitor at 115200 baud, tap reset on the XIAO:
 ```
 === SoleSense booting ===
 [FS] Mounted - <N> / 1441792 bytes used
-[Sensors] mux + MPU-6050 initialised
+[Sensors] FSR sets + MPU-6050 initialised
 [NVS] thresholds + calibration loaded
 [WiFi] AP 'SoleSense' up at 192.168.4.1
 [HTTP] server started
@@ -237,6 +245,8 @@ Then quit and reopen Arduino IDE.
 ### Test the demo
 
 Phone → connect to WiFi `SoleSense` (password `solesense`, no internet — expected) → open `http://192.168.4.1/` in Safari/Chrome.
+
+If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so iOS doesn't silently fall back to cellular. Or force-quit Safari and retry.
 
 ---
 
@@ -247,18 +257,19 @@ Phone → connect to WiFi `SoleSense` (password `solesense`, no internet — exp
 - [x] 50 Hz hardware-timer sampling with 25-row ring-buffered CSV writes
 - [x] NVS-backed thresholds + FSR/IMU calibration
 - [x] Deep sleep + GPIO9 wake
-- [x] Frontend SPA integrated and serving from LittleFS
+- [x] Frontend SPA (Dao's UI) with home / recording / report / settings screens
+- [x] Injury-flag analysis pipeline (7 flags) with research-based thresholds
+- [x] Pressure-distribution-by-zone display (% of total foot load)
 - [x] End-to-end verified on hardware
-- [ ] FSRs + mux soldered and reading real pressure
-- [ ] IMU soldered and reading real motion
+- [ ] FSRs soldered with 10 kΩ pull-downs and reading real pressure
+- [ ] MPU-6050 soldered and reading real motion
 
 ### v0.2 — *post-demo*
-- [ ] Unify the two recording paths (currently frontend records client-side at 5 Hz; firmware backend records server-side at 50 Hz — pick one)
+- [ ] Unify the two recording paths (Andony's UI records client-side at 5 Hz; the firmware records server-side at 50 Hz — pick one)
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO)
-- [ ] Calibration UI in the frontend
-- [ ] Inline Google Fonts as base64 (frontend currently falls back to system fonts on the AP because `fonts.googleapis.com` isn't reachable)
-- [ ] Wire the 7 injury flags (currently only duration / sample count / L-R balance shown)
+- [ ] Inline Google Fonts in Andony's UI as base64 (currently fails on the AP because no internet)
 - [ ] Averaged 5 Hz writes with peak preservation (extends recording from ~5 min to ~40 min)
+- [ ] Resolve cross-talk concern in the FSR set-scanning scheme (medial vs lateral readings during double-support)
 
 ### v1.0 — *future*
 - [ ] CNN/LSTM model trained on collected CSV data (per Choi et al. 2024)
@@ -290,7 +301,8 @@ Phone → connect to WiFi `SoleSense` (password `solesense`, no internet — exp
 ## Documentation
 
 - [`SOLESENSE.md`](SOLESENSE.md) — canonical project spec (hardware, firmware, frontend, data pipeline, injury flags, research basis)
-- [`firmware/README.md`](firmware/README.md) — Arduino IDE vs PlatformIO firmware breakdown
+- [`firmware/README.md`](firmware/README.md) — Arduino IDE vs PlatformIO firmware breakdown + flash instructions
+- [`software/README.md`](software/README.md) and [`software/frontend/README.md`](software/frontend/README.md) — frontend layout, mock-server usage, UI swap procedure
 - [`docs/superpowers/specs/2026-05-04-solesense-firmware-design.md`](docs/superpowers/specs/2026-05-04-solesense-firmware-design.md) — v0.1 firmware design doc
 - [`docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md`](docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md) — v0.1 implementation plan
-- [`docs/pseudocode/`](docs/pseudocode/) — Andony's system-level pseudocode (high-level flow + detailed injury analysis)
+- [`docs/pseudocode/`](docs/pseudocode/) — system-level pseudocode (high-level flow + detailed injury analysis)
