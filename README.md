@@ -265,10 +265,10 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [ ] MPU-6050 soldered and reading real motion
 
 ### v0.2 — *post-demo*
-- [ ] Unify the two recording paths (Andony's UI records client-side at 5 Hz; the firmware records server-side at 50 Hz — pick one)
+- [ ] **Move all run state onto the MCU. No browser-side storage.** Replace raw-CSV recording with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a multi-slot ring buffer in flash. WiFi disconnects become recoverable. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO)
-- [ ] Inline Google Fonts in Andony's UI as base64 (currently fails on the AP because no internet)
-- [ ] Averaged 5 Hz writes with peak preservation (extends recording from ~5 min to ~40 min)
+- [ ] Pick canonical frontend (dao or andony — only one survives)
+- [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet)
 - [ ] Resolve cross-talk concern in the FSR set-scanning scheme (medial vs lateral readings during double-support)
 
 ### v1.0 — *future*
@@ -304,5 +304,6 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [`firmware/README.md`](firmware/README.md) — Arduino IDE vs PlatformIO firmware breakdown + flash instructions
 - [`software/README.md`](software/README.md) and [`software/frontend/README.md`](software/frontend/README.md) — frontend layout, mock-server usage, UI swap procedure
 - [`docs/superpowers/specs/2026-05-04-solesense-firmware-design.md`](docs/superpowers/specs/2026-05-04-solesense-firmware-design.md) — v0.1 firmware design doc
+- [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) — v0.2 data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
 - [`docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md`](docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md) — v0.1 implementation plan
 - [`docs/pseudocode/`](docs/pseudocode/) — system-level pseudocode (high-level flow + detailed injury analysis)

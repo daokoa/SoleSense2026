@@ -194,6 +194,8 @@ IDLE  ──/api/start──▶  RECORDING  ──/api/stop──▶  IDLE
 
 ## 6. Data Pipeline
 
+> **v0.2 in progress:** the raw-CSV-to-browser pipeline below is the v0.1 implementation. The team's plan for v0.2 moves all run state onto the MCU (FFT coefficients + outlier buffer in RAM, periodic multi-slot flash flushes). The browser will hold no state. Full design: [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
+
 ### CSV Format (50Hz, 13 columns)
 ```
 timestamp_ms, fsr1, fsr2, fsr3, fsr4, fsr5, fsr6,

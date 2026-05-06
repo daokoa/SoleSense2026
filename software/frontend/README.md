@@ -79,3 +79,4 @@ Dao's UI does not let users tune injury-flag thresholds. The thresholds (cadence
 - **Andony's UI loads Google Fonts** via `@import` — fails on the SoleSense AP (no internet) and falls back to system fonts.
 - **Andony's recording is client-side only** at 5 Hz, in browser memory. The firmware's 50 Hz LittleFS recording isn't wired into Andony's UI.
 - **The dao and andony layouts cover overlapping but not identical feature sets.** Pick one as canonical for v0.2 and merge the missing pieces in.
+- **Both UIs hold some run state in the browser** (Andony more, Dao less). v0.2 will move all run state onto the MCU — see [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md). After that work, the JS sample arrays, the JS-side timer, and the JS-built CSV export all go away; the page becomes a thin viewer that re-queries the MCU on every reconnect.
