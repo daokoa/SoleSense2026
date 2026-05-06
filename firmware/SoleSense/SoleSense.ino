@@ -407,6 +407,27 @@ static void handleStop(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
+static void handleDataCsv(AsyncWebServerRequest* req) {
+  if (gState == RECORDING) {
+    req->send(409, "text/plain", "recording in progress");
+    return;
+  }
+  if (!LittleFS.exists("/data.csv")) {
+    req->send(404, "text/plain", "no data");
+    return;
+  }
+  req->send(LittleFS, "/data.csv", "text/csv");
+}
+
+static void handleDataClear(AsyncWebServerRequest* req) {
+  if (gState == RECORDING) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  if (LittleFS.exists("/data.csv")) LittleFS.remove("/data.csv");
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -432,6 +453,8 @@ void setup() {
   server.on("/api/calibrate/imu",   HTTP_POST, handleCalibrateImu);
   server.on("/api/start",           HTTP_POST, handleStart);
   server.on("/api/stop",            HTTP_POST, handleStop);
+  server.on("/data.csv",            HTTP_GET,  handleDataCsv);
+  server.on("/api/data/clear",      HTTP_POST, handleDataClear);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
   Serial.println("[HTTP] server started");
