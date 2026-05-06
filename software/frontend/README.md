@@ -6,6 +6,16 @@
 
 When you change the frontend, edit [`index.html`](index.html) in this folder. Don't edit the copy under `firmware/SoleSense/data/` directly — it's a deployment artifact, not the source.
 
+## Run the frontend locally without the device
+
+`mock-server.py` simulates the SoleSense firmware API with synthetic sensor data so you can preview the UI in any browser. From the repo root:
+
+```bash
+python3 software/frontend/mock-server.py
+```
+
+Then open http://localhost:8080/ — the frontend connects to the mock backend, polls `/api/sensor`, and shows live (fake) FSR + IMU values that look like a runner's stride. Useful for slide demos when the XIAO isn't plugged in. Ctrl+C to stop.
+
 ## Sync before flashing
 
 The Arduino IDE LittleFS upload plugin uploads from `<sketch_dir>/data/`, so before each LittleFS flash the firmware-side copy needs to be in sync. From the repo root:
