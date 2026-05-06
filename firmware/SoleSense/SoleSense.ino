@@ -220,7 +220,8 @@ static void calibrateFsrZero() {
 
   long acc[6] = {0,0,0,0,0,0};
   for (int s = 0; s < 32; s++) {
-    for (uint8_t ch = 0; ch < 6; ch++) acc[ch] += readFsr(ch);
+    readAllFsr();
+    for (int i = 0; i < 6; i++) acc[i] += gFsr[i];
     delay(1);
   }
   for (int i = 0; i < 6; i++) gFsrZero[i] = (int)(acc[i] / 32);
