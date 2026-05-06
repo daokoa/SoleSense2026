@@ -188,6 +188,19 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
+// ── Debug: /api/fft-selftest ─────────────────────────────────────────────────
+// Runs the canned 2-Hz-sine validation; expects ~100 mag in the 2 Hz bin.
+// Output goes to Serial Monitor; HTTP response is just an ack. Refuses while
+// recording to avoid trampling live state.
+static void handle_fft_selftest(AsyncWebServerRequest* req) {
+  if (gState != RS_IDLE) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  fft_self_test();
+  req->send(200, "application/json", "{\"ok\":true,\"see\":\"Serial Monitor\"}");
+}
+
 // ── Registration ─────────────────────────────────────────────────────────────
 void http_register_routes(AsyncWebServer& server) {
   server.on("/api/device",         HTTP_GET,  handle_device);
@@ -201,5 +214,6 @@ void http_register_routes(AsyncWebServer& server) {
   server.on("/api/run-spectrum",   HTTP_GET,  handle_run_spectrum);
   server.on("/api/run-outliers",   HTTP_GET,  handle_run_outliers);
   server.on("/api/run-report",     HTTP_GET,  handle_run_report);
+  server.on("/api/fft-selftest",   HTTP_POST, handle_fft_selftest);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }

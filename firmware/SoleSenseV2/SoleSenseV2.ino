@@ -89,10 +89,11 @@ static void process_sample() {
     float mean, std;
     stats_update(c, channelVal[c], mean, std);
 
-    // Offer to the outlier buffer first; if it bites, skip the FFT update.
+    // Offer to the outlier buffer first; if it bites, skip the FFT update so
+    // injury-causing spikes don't smear the spectrum.
     bool isOutlier = outliers_offer(gRunElapsedMs, c, channelVal[c], mean, std);
     if (!isOutlier) {
-      fft_process_sample(c, channelVal[c]);
+      fft_process_sample(c, channelVal[c], mean);
     }
   }
 }

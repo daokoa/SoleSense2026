@@ -18,7 +18,7 @@ For the task breakdown, read [`../../docs/superpowers/plans/2026-05-06-v0.2-firm
 | Outlier min-heap | `outliers.h/.cpp` | ✅ done |
 | Per-sample online stats | `SoleSenseV2.ino` (Welford) | ✅ done |
 | 50 Hz hardware timer + sample loop | `SoleSenseV2.ino` | ✅ done |
-| Goertzel FFT | `fft.h/.cpp` | ⚠️ partial — recurrence written but un-validated; magnitudes are uncalibrated |
+| Goertzel FFT | `fft.h/.cpp` | ✅ done — windowed (N=256), DC removal via running mean, magnitudes calibrated, validated against a Python reference (0% error on-bin). Trigger via `POST /api/fft-selftest`. |
 | Multi-slot ring buffer storage | `storage.h/.cpp` | ⚠️ stub — file pre-allocated but save/load are no-ops |
 | HTTP routes (simple) | `http_routes.cpp` | ✅ done — `/api/device`, `/api/sensor`, `/api/start`, `/api/stop`, `/api/sleep`, calibrate routes |
 | HTTP routes (v0.2 new) | `http_routes.cpp` | ⚠️ partial — `/api/run-state`, `/api/run-spectrum`, `/api/run-outliers` shape-correct; `/api/run-report` returns placeholder values |
@@ -38,8 +38,14 @@ What it would **not** yet do:
 
 - Persist anything to flash (the slot writer is a no-op until Task 5)
 - Survive a reboot mid-run (no flash → no recovery)
-- Generate meaningful FFT magnitudes (Goertzel recurrence runs but isn't validated; numbers are scaled wrong until calibration)
-- Compute injury flags for `/api/run-report` (returns placeholders)
+- Compute injury flags for `/api/run-report` (returns placeholders — Task 6)
+- Persist anything across reboot (Task 5 is still stubbed)
+
+What it WILL now do (Task 4 just landed):
+
+- Compute correctly-scaled FFT magnitudes per channel/bin every 256 samples (~5 s at 50 Hz)
+- Expose `/api/run-spectrum` with real numbers per (channel, bin)
+- Expose `/api/fft-selftest` for on-bench validation
 
 ## Compile / flash
 
@@ -47,8 +53,8 @@ The same Arduino IDE setup as v0.1. Open `firmware/SoleSenseV2/SoleSenseV2.ino` 
 
 ## Where to start contributing
 
-- **Task 4 (FFT)** — `fft.cpp`. Validate the Goertzel recurrence against a synthetic signal, fix the magnitude scaling.
+- ~~**Task 4 (FFT)**~~ — done (this commit).
 - **Task 5 (Storage)** — `storage.cpp`. Implement the slot serialization, CRC32 trailer, scan-on-load. Body layout is sketched in the file.
-- **Task 6 (`/api/run-report`)** — `http_routes.cpp`. Compute cadence/GCT/pronation/L-R balance/flags from the FFT + outliers.
+- **Task 6 (`/api/run-report`)** — `http_routes.cpp`. Compute cadence/GCT/pronation/L-R balance/flags from the FFT + outliers. FFT side is now working — query `fft_get_magnitude(channel, bin)` for the analysis.
 
-Tasks 4 and 5 are independent. Task 6 depends on 4 + 5 being functional.
+Task 6 depends on Task 5 for persistence but can be developed independently against a single in-RAM run.
