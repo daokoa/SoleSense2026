@@ -1,7 +1,7 @@
 # SoleSense
 
 **3D Printed Smart Running Insole — Biomechanical Analysis System**
-*SoleSense team · legacy · UCI · Spring 2026*
+*SoleSense team · UCI · Spring 2026*
 
 ---
 
