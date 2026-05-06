@@ -131,7 +131,7 @@ solesense/
 │   ├── SoleSense/                    ← (Arduino IDE) WORKING firmware
 │   │   ├── SoleSense.ino             ← v0.1 firmware, ~520 lines, flashed and verified
 │   │   └── data/
-│   │       └── index.html            ← canonical frontend SPA (LittleFS source)
+│   │       └── index.html            ← LittleFS deployment copy of software/frontend/
 │   └── platformio/                   ← (PlatformIO) parallel stub firmware
 │       ├── platformio.ini
 │       ├── src/main.cpp              ← Andony's stub: dummy data, OTA, alt SSID
@@ -139,12 +139,11 @@ solesense/
 │       ├── lib/
 │       └── test/
 │
-├── data/                             ← duplicate of firmware/SoleSense/data/, see data/README.md
+├── software/                         ← all browser/host-side code, see software/README.md
 │   ├── README.md
-│   └── index.html
-│
-├── software/
-│   └── frontend/                     ← reserved for future component-based frontend (empty)
+│   └── frontend/                     ← canonical SPA source-of-truth, see frontend/README.md
+│       ├── README.md
+│       └── index.html
 │
 ├── hardware/
 │   ├── cad/FSR Cutout.SLDPRT         ← SolidWorks CAD
@@ -201,9 +200,13 @@ Then quit and reopen Arduino IDE.
 
 1. Open `firmware/SoleSense/SoleSense.ino` in Arduino IDE.
 2. Click `→` (Upload). Wait for "Done uploading."
-3. **Close Serial Monitor** (it holds the port).
-4. `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter.
-5. Re-open Serial Monitor at 115200 baud, tap reset on the XIAO.
+3. **If the frontend changed**, sync the source from `software/frontend/` to the firmware's LittleFS data folder. From the repo root:
+   ```bash
+   cp software/frontend/index.html firmware/SoleSense/data/index.html
+   ```
+4. **Close Serial Monitor** (it holds the port).
+5. `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter.
+6. Re-open Serial Monitor at 115200 baud, tap reset on the XIAO.
 
 ### Expected boot output
 

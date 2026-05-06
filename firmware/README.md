@@ -4,7 +4,7 @@ This directory contains **two parallel firmware implementations** for the XIAO E
 
 | Folder | Build system | Status | Description |
 |---|---|---|---|
-| [`SoleSense/`](SoleSense/) | **Arduino IDE** | **Working — flashed and verified** | The v0.1 firmware actively running on the board. ~520 lines in a single `.ino`, all 10 HTTP endpoints, 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050, NVS-backed thresholds + sensor calibration, GPIO9 deep-sleep. Frontend SPA served from `SoleSense/data/index.html` via the LittleFS upload plugin. |
+| [`SoleSense/`](SoleSense/) | **Arduino IDE** | **Working — flashed and verified** | The v0.1 firmware actively running on the board. ~520 lines in a single `.ino`, all 10 HTTP endpoints, 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050, NVS-backed thresholds + sensor calibration, GPIO9 deep-sleep. The `SoleSense/data/index.html` file is a deployment copy of [`../../software/frontend/index.html`](../software/frontend/index.html) (the source-of-truth) — sync before each LittleFS upload. |
 | [`platformio/`](platformio/) | **PlatformIO** | Stub — not yet flashed | Andony's parallel implementation. Currently a 76-line `src/main.cpp` that returns dummy random sensor data, hosts a different SSID (`XIAO-ESP32` / password `12345678`), and includes ArduinoOTA support. Useful starting point for whoever wants to migrate the firmware to PlatformIO + VS Code workflow. |
 
 ---
@@ -43,4 +43,4 @@ pio run --target uploadfs        # upload data/ folder to LittleFS (you'll need 
 pio device monitor               # serial monitor
 ```
 
-Note: `platformio/` does not currently have a `data/` folder. If you flash this firmware and want a frontend served, copy `SoleSense/data/index.html` into `platformio/data/index.html` first.
+Note: `platformio/` does not currently have a `data/` folder. If you flash this firmware and want a frontend served, copy `software/frontend/index.html` (the source-of-truth) into `firmware/platformio/data/index.html` first.
