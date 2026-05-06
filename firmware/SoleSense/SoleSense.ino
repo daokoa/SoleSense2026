@@ -12,13 +12,13 @@
 // Pins
 // =============================================================================
 
-#define PIN_SDA       6      // I2C - MPU-6050
-#define PIN_SCL       7      // I2C - MPU-6050
-#define PIN_MUX_SIG   A0     // GPIO2 - analog mux output
-#define PIN_MUX_S0    D0     // GPIO3
-#define PIN_MUX_S1    D1     // GPIO4
-#define PIN_MUX_S2    D2     // GPIO5
-#define PIN_WAKE      9      // GPIO9 - on-board BOOT button doubles as wake button
+#define PIN_SDA       6
+#define PIN_SCL       7
+#define PIN_MUX_SIG   A0
+#define PIN_MUX_S0    D0
+#define PIN_MUX_S1    D1
+#define PIN_MUX_S2    D2
+#define PIN_WAKE      9
 
 #define MPU6050_ADDR  0x68
 #define ACCEL_LSB_PER_G   16384.0f
@@ -38,8 +38,14 @@ enum State { IDLE, RECORDING };
 volatile State gState = IDLE;
 volatile bool gStartRequested = false;
 volatile bool gStopRequested  = false;
+volatile bool gNewSample      = false;
 
-File gFile;
+hw_timer_t* gTimer = nullptr;
+File        gFile;
+
+static char     gRowBuf[25][96];
+static uint8_t  gRowCount    = 0;
+static uint32_t gLastFlushMs = 0;
 
 struct Thresholds {
   int hlr        = 100;
@@ -50,12 +56,10 @@ struct Thresholds {
 };
 Thresholds gThresholds;
 
-// FSR state
 int     gFsrZero[6]   = {0,0,0,0,0,0};
 int16_t gFsr[6]       = {0,0,0,0,0,0};
 
-// IMU state — offsets in physical units (m/s2 and deg/s)
-float gImuOffset[6]   = {0,0,0,0,0,0};   // ax, ay, az, gx, gy, gz
+float gImuOffset[6]   = {0,0,0,0,0,0};
 float gAccel[3]       = {0,0,0};
 float gGyro[3]        = {0,0,0};
 
@@ -212,6 +216,58 @@ static void calibrateImu() {
 }
 
 // =============================================================================
+// 50 Hz sample timer
+// =============================================================================
+
+void IRAM_ATTR onSampleTick() {
+  gNewSample = true;
+}
+
+static void startSampleTimer() {
+  gTimer = timerBegin(1000000);                 // 1 MHz tick
+  if (!gTimer) { Serial.println("[Timer] alloc FAILED"); return; }
+  timerAttachInterrupt(gTimer, &onSampleTick);
+  timerAlarm(gTimer, 20000, true, 0);           // 20 ms = 50 Hz, autoreload
+}
+
+static void stopSampleTimer() {
+  if (gTimer) {
+    timerEnd(gTimer);
+    gTimer = nullptr;
+  }
+  gNewSample = false;
+}
+
+// =============================================================================
+// Sample loop + CSV writer
+// =============================================================================
+
+static void flushRowBuffer() {
+  if (gRowCount == 0 || !gFile) return;
+  for (uint8_t i = 0; i < gRowCount; i++) {
+    gFile.write((const uint8_t*)gRowBuf[i], strlen(gRowBuf[i]));
+  }
+  gRowCount = 0;
+  gLastFlushMs = millis();
+}
+
+static void takeSample() {
+  readAllFsr();
+  readImu();
+  uint32_t ts = millis();
+  snprintf(gRowBuf[gRowCount], sizeof(gRowBuf[0]),
+    "%lu,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+    (unsigned long)ts,
+    gFsr[0],gFsr[1],gFsr[2],gFsr[3],gFsr[4],gFsr[5],
+    gAccel[0],gAccel[1],gAccel[2],
+    gGyro[0], gGyro[1], gGyro[2]);
+  gRowCount++;
+  if (gRowCount >= 25 || (millis() - gLastFlushMs) >= 500) {
+    flushRowBuffer();
+  }
+}
+
+// =============================================================================
 // State machine
 // =============================================================================
 
@@ -221,11 +277,16 @@ static void enterRecording() {
     Serial.println("[REC] open /data.csv FAILED");
     return;
   }
+  gRowCount    = 0;
+  gLastFlushMs = millis();
+  startSampleTimer();
   gState = RECORDING;
   Serial.println("[REC] started");
 }
 
 static void exitRecording() {
+  stopSampleTimer();
+  flushRowBuffer();
   if (gFile) { gFile.flush(); gFile.close(); }
   gState = IDLE;
   Serial.println("[REC] stopped");
@@ -378,5 +439,9 @@ void setup() {
 
 void loop() {
   processRequests();
+  if (gState == RECORDING && gNewSample) {
+    gNewSample = false;
+    takeSample();
+  }
   delay(1);
 }
