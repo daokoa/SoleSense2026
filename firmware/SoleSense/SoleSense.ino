@@ -44,7 +44,7 @@ volatile bool gNewSample      = false;
 hw_timer_t* gTimer = nullptr;
 File        gFile;
 
-static char     gRowBuf[25][96];
+static char     gRowBuf[25][128];
 static uint8_t  gRowCount    = 0;
 static uint32_t gLastFlushMs = 0;
 
@@ -280,6 +280,10 @@ static void enterDeepSleep() {
   WiFi.softAPdisconnect(true);
   LittleFS.end();
 
+  // Hold the wake pin high during sleep so a press to GND triggers wake reliably
+  gpio_pullup_en((gpio_num_t)PIN_WAKE);
+  gpio_pulldown_dis((gpio_num_t)PIN_WAKE);
+
   esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_WAKE, ESP_GPIO_WAKEUP_GPIO_LOW);
   esp_deep_sleep_start();                  // never returns
 }
@@ -353,7 +357,7 @@ static const Range R_GCT        = {50, 2000};
 static const Range R_CAD        = {60, 300};
 
 static bool readIntParam(AsyncWebServerRequest* req, const char* key, Range r,
-                         int& out, String& err) {
+                         int& out, bool& touched, String& err) {
   if (!req->hasParam(key, true)) return true;
   int v = req->getParam(key, true)->value().toInt();
   if (v < r.lo || v > r.hi) {
@@ -361,23 +365,27 @@ static bool readIntParam(AsyncWebServerRequest* req, const char* key, Range r,
     return false;
   }
   out = v;
+  touched = true;
   return true;
 }
 
 static void handleSettings(AsyncWebServerRequest* req) {
   Thresholds next = gThresholds;
+  bool touched = false;
   String err;
-  if (!readIntParam(req, "hlr",        R_HLR,       next.hlr,        err) ||
-      !readIntParam(req, "proneMax",   R_PRONE_MAX, next.proneMax,   err) ||
-      !readIntParam(req, "proneMin",   R_PRONE_MIN, next.proneMin,   err) ||
-      !readIntParam(req, "gct",        R_GCT,       next.gct,        err) ||
-      !readIntParam(req, "cadenceMin", R_CAD,       next.cadenceMin, err)) {
+  if (!readIntParam(req, "hlr",        R_HLR,       next.hlr,        touched, err) ||
+      !readIntParam(req, "proneMax",   R_PRONE_MAX, next.proneMax,   touched, err) ||
+      !readIntParam(req, "proneMin",   R_PRONE_MIN, next.proneMin,   touched, err) ||
+      !readIntParam(req, "gct",        R_GCT,       next.gct,        touched, err) ||
+      !readIntParam(req, "cadenceMin", R_CAD,       next.cadenceMin, touched, err)) {
     req->send(400, "application/json",
               "{\"ok\":false,\"error\":\"" + err + "\"}");
     return;
   }
-  gThresholds = next;
-  saveThresholds();
+  if (touched) {
+    gThresholds = next;
+    saveThresholds();
+  }
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
