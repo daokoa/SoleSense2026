@@ -2,6 +2,25 @@
 
 `index.html` is the **source-of-truth** for the SoleSense web app — a self-contained single-page app that runs on the user's phone or laptop, served by the XIAO ESP32-C3 over its `SoleSense` WiFi AP at `http://192.168.4.1`.
 
+## Two layouts available
+
+| File | Layout | Use |
+|---|---|---|
+| `index.html` | White background, blue accent — minimal test panel with buttons for every API endpoint | Debug / API smoke testing / clean slide demo |
+| `dark-spa.html` | Dark background with animated orbs — full-feature app with home / recording / report screens (Andony's design) | Production-style demo |
+
+Only one can be active at a time (the file named `index.html`). To swap them:
+
+```bash
+# Make the dark SPA active:
+cp software/frontend/dark-spa.html software/frontend/index.html
+
+# Or restore the white test panel (it lives in git history at b8a0682):
+git show b8a0682:firmware/SoleSense/data/index.html > software/frontend/index.html
+```
+
+After swapping, sync to the firmware deployment folder and re-upload LittleFS (see below).
+
 ## Edit here
 
 When you change the frontend, edit [`index.html`](index.html) in this folder. Don't edit the copy under `firmware/SoleSense/data/` directly — it's a deployment artifact, not the source.
