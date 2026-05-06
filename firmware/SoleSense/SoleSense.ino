@@ -38,6 +38,7 @@ enum State { IDLE, RECORDING };
 volatile State gState = IDLE;
 volatile bool gStartRequested = false;
 volatile bool gStopRequested  = false;
+volatile bool gSleepRequested = false;
 volatile bool gNewSample      = false;
 
 hw_timer_t* gTimer = nullptr;
@@ -268,6 +269,22 @@ static void takeSample() {
 }
 
 // =============================================================================
+// Deep sleep
+// =============================================================================
+
+static void enterDeepSleep() {
+  Serial.println("[Sleep] entering deep sleep, wake on GPIO9 LOW");
+  Serial.flush();
+  delay(150);                              // let HTTP response flush
+
+  WiFi.softAPdisconnect(true);
+  LittleFS.end();
+
+  esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_WAKE, ESP_GPIO_WAKEUP_GPIO_LOW);
+  esp_deep_sleep_start();                  // never returns
+}
+
+// =============================================================================
 // State machine
 // =============================================================================
 
@@ -300,6 +317,10 @@ static void processRequests() {
   if (gStopRequested) {
     gStopRequested = false;
     if (gState == RECORDING) exitRecording();
+  }
+  if (gSleepRequested) {
+    gSleepRequested = false;
+    enterDeepSleep();                      // never returns
   }
 }
 
@@ -428,6 +449,15 @@ static void handleDataClear(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
+static void handleSleep(AsyncWebServerRequest* req) {
+  if (gState == RECORDING) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  gSleepRequested = true;
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -441,6 +471,7 @@ void setup() {
   }
 
   initSensors();
+  pinMode(PIN_WAKE, INPUT_PULLUP);
   loadSettings();
 
   WiFi.softAP(AP_SSID, AP_PASS);
@@ -455,6 +486,7 @@ void setup() {
   server.on("/api/stop",            HTTP_POST, handleStop);
   server.on("/data.csv",            HTTP_GET,  handleDataCsv);
   server.on("/api/data/clear",      HTTP_POST, handleDataClear);
+  server.on("/api/sleep",           HTTP_POST, handleSleep);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
   Serial.println("[HTTP] server started");
