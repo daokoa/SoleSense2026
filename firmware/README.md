@@ -4,18 +4,20 @@ This directory contains **two parallel firmware implementations** for the XIAO E
 
 | Folder | Build system | Status |
 |---|---|---|
-| [`SoleSense/`](SoleSense/) | **Arduino IDE** | **Working — flashed and verified.** The v0.1 firmware actively running on the board. ~520 lines in a single `.ino`, all 10 HTTP endpoints, 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050, NVS-backed thresholds + sensor calibration, GPIO9 deep-sleep. The frontend served from LittleFS lives at `SoleSense/data/index.html` — sync the chosen UI from `software/frontend/{dao,andony}/` before flashing. |
+| [`SoleSense/`](SoleSense/) | **Arduino IDE** | **v0.1 — working, flashed and verified.** Demo firmware. ~520 lines in a single `.ino`. Raw 50 Hz CSV → LittleFS → browser-side analysis. The frontend served from LittleFS lives at `SoleSense/data/index.html` — sync the chosen UI from `software/frontend/{dao,andony}/` before flashing. |
+| [`SoleSenseV2/`](SoleSenseV2/) | **Arduino IDE** | **v0.2 — work in progress.** Modular rewrite based on the [v0.2 architecture spec](../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md): incremental Goertzel FFT + top-N outlier buffer in MCU RAM, multi-slot ring buffer in flash, pause-on-disconnect, no browser-side state. Foundational scaffold compiles and boots; FFT, storage, and `/api/run-report` are stubbed. See `SoleSenseV2/README.md` for module-level status. |
 | [`platformio/`](platformio/) | **PlatformIO** | Stub. ~76-line `src/main.cpp` returning dummy random sensor data, with a different SSID (`XIAO-ESP32` / pw `12345678`) and ArduinoOTA support. Starting point for the team if you want to migrate to a PlatformIO/VS Code workflow. |
 
 ---
 
 ## Which one is on the board right now?
 
-The Arduino IDE firmware (`SoleSense/SoleSense.ino`). Connect to WiFi `SoleSense` (password `solesense`), open `http://192.168.4.1` — that's what's running.
+`SoleSense/` (v0.1). Connect to WiFi `SoleSense` (password `solesense`), open `http://192.168.4.1` — that's what's running. Demo-ready.
 
 ## Which one should new code go into?
 
-Until the team picks a canonical path: **add new firmware features to `SoleSense/SoleSense.ino`**. That's the path that actually runs on hardware. To migrate to PlatformIO instead, port the Arduino implementation into `platformio/src/main.cpp` first, then delete the Arduino sketch.
+- **For demo-affecting fixes (tonight)** → `SoleSense/`. Don't disturb v0.1.
+- **For the longer-term rewrite** → `SoleSenseV2/`. New modules; foundational scaffold is already there. Pick up Task 4 (FFT), Task 5 (storage), or Task 6 (run-report analysis) from [`../docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](../docs/superpowers/plans/2026-05-06-v0.2-firmware.md).
 
 ## Why both exist
 
