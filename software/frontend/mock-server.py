@@ -110,8 +110,10 @@ def mock_sensor():
 def mock_device():
     return {
         "firmware": "SoleSense v0.1 (mock-server)",
+        "version": "v0.1",
         "board": "mock-server.py",
         "sampleRateHz": 50,
+        "heap_free": 200000,
         "state": "recording" if state["recording"] else "idle",
         "fs": {"totalBytes": 1441792, "usedBytes": 8192},
         "hasData": state["has_data"],

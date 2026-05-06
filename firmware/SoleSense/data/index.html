@@ -670,7 +670,7 @@ body{
         <div class="settings-row">
           <div>
             <div class="settings-label">Zero FSR Sensors</div>
-            <div class="settings-desc">Stand off the insoles, then tap to zero all 7 sensors</div>
+            <div class="settings-desc">Stand off the insoles, then tap to zero all 6 sensors</div>
           </div>
           <button class="btn-cal" onclick="zeroSensors()">Zero</button>
         </div>
@@ -693,7 +693,7 @@ body{
             <div class="settings-desc">Flag if below this value</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-cadence" value="160" min="120" max="200" onchange="saveThreshold('cadence',this.value)">
+            <input type="number" class="num-input" id="t-cadence" value="160" min="120" max="200" onchange="saveThreshold('cadenceMin',this.value)">
             <span style="font-size:12px;color:var(--text3)">spm</span>
           </div>
         </div>
@@ -703,7 +703,7 @@ body{
             <div class="settings-desc">Flag if angle exceeds this</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-pronate" value="15" min="5" max="30" onchange="saveThreshold('pronate',this.value)">
+            <input type="number" class="num-input" id="t-pronate" value="15" min="5" max="30" onchange="saveThreshold('proneMax',this.value)">
             <span style="font-size:12px;color:var(--text3)">°</span>
           </div>
         </div>
@@ -713,7 +713,7 @@ body{
             <div class="settings-desc">Flag if above this value</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" class="num-input" id="t-contact" value="300" min="200" max="400" onchange="saveThreshold('contact',this.value)">
+            <input type="number" class="num-input" id="t-contact" value="300" min="200" max="400" onchange="saveThreshold('gct',this.value)">
             <span style="font-size:12px;color:var(--text3)">ms</span>
           </div>
         </div>
@@ -840,7 +840,7 @@ function parseCSV(text){
   const start=isNaN(parseFloat(lines[0].split(',')[0]))?1:0;
   return lines.slice(start).map(l=>{
     const v=l.split(',').map(Number);
-    return{ts:v[0],fsr:v.slice(1,8),ax:v[8],ay:v[9],az:v[10],gx:v[11],gy:v[12],gz:v[13]};
+    return{ts:v[0],fsr:v.slice(1,7),ax:v[7],ay:v[8],az:v[9],gx:v[10],gy:v[11],gz:v[12]};
   }).filter(r=>r.fsr&&!r.fsr.some(isNaN));
 }
 
@@ -850,14 +850,16 @@ const THRESH={cadence_low:160,contact_high:300,loading_high:60,pronate_high:15,s
 function analyse(rows){
   if(!rows.length)return null;
   const n=rows.length,dt=1/50,durSec=n*dt;
-  const fsrAvg=Array.from({length:7},(_,i)=>rows.reduce((s,r)=>s+r.fsr[i],0)/n/4095*100);
-  const zoneAvg={heel:(fsrAvg[0]+fsrAvg[1])/2,midfoot:(fsrAvg[2]+fsrAvg[3])/2,ball:(fsrAvg[4]+fsrAvg[5])/2,toe:fsrAvg[6]};
+  // 6-FSR layout: 0=Heel, 1=Lateral Mid, 2=Medial Mid, 3=Ball Lateral, 4=Ball Medial, 5=Toe 1
+  const fsrAvg=Array.from({length:6},(_,i)=>rows.reduce((s,r)=>s+r.fsr[i],0)/n/4095*100);
+  const zoneAvg={heel:fsrAvg[0],midfoot:(fsrAvg[1]+fsrAvg[2])/2,ball:(fsrAvg[3]+fsrAvg[4])/2,toe:fsrAvg[5]};
   const heelLoad=zoneAvg.heel,foreLoad=(zoneAvg.ball+zoneAvg.toe)/2;
   const heelPct=heelLoad/(heelLoad+foreLoad||1)*100;
-  const lLoad=(fsrAvg[0]+fsrAvg[2]+fsrAvg[4])/3,rLoad=(fsrAvg[1]+fsrAvg[3]+fsrAvg[5])/3;
+  // Medial vs lateral (UI calls it L vs R for continuity)
+  const lLoad=(fsrAvg[2]+fsrAvg[4]+fsrAvg[5])/3,rLoad=(fsrAvg[1]+fsrAvg[3])/2;
   const lPct=lLoad/(lLoad+rLoad||1)*100,rPct=100-lPct;
   const asymPct=Math.abs(lPct-rPct);
-  const heelFSR=rows.map(r=>(r.fsr[0]+r.fsr[1])/2);
+  const heelFSR=rows.map(r=>r.fsr[0]);
   const steps=detectSteps(heelFSR);
   const stepCount=steps.length||1;
   const cadence=durSec>0?Math.round(stepCount/durSec*60):0;
@@ -931,7 +933,7 @@ function render(r){
 /* ── SETTINGS ── */
 async function zeroSensors(){try{await fetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
 async function zeroIMU(){try{await fetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
-async function saveThreshold(key,val){try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:val})});toast('Saved');}catch{toast('Error saving');}}
+async function saveThreshold(key,val){try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`${encodeURIComponent(key)}=${encodeURIComponent(val)}`});toast('Saved');}catch{toast('Error saving');}}
 async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await fetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 

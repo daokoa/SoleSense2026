@@ -372,8 +372,10 @@ static String stateName(State s) { return s == IDLE ? "idle" : "recording"; }
 static void handleDevice(AsyncWebServerRequest* req) {
   String json = "{";
   json += "\"firmware\":\"SoleSense v0.1\",";
+  json += "\"version\":\"v0.1\",";                                // alias for frontends that look for `version`
   json += "\"board\":\"XIAO ESP32-C3\",";
   json += "\"sampleRateHz\":50,";
+  json += "\"heap_free\":" + String((unsigned)ESP.getFreeHeap()) + ",";
   json += "\"state\":\"" + stateName(gState) + "\",";
   json += "\"fs\":{\"totalBytes\":" + String((unsigned)LittleFS.totalBytes());
   json +=        ",\"usedBytes\":"  + String((unsigned)LittleFS.usedBytes()) + "},";
