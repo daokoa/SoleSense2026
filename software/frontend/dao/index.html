@@ -729,15 +729,14 @@ function startRun(){
     const m=Math.floor(recSeconds/60), s=String(recSeconds%60).padStart(2,'0');
     document.getElementById('rec-timer').textContent=m+':'+s;
   },1000);
-  barInterval=setInterval(animateBars,130);
+  barInterval=setInterval(animateBars,200);   // 5 Hz poll of /api/sensor
 }
 
 function stopRun(){
   clearInterval(recInterval); clearInterval(barInterval);
-  const onDevice = location.hostname==='192.168.4.1';
-  if(onDevice) fetch('/api/stop',{method:'POST'}).catch(()=>{});
+  fetch('/api/stop',{method:'POST'}).catch(()=>{});
   showLoading('Processing your run…');
-  setTimeout(()=>loadReport(), onDevice?1200:500);
+  setTimeout(()=>loadReport(), 1200);
 }
 
 function cancelRun(){
@@ -746,38 +745,40 @@ function cancelRun(){
   showScreen('home');
 }
 
+/* Recording-screen bars: one per FSR channel, polled at 5 Hz from /api/sensor.
+   Bar height is proportional to the live ADC reading. If a bar isn't moving
+   when you press the corresponding FSR, the wiring or firmware is wrong. */
+const FSR_LABELS = ['Heel','Lat Mid','Med Mid','Ball Lat','Ball Med','Toe'];
+const ADC_MAX = 4095;
+
 function buildBars(){
   const w=document.getElementById('rec-bars');
-  w.innerHTML=Array.from({length:14},(_,i)=>`<div class="rec-bar" id="rbar-${i}" style="height:${8+Math.random()*20}px"></div>`).join('');
+  w.innerHTML=FSR_LABELS.map((label,i)=>
+    `<div class="rec-bar" id="rbar-${i}" title="${label}" style="height:8px"></div>`
+  ).join('');
 }
-function animateBars(){
-  for(let i=0;i<14;i++){const e=document.getElementById('rbar-'+i);if(e)e.style.height=(6+Math.random()*74)+'px';}
+
+let barFetchInFlight=false;
+async function animateBars(){
+  if(barFetchInFlight) return;            // skip tick if last call hasn't returned
+  barFetchInFlight=true;
+  try{
+    const r=await fetch('/api/sensor');
+    if(!r.ok) return;
+    const d=await r.json();
+    if(!Array.isArray(d.fsr)) return;
+    for(let i=0;i<FSR_LABELS.length;i++){
+      const bar=document.getElementById('rbar-'+i);
+      if(!bar) continue;
+      const v=Math.max(0,Math.min(ADC_MAX,Number(d.fsr[i])||0));
+      bar.style.height=(8 + (v/ADC_MAX)*78)+'px';
+    }
+  }catch(e){/* network blip — keep last bar heights, no fake data */}
+  finally{ barFetchInFlight=false; }
 }
 
 /* ── REPORT LOAD ── */
-function demoReport(){
-  return{
-    steps:2184, durSec:742, cadence:158, contactMs:318,
-    loadingRate:74.2, pronate:17.6, lPct:54, rPct:46,
-    zoneAvg:{heel:68, midfoot:24, ball:41, toe:18},
-    flags:[
-      {key:'overpronation', val:'17.6°'},
-      {key:'low_cadence',   val:'158 steps/min'},
-      {key:'high_loading',  val:'74.2 BW/s'},
-      {key:'contact_long',  val:'318 ms'},
-    ]
-  };
-}
-
 async function loadReport(){
-  const onDevice = location.hostname==='192.168.4.1';
-  if(!onDevice){
-    hideLoading();
-    render(demoReport());
-    document.getElementById('last-report-sub').textContent='Demo run';
-    showScreen('report');
-    return;
-  }
   try{
     const res=await fetch('/data.csv');
     if(!res.ok) throw new Error('HTTP '+res.status);
