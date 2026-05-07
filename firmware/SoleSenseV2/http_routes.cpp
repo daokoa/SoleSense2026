@@ -16,6 +16,7 @@
 #include "sensors.h"
 #include "fft.h"
 #include "outliers.h"
+#include "storage.h"
 
 #include <LittleFS.h>
 #include <WiFi.h>
@@ -201,6 +202,40 @@ static void handle_fft_selftest(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true,\"see\":\"Serial Monitor\"}");
 }
 
+// ── Debug: /api/storage-selftest ─────────────────────────────────────────────
+// Writes 3 slots, corrupts the newest, asserts load_latest falls back. Cleans
+// up after itself. Refuses during a recording (would clobber real slots).
+static void handle_storage_selftest(AsyncWebServerRequest* req) {
+  if (gState != RS_IDLE) {
+    req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
+    return;
+  }
+  storage_self_test();
+  req->send(200, "application/json", "{\"ok\":true,\"see\":\"Serial Monitor\"}");
+}
+
+// ── /api/storage-state ───────────────────────────────────────────────────────
+// Diagnostic: how many slots are currently valid, and what's the newest header.
+static void handle_storage_state(AsyncWebServerRequest* req) {
+  uint8_t count = storage_valid_slot_count();
+  SlotHeader hdr;
+  bool has = storage_load_latest(hdr);
+  String j = "{\"valid_slots\":";
+  j += count;
+  if (has) {
+    j += ",\"latest\":{";
+    j += "\"slot_n\":";        j += (unsigned long)hdr.slot_n;
+    j += ",\"timestamp_ms\":"; j += (unsigned long)hdr.timestamp_ms;
+    j += ",\"sample_count\":"; j += (unsigned long)hdr.sample_count;
+    j += ",\"run_done\":";     j += (unsigned long)hdr.run_done;
+    j += "}";
+  } else {
+    j += ",\"latest\":null";
+  }
+  j += "}";
+  req->send(200, "application/json", j);
+}
+
 // ── Registration ─────────────────────────────────────────────────────────────
 void http_register_routes(AsyncWebServer& server) {
   server.on("/api/device",         HTTP_GET,  handle_device);
@@ -214,6 +249,8 @@ void http_register_routes(AsyncWebServer& server) {
   server.on("/api/run-spectrum",   HTTP_GET,  handle_run_spectrum);
   server.on("/api/run-outliers",   HTTP_GET,  handle_run_outliers);
   server.on("/api/run-report",     HTTP_GET,  handle_run_report);
-  server.on("/api/fft-selftest",   HTTP_POST, handle_fft_selftest);
+  server.on("/api/fft-selftest",     HTTP_POST, handle_fft_selftest);
+  server.on("/api/storage-selftest", HTTP_POST, handle_storage_selftest);
+  server.on("/api/storage-state",    HTTP_GET,  handle_storage_state);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }

@@ -19,7 +19,7 @@ For the task breakdown, read [`../../docs/superpowers/plans/2026-05-06-v0.2-firm
 | Per-sample online stats | `SoleSenseV2.ino` (Welford) | ✅ done |
 | 50 Hz hardware timer + sample loop | `SoleSenseV2.ino` | ✅ done |
 | Goertzel FFT | `fft.h/.cpp` | ✅ done — windowed (N=256), DC removal via running mean, magnitudes calibrated, validated against a Python reference (0% error on-bin). Trigger via `POST /api/fft-selftest`. |
-| Multi-slot ring buffer storage | `storage.h/.cpp` | ⚠️ stub — file pre-allocated but save/load are no-ops |
+| Multi-slot ring buffer storage | `storage.h/.cpp` | ✅ done — per-slot files with CRC32+magic trailer; corrupted writes correctly rejected by loader. Validated end-to-end via `POST /api/storage-selftest`. |
 | HTTP routes (simple) | `http_routes.cpp` | ✅ done — `/api/device`, `/api/sensor`, `/api/start`, `/api/stop`, `/api/sleep`, calibrate routes |
 | HTTP routes (v0.2 new) | `http_routes.cpp` | ⚠️ partial — `/api/run-state`, `/api/run-spectrum`, `/api/run-outliers` shape-correct; `/api/run-report` returns placeholder values |
 | Deep sleep | `SoleSenseV2.ino` | ✅ done |
@@ -36,16 +36,15 @@ If you uploaded this sketch to the XIAO instead of v0.1, it would:
 
 What it would **not** yet do:
 
-- Persist anything to flash (the slot writer is a no-op until Task 5)
-- Survive a reboot mid-run (no flash → no recovery)
 - Compute injury flags for `/api/run-report` (returns placeholders — Task 6)
-- Persist anything across reboot (Task 5 is still stubbed)
 
-What it WILL now do (Task 4 just landed):
+What it WILL now do (Tasks 4 + 5 landed):
 
 - Compute correctly-scaled FFT magnitudes per channel/bin every 256 samples (~5 s at 50 Hz)
 - Expose `/api/run-spectrum` with real numbers per (channel, bin)
-- Expose `/api/fft-selftest` for on-bench validation
+- Persist a snapshot of FFT magnitudes + outliers every 3 s into a CRC-protected ring of 10 flash slots
+- Recover the most-recent valid snapshot on reboot or via `/api/storage-state`
+- Expose `/api/fft-selftest` and `/api/storage-selftest` for on-bench validation
 
 ## Compile / flash
 
@@ -53,8 +52,9 @@ The same Arduino IDE setup as v0.1. Open `firmware/SoleSenseV2/SoleSenseV2.ino` 
 
 ## Where to start contributing
 
-- ~~**Task 4 (FFT)**~~ — done (this commit).
-- **Task 5 (Storage)** — `storage.cpp`. Implement the slot serialization, CRC32 trailer, scan-on-load. Body layout is sketched in the file.
-- **Task 6 (`/api/run-report`)** — `http_routes.cpp`. Compute cadence/GCT/pronation/L-R balance/flags from the FFT + outliers. FFT side is now working — query `fft_get_magnitude(channel, bin)` for the analysis.
+- ~~**Task 4 (FFT)**~~ — done.
+- ~~**Task 5 (Storage)**~~ — done.
+- **Task 6 (`/api/run-report`)** — `http_routes.cpp:handle_run_report`. Compute cadence / GCT / loading-rate / pronation / L-R balance / pressure-distribution / injury flags from the FFT bins + outlier buffer. The data sources are all live now: `fft_get_magnitude(c, b)`, `outliers_at(i)`, `outliers_count()`, `gRunElapsedMs`. Use the same flag thresholds as `software/frontend/dao/index.html`'s old in-browser analysis (`THRESH={cadence_low:160, contact_high:300, loading_high:60, pronate_high:15, supinate_low:-8, asym_high:10}`).
+- **Task 7 (Frontend rewire)** — `software/frontend/dao/index.html`. Drop the JS-side sample array and CSV parsing; poll `/api/run-state` for the live timer, `/api/run-spectrum` if you want a live waveform display, `/api/run-report` after stop. Show a "Paused" pill when `run_state.run_active==false`.
 
-Task 6 depends on Task 5 for persistence but can be developed independently against a single in-RAM run.
+Tasks 6 and 7 are independent. Task 6 is the bigger logic piece.

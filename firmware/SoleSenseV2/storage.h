@@ -52,3 +52,8 @@ bool storage_load_latest(SlotHeader& outHeader);
 
 // Diagnostic: how many slots currently contain valid data.
 uint8_t storage_valid_slot_count();
+
+// Destructive self-test: writes 3 known slots, corrupts the newest, asserts
+// that load_latest() returns the second-newest. Cleans up after itself.
+// Output goes to Serial Monitor. Don't run during a real recording.
+void storage_self_test();
