@@ -7,6 +7,7 @@
 #include "sensors.h"
 #include "fft.h"
 #include "outliers.h"
+#include "stats.h"
 #include "storage.h"
 
 #include <WiFi.h>
@@ -46,6 +47,7 @@ static void enter_recording() {
   gPauseStartMs = 0;
   fft_reset();
   outliers_reset();
+  stats_reset();
   storage_begin_run();
   gState     = RS_RECORDING;
   gRunActive = WiFi.softAPgetStationNum() > 0;

@@ -19,6 +19,7 @@
 #include "sensors.h"
 #include "fft.h"
 #include "outliers.h"
+#include "stats.h"
 #include "storage.h"
 #include "http_routes.h"
 
@@ -49,28 +50,6 @@ static void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-// ── Online stats per channel (running mean + stddev for outlier detection) ───
-static float sChanMean[N_CHANNELS_TOTAL];
-static float sChanM2[N_CHANNELS_TOTAL];
-static uint32_t sChanN[N_CHANNELS_TOTAL];
-
-static void stats_reset() {
-  for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
-    sChanMean[c] = 0; sChanM2[c] = 0; sChanN[c] = 0;
-  }
-}
-
-// Welford's online algorithm; returns (running_mean, running_stddev) for the channel.
-static void stats_update(uint8_t c, float x, float& outMean, float& outStd) {
-  sChanN[c]++;
-  float delta  = x - sChanMean[c];
-  sChanMean[c] += delta / sChanN[c];
-  float delta2 = x - sChanMean[c];
-  sChanM2[c]  += delta * delta2;
-  outMean = sChanMean[c];
-  outStd  = sChanN[c] > 1 ? sqrtf(sChanM2[c] / (sChanN[c] - 1)) : 0.0f;
-}
-
 // ── Per-sample processing ────────────────────────────────────────────────────
 static void process_sample() {
   sensors_read_all();
@@ -86,8 +65,9 @@ static void process_sample() {
   channelVal[N_FSR + 5] = gGyro[2];
 
   for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
-    float mean, std;
-    stats_update(c, channelVal[c], mean, std);
+    stats_update(c, channelVal[c]);
+    float mean = stats_get_mean(c);
+    float std  = stats_get_stddev(c);
 
     // Offer to the outlier buffer first; if it bites, skip the FFT update so
     // injury-causing spikes don't smear the spectrum.
@@ -115,9 +95,9 @@ void setup() {
   sensors_init();
   fft_init();
   outliers_reset();
+  stats_reset();
   storage_init();
   state_init();
-  stats_reset();
 
   WiFi.softAP(SS_AP_SSID, SS_AP_PASS);
   IPAddress ip = WiFi.softAPIP();

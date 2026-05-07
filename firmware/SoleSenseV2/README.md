@@ -21,7 +21,8 @@ For the task breakdown, read [`../../docs/superpowers/plans/2026-05-06-v0.2-firm
 | Goertzel FFT | `fft.h/.cpp` | ✅ done — windowed (N=256), DC removal via running mean, magnitudes calibrated, validated against a Python reference (0% error on-bin). Trigger via `POST /api/fft-selftest`. |
 | Multi-slot ring buffer storage | `storage.h/.cpp` | ✅ done — per-slot files with CRC32+magic trailer; corrupted writes correctly rejected by loader. Validated end-to-end via `POST /api/storage-selftest`. |
 | HTTP routes (simple) | `http_routes.cpp` | ✅ done — `/api/device`, `/api/sensor`, `/api/start`, `/api/stop`, `/api/sleep`, calibrate routes |
-| HTTP routes (v0.2 new) | `http_routes.cpp` | ⚠️ partial — `/api/run-state`, `/api/run-spectrum`, `/api/run-outliers` shape-correct; `/api/run-report` returns placeholder values |
+| HTTP routes (v0.2 new) | `http_routes.cpp` | ✅ done — `/api/run-state`, `/api/run-spectrum`, `/api/run-outliers`, and `/api/run-report` all return real numbers from FFT + outliers + running stats |
+| Per-channel running stats (Welford) | `stats.h/.cpp` | ✅ done — extracted into its own module; used by FFT (DC removal), outliers (sigma), and report (zone means / pronation) |
 | Deep sleep | `SoleSenseV2.ino` | ✅ done |
 
 ## What flashing this gets you right now
@@ -36,15 +37,18 @@ If you uploaded this sketch to the XIAO instead of v0.1, it would:
 
 What it would **not** yet do:
 
-- Compute injury flags for `/api/run-report` (returns placeholders — Task 6)
+All v0.2 firmware logic is now real (Tasks 1–6 done). What v0.2 does end-to-end:
 
-What it WILL now do (Tasks 4 + 5 landed):
+- 50 Hz sampling of 6 FSRs + IMU; pause-on-disconnect via AP station count
+- Outlier filter: top-100 buffer keyed on |sigma|; outliers excluded from FFT
+- Goertzel FFT: 12 channels × 18 bins, DC-removed via Welford running mean, validated against a Python reference (0.0% error on-bin)
+- Multi-slot ring buffer in flash: every 3 s a CRC-protected snapshot lands in one of 10 rotating slots; corrupted writes correctly rejected on load
+- `/api/run-report` computes cadence, GCT, loading-rate, pronation, L/R balance, pressure distribution, and 7 injury flags from the FFT + outliers + stats — output shape matches what the dao UI's `render()` already consumes
+- Diagnostic endpoints: `/api/fft-selftest`, `/api/storage-selftest`, `/api/storage-state`, `/api/run-state`, `/api/run-spectrum`, `/api/run-outliers`
 
-- Compute correctly-scaled FFT magnitudes per channel/bin every 256 samples (~5 s at 50 Hz)
-- Expose `/api/run-spectrum` with real numbers per (channel, bin)
-- Persist a snapshot of FFT magnitudes + outliers every 3 s into a CRC-protected ring of 10 flash slots
-- Recover the most-recent valid snapshot on reboot or via `/api/storage-state`
-- Expose `/api/fft-selftest` and `/api/storage-selftest` for on-bench validation
+What's still pending:
+- **Task 7 (frontend rewire)** — dao UI currently records client-side, parses CSV, and runs the analysis in JS. Switch it to: poll `/api/run-state` for the timer, fetch `/api/run-report` after stop, drop the JS-side sample array entirely.
+- Hardware verification on a real XIAO with sensors wired (no v0.2 firmware has been flashed yet — v0.1 still owns the demo).
 
 ## Compile / flash
 
@@ -54,7 +58,6 @@ The same Arduino IDE setup as v0.1. Open `firmware/SoleSenseV2/SoleSenseV2.ino` 
 
 - ~~**Task 4 (FFT)**~~ — done.
 - ~~**Task 5 (Storage)**~~ — done.
-- **Task 6 (`/api/run-report`)** — `http_routes.cpp:handle_run_report`. Compute cadence / GCT / loading-rate / pronation / L-R balance / pressure-distribution / injury flags from the FFT bins + outlier buffer. The data sources are all live now: `fft_get_magnitude(c, b)`, `outliers_at(i)`, `outliers_count()`, `gRunElapsedMs`. Use the same flag thresholds as `software/frontend/dao/index.html`'s old in-browser analysis (`THRESH={cadence_low:160, contact_high:300, loading_high:60, pronate_high:15, supinate_low:-8, asym_high:10}`).
-- **Task 7 (Frontend rewire)** — `software/frontend/dao/index.html`. Drop the JS-side sample array and CSV parsing; poll `/api/run-state` for the live timer, `/api/run-spectrum` if you want a live waveform display, `/api/run-report` after stop. Show a "Paused" pill when `run_state.run_active==false`.
-
-Tasks 6 and 7 are independent. Task 6 is the bigger logic piece.
+- ~~**Task 6 (run-report)**~~ — done.
+- **Task 7 (Frontend rewire)** — `software/frontend/dao/index.html`. Drop the JS-side sample array and CSV parsing; poll `/api/run-state` for the live timer, fetch `/api/run-report` after stop. Show a "Paused" pill when `run_state.run_active==false`. The response shape from `/api/run-report` matches what the existing `render(r)` function already consumes, so this is mostly removing JS, not adding.
+- **Hardware verification** — flash v0.2 to a XIAO (use `firmware/SoleSenseV2/` instead of `firmware/SoleSense/`). Sensor wiring is unchanged from v0.1. Run a 30-second test, confirm `/api/run-report` returns sensible numbers, run `/api/storage-selftest` to verify crash recovery.
