@@ -224,15 +224,18 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float hfTotal   = zHeel + foreLoad;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
-  // ── Peak loading rate from IMU jerk (BW/s).
-  // FSR 402 caps at ~10 kg, so direct force measurement isn't possible during
-  // running impacts (100–200 kg of ground-reaction force). Instead we use the
-  // vertical jerk: dividing peak |d(accel_z)/dt| by g (9.81 m/s²) gives a
-  // value with units of 1/s ≈ body-weights-per-second, the standard
-  // biomechanics loading-rate metric. Healthy runners read 30–80 BW/s; >80
-  // is associated with stress-fracture / shin-splint risk (Milner 2006).
-  // Returns 0 when the IMU isn't connected (gAccel[2] doesn't change → jerk = 0).
-  float loadingRateBWs = gMaxJerkZ / G_TO_MS2;
+  // ── Loading rate (TODO: implement FSR-jerk extrapolation).
+  // Plan: FSR 402 saturates at ~10 kg, but the rate at which it ramps up
+  // *before* saturation contains the impact-magnitude information. Sampling
+  // the FSR signal's derivative during the 0→saturation transient lets us
+  // extrapolate peak force even though the sensor itself can't read it.
+  // For now we report 0 (frontend renders "—") so the demo doesn't show
+  // a fabricated value. (An earlier attempt used IMU vertical jerk — that
+  // measures torso/insole acceleration, not the FSR signal, so it was the
+  // wrong axis. Reverted.)
+  float loadingRateBWs = 0.0f;
+  (void)gMaxJerkZ;   // still tracked in process_sample, available for the
+                     // FSR-jerk implementation when it lands
 
   // ── Pronation: running mean of gyro_x (degrees/s).
   // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.

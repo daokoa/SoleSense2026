@@ -1,12 +1,28 @@
 # Software
 
-Web-side code for SoleSense. The MCU code lives in [`../firmware/`](../firmware/); this folder is for everything that runs in the user's browser or on a host computer.
+Web-side and host-side code for SoleSense. The MCU firmware lives in [`../firmware/`](../firmware/); this folder is for everything that runs in the user's browser or on a host computer connected over USB / WiFi.
 
 ## Contents
 
 | Folder | Purpose |
 |---|---|
-| [`frontend/`](frontend/) | The single-page web app served from the XIAO ESP32-C3 over its WiFi access point. This is the canonical, editable copy. |
+| [`frontend/`](frontend/) | The single-page web app served from the XIAO ESP32-C3 over its WiFi access point. Three parallel UIs — `dao/` (v0.1), `dao-v2/` (v0.2), `andony/` (alt). See [`frontend/README.md`](frontend/README.md). |
+| [`scripts/`](scripts/) | Host-side Python utilities for FSR bring-up and debugging. Run from a laptop while the device serves its AP. |
+
+## scripts/
+
+Quick references — all run against `http://192.168.4.1` while connected to the SoleSense AP:
+
+| Script | What it does |
+|---|---|
+| `identify-fsr.py` | Walks each FSR channel and prompts you to press a sensor — labels which physical FSR maps to which `(set, ADC)` matrix index. Use during initial wiring. |
+| `watch-fsr.py` | Streams live FSR readings to the terminal at ~5 Hz. Useful for sanity-checking that all 6 channels move when pressed. |
+| `diag-fsr.py` | Cycles power sets and ADC pins independently to diagnose stuck-low / stuck-high / floating pins. The first thing to run when channels look wrong. |
+
+Run with:
+```bash
+python3 software/scripts/diag-fsr.py
+```
 
 ## Future additions
 

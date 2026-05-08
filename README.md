@@ -7,12 +7,15 @@
 
 ## Status
 
-**v0.1 firmware deployed and verified on hardware.** XIAO ESP32-C3 boots, hosts a WiFi access point, serves the frontend from LittleFS, and exposes a 10-endpoint HTTP API. End-to-end frontend ↔ backend verified — page loads, recording flow works, report renders with cadence / GCT / pronation / L-R balance / injury flags.
-
-What's not yet wired up:
-- 6 FSR pressure sensors (parts pending)
-- MPU-6050 IMU connected to XIAO (parts in hand, soldering pending)
-- Final 3D-printed TPU shell
+| Track | State |
+|---|---|
+| **Firmware v0.1** (demo) | ✅ Flashed and running. Records 50 Hz CSV to LittleFS, browser-side JS analysis. This is what's on the device for live demos. |
+| **Firmware v0.2** (post-demo architecture) | ⚠️ Modular rewrite, compiles, boots, runs the full state machine. Two known gaps: FSR-jerk loading-rate extrapolation and time-domain GCT detection. See [`firmware/README.md`](firmware/README.md) for the full module-status table. |
+| **Frontend dao** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. Currently flashed. |
+| **Frontend dao-v2** (v0.2-compat) | ✅ Same UI, polls `/api/run-state` + `/api/run-report` instead of running JS analysis. Awaiting v0.2 hardware verification. |
+| **Frontend andony** | ✅ Dark-themed alternative SPA. Polls `/api/sensor` for live readout. |
+| **Sensors** | 1 FSR currently wired and verified (matrix-scan layout). 5 more FSRs and the IMU pending. |
+| **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
 
 See **[Roadmap](#roadmap)** for the path to v1.0.
 
