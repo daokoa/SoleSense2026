@@ -1,16 +1,26 @@
 # SoleSense Frontend
 
-Two parallel UIs for the SoleSense web app, kept side by side. Both connect to the same firmware HTTP API; only the visual design and feature scope differ.
+Three parallel UIs for the SoleSense web app, kept side by side. They all connect to the firmware HTTP API; visual design, target firmware version, and feature scope differ.
 
 ```
 software/frontend/
 ├── README.md           ← this file
 ├── mock-server.py      ← Python http.server that simulates the firmware backend
 ├── dao/
-│   └── index.html      ← Dao's UI: white & blue, full home/recording/report/settings flow
+│   └── index.html      ← Dao's UI for v0.1 firmware: parses /data.csv, runs analysis in JS
+├── dao-v2/
+│   └── index.html      ← Dao's UI rewired for v0.2 firmware: thin viewer, no JS-side analysis
 └── andony/
-    └── index.html      ← Andony's UI: dark theme with animated orbs, live-poll-style demo
+    └── index.html      ← Andony's UI: dark theme with animated orbs, live-poll demo
 ```
+
+**Which one matches which firmware:**
+
+| Frontend | Firmware | Notes |
+|---|---|---|
+| `dao/` | `firmware/SoleSense/` (v0.1) | what's flashed for the demo. Analysis runs in browser from `/data.csv`. |
+| `dao-v2/` | `firmware/SoleSenseV2/` (v0.2) | thin viewer. Polls `/api/run-state` for the timer, fetches `/api/run-report` for the analysis. Shows a "Paused" badge when the phone disconnects. |
+| `andony/` | works against either | live-poll demo style. |
 
 Both are self-contained single files. Andony's pulls Google Fonts via `@import`; Dao's uses system fonts. Each is served by the XIAO ESP32-C3 over its `SoleSense` WiFi AP at `http://192.168.4.1` — but only one at a time, since LittleFS only stores one `index.html`.
 
