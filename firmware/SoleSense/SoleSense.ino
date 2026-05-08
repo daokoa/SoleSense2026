@@ -323,7 +323,10 @@ static void enterDeepSleep() {
   gpio_pullup_en((gpio_num_t)PIN_WAKE);
   gpio_pulldown_dis((gpio_num_t)PIN_WAKE);
 
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_WAKE, ESP_GPIO_WAKEUP_GPIO_LOW);
+  // Older esp-idf 4.x API for deep-sleep GPIO wake; works across Arduino-ESP32
+  // core 2.x and 3.x. (esp_deep_sleep_enable_gpio_wakeup is 3.x-only.)
+  gpio_wakeup_enable((gpio_num_t)PIN_WAKE, GPIO_INTR_LOW_LEVEL);
+  esp_sleep_enable_gpio_wakeup();
   esp_deep_sleep_start();                  // never returns
 }
 

@@ -46,7 +46,15 @@ static void enter_deep_sleep() {
   delay(150);
   WiFi.softAPdisconnect(true);
   LittleFS.end();
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_WAKE, ESP_GPIO_WAKEUP_GPIO_LOW);
+
+  // Hold the wake pin high during sleep so a press-to-GND triggers wake.
+  // Using the older esp-idf 4.x API that's available across Arduino-ESP32
+  // core 2.x and 3.x. (The newer esp_deep_sleep_enable_gpio_wakeup is
+  // 3.x-only and not present in some installations.)
+  gpio_pullup_en((gpio_num_t)PIN_WAKE);
+  gpio_pulldown_dis((gpio_num_t)PIN_WAKE);
+  gpio_wakeup_enable((gpio_num_t)PIN_WAKE, GPIO_INTR_LOW_LEVEL);
+  esp_sleep_enable_gpio_wakeup();
   esp_deep_sleep_start();
 }
 
