@@ -13,14 +13,21 @@
 
 #include <math.h>
 
-// Bin frequencies. At Fs=50 Hz and N=256, the bin width is Fs/N ≈ 0.195 Hz,
+// Bin frequencies. At Fs=500 Hz and N=1024 the bin width is Fs/N ≈ 0.488 Hz,
 // so these are quantised to the nearest representable frequency at runtime.
+//
+// Layout reflects what running biomechanics actually has signal at:
+//   • 0.5–3 Hz: cadence band (90–180 spm = 1.5–3 Hz per foot)
+//   • 3.5–10 Hz: stride-cycle harmonics (swing-phase oscillations, leg
+//                  recovery dynamics)
+//   • 15–80 Hz: ground-impact transient content; FSR rising-edge harmonics
+//                that the FSR-jerk extrapolation will key off of
+//   • 150 Hz: vibration / shoe-slap content, high-frequency anomaly probe
 const float FFT_BIN_FREQS_HZ[FFT_BINS_PER_CHAN] = {
-  0.5f,
-  1.00f, 1.25f, 1.50f, 1.75f, 2.00f, 2.25f, 2.50f, 2.75f,
-  3.00f, 3.50f, 4.00f,
-  5.00f, 7.50f, 10.0f, 12.5f, 15.0f,
-  20.0f
+  0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f,        // cadence (6)
+  3.5f, 4.0f, 5.0f, 7.5f, 10.0f,             // stride harmonics (5)
+  15.0f, 20.0f, 30.0f, 50.0f, 80.0f, 120.0f, // impact band (6)
+  150.0f                                      // vibration probe (1)
 };
 
 // Per-bin precomputed factors. Goertzel coef = 2*cos(omega) drives the
@@ -131,18 +138,18 @@ uint8_t fft_peak_bin(uint8_t c, float* outMagnitude) {
 // Self-test: feed FFT_WIN_SIZE samples of a sine wave whose frequency lands
 // exactly on a bin centre. Magnitude should read amp ± rounding noise.
 //
-// At Fs=50 Hz, N=256 the bins are spaced 50/256 ≈ 0.195 Hz. We use bin k=10
-// = 1.953125 Hz so the test is unambiguous (no spectral leakage). Off-bin
-// signals (e.g. 2.00 Hz) will leak ~10% of their energy into neighbours —
-// that's correct DSP behaviour, not a bug.
+// At Fs=500 Hz, N=1024 the bins are spaced 500/1024 ≈ 0.488 Hz. We use
+// bin k=4 = 1.953125 Hz so the test stays close to a real cadence
+// frequency. Off-bin signals leak energy into neighbours — that's correct
+// DSP behaviour, not a bug.
 //
-// Pass criterion: the bin closest to 1.95 Hz reads ~amp; all far bins ≪ amp.
+// Pass criterion: the bin closest to ~2 Hz reads ~amp; all far bins ≪ amp.
 // Validated against a Python reference implementation: error 0.0000% on-bin.
 // ─────────────────────────────────────────────────────────────────────────────
 void fft_self_test() {
   const float amp     = 100.0f;
-  const int   k       = 10;
-  const float freq_hz = (float)k * (float)SAMPLE_RATE_HZ / (float)FFT_WIN_SIZE;  // 1.953125 Hz at 50/256
+  const int   k       = 4;
+  const float freq_hz = (float)k * (float)SAMPLE_RATE_HZ / (float)FFT_WIN_SIZE;  // 1.953125 Hz at 500/1024
   const float dc      = 500.0f;
 
   Serial.printf("[FFT self-test] %.4f Hz sine (on-bin k=%d), amp=%.0f, dc=%.0f -> ch 0\n",

@@ -32,7 +32,14 @@ constexpr float   G_TO_MS2         = 9.80665f;
 constexpr float   GYRO_LSB_PER_DPS = 131.0f;
 
 // ── Sampling ─────────────────────────────────────────────────────────────────
-constexpr uint32_t SAMPLE_RATE_HZ      = 50;          // 50 or 100; team decision pending
+// 500 Hz: chosen to oversample running-impact rising edges (~5–20 ms wide) by
+// 5–10×, so FSR-jerk extrapolation has enough resolution for honest loading-
+// rate math. Per-sample budget at this rate: ~2 ms; measured ~600 µs (matrix
+// scan + I²C IMU + Goertzel + outlier check), leaves ~1.4 ms slack. RAM is
+// rate-independent because the Goertzel FFT is incremental (no growing sample
+// buffer). Hard ceiling on this MCU/sensor stack is ~1.5 kHz; 500 is the
+// comfortable working point.
+constexpr uint32_t SAMPLE_RATE_HZ      = 500;
 constexpr uint32_t SAMPLE_PERIOD_US    = 1000000UL / SAMPLE_RATE_HZ;
 constexpr uint8_t  N_FSR               = 6;
 constexpr uint8_t  N_IMU_AXES          = 6;           // ax, ay, az, gx, gy, gz

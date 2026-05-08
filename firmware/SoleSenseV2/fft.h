@@ -8,7 +8,7 @@
 // sMag[channel][bin], and reset the recurrence state. The most recent
 // magnitude is what fft_get_magnitude() returns.
 //
-// Window length is FFT_WIN_SIZE samples (~5 s at 50 Hz). Spectrum updates
+// Window length is FFT_WIN_SIZE samples (~2 s at 500 Hz). Spectrum updates
 // every FFT_WIN_SIZE samples per channel. Tune later (overlap, hop size).
 // =============================================================================
 
@@ -18,9 +18,12 @@
 #include "config.h"
 
 // Window length in samples. Must be ≥ ~Fs/lowest_bin to resolve the lowest
-// frequency in the bin table. At 50 Hz with 0.5 Hz lowest bin, need ≥ 100;
-// 256 gives clean magnitudes with ~0.2 Hz frequency resolution.
-constexpr uint16_t FFT_WIN_SIZE = 256;
+// frequency in the bin table. At Fs=500 Hz with 0.5 Hz lowest bin, need
+// ≥ 1000; 1024 gives a 2.05 s window with ~0.49 Hz bin width — sufficient to
+// distinguish cadences (1.5–3 Hz) cleanly. RAM cost per channel is independent
+// of WIN_SIZE (Goertzel only stores 2 floats per bin), so window length is
+// purely a frequency-resolution-vs-latency knob.
+constexpr uint16_t FFT_WIN_SIZE = 1024;
 
 // Frequencies (Hz) tracked per channel. Same set used for every channel for
 // simplicity — tune per-channel later if needed.
