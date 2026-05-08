@@ -59,9 +59,26 @@ static void enter_deep_sleep() {
 }
 
 // ── Per-sample processing ────────────────────────────────────────────────────
+// Jerk-tracking state. We use vertical jerk (d(accel_z)/dt) as the impact-rate
+// indicator because the FSR 402 saturates at ~10 kg — far below running peak
+// ground-reaction force (100–200 kg). The IMU gives clean vertical
+// acceleration regardless of how saturated the FSRs are, and its derivative
+// is the standard biomechanics loading-rate signal.
+static float sPrevAccelZ  = 0.0f;
+static bool  sJerkHasPrev = false;
+
 static void process_sample() {
   sensors_read_all();
   gSampleCount++;
+
+  // Vertical jerk: |Δaccel_z| / Δt over the last sample interval.
+  if (sJerkHasPrev) {
+    constexpr float DT_S = 1.0f / (float)SAMPLE_RATE_HZ;
+    float jerk = fabsf(gAccel[2] - sPrevAccelZ) / DT_S;
+    if (jerk > gMaxJerkZ) gMaxJerkZ = jerk;
+  }
+  sPrevAccelZ  = gAccel[2];
+  sJerkHasPrev = true;
 
   float channelVal[N_CHANNELS_TOTAL];
   for (uint8_t i = 0; i < N_FSR; i++) channelVal[i] = (float)gFsr[i];

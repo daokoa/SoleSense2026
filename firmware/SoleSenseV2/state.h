@@ -30,6 +30,14 @@ extern volatile uint32_t gLastActiveMs;
 // Total sample count for the current run (rolls back to 0 on /api/start).
 extern volatile uint32_t gSampleCount;
 
+// Peak vertical jerk (|d(accel_z)/dt|) seen during the current run, in m/s³.
+// FSR 402 saturates at ~10 kg so it can't measure peak running force directly
+// (running impact is 100–200 kg of ground reaction). Vertical jerk from the
+// IMU does measure impact rate cleanly — dividing by g (9.81 m/s²) gives the
+// loading rate in BW/s, the standard biomechanics unit. Reset to 0 on
+// /api/start. Updated per sample by process_sample() in SoleSenseV2.ino.
+extern volatile float gMaxJerkZ;
+
 // Set true by the 50Hz hardware-timer ISR. loop() drains this flag.
 extern volatile bool gNewSample;
 

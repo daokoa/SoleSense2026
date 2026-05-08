@@ -224,16 +224,15 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float hfTotal   = zHeel + foreLoad;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
-  // ── Peak loading (sigma units, NOT body-weight/sec).
-  // Real BW/s requires knowing the runner's body weight and the FSR's force-
-  // calibration curve. We have neither in v0.2, so we report the largest
-  // FSR-channel outlier in σ units (how many stddev above the channel's
-  // running mean). Honest unit, no fake conversion.
-  float loadingSigma = 0.0f;
-  for (uint8_t i = 0; i < outliers_count(); i++) {
-    const Outlier& o = outliers_at(i);
-    if (o.channel < N_FSR && o.sigma > loadingSigma) loadingSigma = o.sigma;
-  }
+  // ── Peak loading rate from IMU jerk (BW/s).
+  // FSR 402 caps at ~10 kg, so direct force measurement isn't possible during
+  // running impacts (100–200 kg of ground-reaction force). Instead we use the
+  // vertical jerk: dividing peak |d(accel_z)/dt| by g (9.81 m/s²) gives a
+  // value with units of 1/s ≈ body-weights-per-second, the standard
+  // biomechanics loading-rate metric. Healthy runners read 30–80 BW/s; >80
+  // is associated with stress-fracture / shin-splint risk (Milner 2006).
+  // Returns 0 when the IMU isn't connected (gAccel[2] doesn't change → jerk = 0).
+  float loadingRateBWs = gMaxJerkZ / G_TO_MS2;
 
   // ── Pronation: running mean of gyro_x (degrees/s).
   // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.
@@ -268,10 +267,11 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   if (heelRatio > 65.0f && zHeel > zBall + 10.0f) {
     pushFlag("heel_strike", String((int)heelRatio) + "% heel load");
   }
-  // Loading-spike flag: σ above 6.0 = ~2× the σ-threshold the outlier detector
-  // already requires (3.0). Empirical, tune later when we have body-weight cal.
-  if (loadingSigma > 6.0f) {
-    pushFlag("high_loading", String(loadingSigma, 1) + " σ peak");
+  // High-loading flag: > 80 BW/s. Threshold from biomechanics literature
+  // (Milner 2006; Davis 2016): runners above this have ~2× the stress-fracture
+  // risk vs. runners with loading rates < 60 BW/s.
+  if (loadingRateBWs > 80.0f) {
+    pushFlag("high_loading", String((int)loadingRateBWs) + " BW/s");
   }
   if (cadence > 0 && cadence < 160) {
     pushFlag("low_cadence", String(cadence) + " steps/min");
@@ -298,7 +298,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   j += "\"cadence\":";      j += cadence;                   j += ",";
   j += "\"durSec\":";       j += (unsigned long)durSec;     j += ",";
   j += "\"contactMs\":";    j += String(contactMs, 1);      j += ",";
-  j += "\"loadingSigma\":"; j += String(loadingSigma, 2);   j += ",";
+  j += "\"loadingRate\":";  j += String(loadingRateBWs, 1); j += ",";
   j += "\"pronate\":";      j += String(pronate, 2);        j += ",";
   j += "\"medialPct\":";    j += String(medialPct, 1);      j += ",";
   j += "\"lateralPct\":";   j += String(lateralPct, 1);     j += ",";

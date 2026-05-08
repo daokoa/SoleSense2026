@@ -624,47 +624,87 @@ body{
       </div>
       <div class="rec-chip">
         <div class="rec-chip-val" id="chip-rate">—</div>
-        <div class="rec-chip-label">Peak Load (σ)</div>
+        <div class="rec-chip-label">Loading (BW/s)</div>
       </div>
     </div>
 
     <div class="feet-wrap" id="feet-wrap">
-      <!-- Left foot: 6 sensors at anatomical positions, viewed from below.
-           Heel at bottom, toe at top, lateral on left, medial on right. -->
+      <!-- Left foot, viewed from below (sole). Toes at top with the hallux on
+           the medial (right) side, narrowing through the arch waist on the
+           medial side, widening to a rounded heel. Path is asymmetric on
+           purpose so it actually reads as a foot, not a generic blob. -->
       <div class="foot-card" id="foot-left">
         <div class="foot-card-label">Left foot</div>
-        <svg class="foot-svg" viewBox="0 0 90 170">
-          <path class="foot-outline"
-                d="M 30 10 Q 60 6 60 25 L 65 50 Q 75 70 70 100 Q 72 130 55 158 Q 35 168 22 158 Q 14 130 18 100 Q 14 70 22 50 L 28 25 Q 26 12 30 10 Z"/>
-          <!-- ch5 toe (hallux) — top, slightly medial (right of centre) -->
-          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="50" cy="20" r="7"/>
-          <!-- ch4 ball medial — right of centre, upper -->
-          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="55" cy="50" r="6.5"/>
-          <!-- ch3 ball lateral — left of centre, upper -->
-          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="28" cy="50" r="6.5"/>
-          <!-- ch2 medial mid — right side, middle -->
-          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="56" cy="95" r="6.5"/>
-          <!-- ch1 lateral mid — left side, middle -->
-          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="24" cy="95" r="6.5"/>
-          <!-- ch0 heel — bottom centre -->
-          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="40" cy="148" r="9"/>
+        <svg class="foot-svg" viewBox="0 0 90 180">
+          <!-- main sole outline -->
+          <path class="foot-outline" d="
+            M 50 18
+            C 65 16 73 22 74 36
+            C 80 46 80 60 76 78
+            C 80 96 76 118 74 138
+            C 73 158 66 170 54 172
+            L 38 172
+            C 26 170 19 158 18 138
+            C 16 118 12 96 16 78
+            C 12 60 12 46 18 36
+            C 19 22 27 16 38 16
+            Z
+          "/>
+          <!-- toes (5 small circles on top, hallux largest, others tapering) -->
+          <circle class="foot-outline" cx="58" cy="9"  r="6"/>
+          <circle class="foot-outline" cx="46" cy="11" r="4.5"/>
+          <circle class="foot-outline" cx="36" cy="14" r="3.7"/>
+          <circle class="foot-outline" cx="28" cy="18" r="3.2"/>
+          <circle class="foot-outline" cx="22" cy="22" r="2.8"/>
+
+          <!-- 6 sensor positions (channel-to-zone mapping per firmware) -->
+          <!-- ch5 toe-1 / hallux base -->
+          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="56" cy="32" r="6.5"/>
+          <!-- ch4 ball medial -->
+          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="58" cy="56" r="6.5"/>
+          <!-- ch3 ball lateral -->
+          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="30" cy="56" r="6.5"/>
+          <!-- ch2 medial mid (under the arch) -->
+          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="58" cy="100" r="6"/>
+          <!-- ch1 lateral mid -->
+          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="26" cy="100" r="6"/>
+          <!-- ch0 heel -->
+          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="46" cy="152" r="9"/>
         </svg>
       </div>
 
-      <!-- Right foot: visual placeholder. No second insole wired in v0.1; circles
-           stay greyed-out so the user sees the eventual layout but doesn't
-           expect data. -->
+      <!-- Right foot — visual placeholder, mirrored via SVG transform. No
+           second insole wired in v0.1; circles stay greyed-out so the user
+           sees the eventual layout but doesn't expect live data. -->
       <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
         <div class="foot-card-label">Right (offline)</div>
-        <svg class="foot-svg" viewBox="0 0 90 170">
-          <path class="foot-outline"
-                d="M 60 10 Q 30 6 30 25 L 25 50 Q 15 70 20 100 Q 18 130 35 158 Q 55 168 68 158 Q 76 130 72 100 Q 76 70 68 50 L 62 25 Q 64 12 60 10 Z"/>
-          <circle class="foot-sensor" cx="40" cy="20" r="7"/>
-          <circle class="foot-sensor" cx="35" cy="50" r="6.5"/>
-          <circle class="foot-sensor" cx="62" cy="50" r="6.5"/>
-          <circle class="foot-sensor" cx="34" cy="95" r="6.5"/>
-          <circle class="foot-sensor" cx="66" cy="95" r="6.5"/>
-          <circle class="foot-sensor" cx="50" cy="148" r="9"/>
+        <svg class="foot-svg" viewBox="0 0 90 180">
+          <g transform="translate(90 0) scale(-1 1)">
+            <path class="foot-outline" d="
+              M 50 18
+              C 65 16 73 22 74 36
+              C 80 46 80 60 76 78
+              C 80 96 76 118 74 138
+              C 73 158 66 170 54 172
+              L 38 172
+              C 26 170 19 158 18 138
+              C 16 118 12 96 16 78
+              C 12 60 12 46 18 36
+              C 19 22 27 16 38 16
+              Z
+            "/>
+            <circle class="foot-outline" cx="58" cy="9"  r="6"/>
+            <circle class="foot-outline" cx="46" cy="11" r="4.5"/>
+            <circle class="foot-outline" cx="36" cy="14" r="3.7"/>
+            <circle class="foot-outline" cx="28" cy="18" r="3.2"/>
+            <circle class="foot-outline" cx="22" cy="22" r="2.8"/>
+            <circle class="foot-sensor" cx="56" cy="32"  r="6.5"/>
+            <circle class="foot-sensor" cx="58" cy="56"  r="6.5"/>
+            <circle class="foot-sensor" cx="30" cy="56"  r="6.5"/>
+            <circle class="foot-sensor" cx="58" cy="100" r="6"/>
+            <circle class="foot-sensor" cx="26" cy="100" r="6"/>
+            <circle class="foot-sensor" cx="46" cy="152" r="9"/>
+          </g>
         </svg>
       </div>
     </div>
@@ -726,7 +766,7 @@ body{
       <div class="metrics-card">
         <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Peak loading</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">σ</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Loading rate</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">BW/s</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°/s</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
@@ -867,8 +907,10 @@ async function pollLiveReport(){
     set('chip-cadence', (d.cadence>0)? d.cadence : '—');
     // GCT not measured in v0.2 — firmware always returns 0; render '—'.
     set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
-    // Loading reported in σ units (see firmware comment) — not BW/s.
-    set('chip-rate',    (d.loadingSigma>0)? d.loadingSigma.toFixed(1)+'σ' : '—');
+    // Loading rate from IMU jerk (BW/s = body-weights per second).
+    // 30–60 BW/s = healthy; 60–80 = elevated; > 80 = injury risk.
+    // 0 means the IMU isn't connected or the device hasn't moved.
+    set('chip-rate',    (d.loadingRate>1)? Math.round(d.loadingRate)+' BW/s' : '—');
   }catch(e){/* network blip — keep last displayed values */}
   finally{ liveReportInFlight=false; }
 }
@@ -982,7 +1024,7 @@ function render(r){
   set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
   set('m-cadence',dashIfZero(r.cadence));
   set('m-contact',dashIfZero(r.contactMs));
-  set('m-loading',dashIfZero(r.loadingSigma,1));
+  set('m-loading',(r.loadingRate>1)? Math.round(r.loadingRate) : '—');
   set('m-pronate',dashIfZero(r.pronate,1));
   if(r.medialPct>0 || r.lateralPct>0){
     set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');

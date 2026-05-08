@@ -17,6 +17,7 @@ volatile bool gRunActive        = false;
 volatile uint32_t gRunElapsedMs = 0;
 volatile uint32_t gLastActiveMs = 0;
 volatile uint32_t gSampleCount  = 0;
+volatile float    gMaxJerkZ     = 0.0f;
 volatile bool gNewSample        = false;
 volatile bool gStartRequested   = false;
 volatile bool gStopRequested    = false;
@@ -43,6 +44,7 @@ static void enter_recording() {
   // Reset all per-run state.
   gRunElapsedMs = 0;
   gSampleCount  = 0;
+  gMaxJerkZ     = 0.0f;
   gLastActiveMs = millis();
   gPauseStartMs = 0;
   fft_reset();
