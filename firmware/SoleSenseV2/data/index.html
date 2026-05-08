@@ -246,6 +246,46 @@ body{
 .rec-chip-val{font-size:20px;font-weight:700;color:var(--blue);line-height:1}
 .rec-chip-label{font-size:11px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
 
+/* ── Foot diagrams (recording screen) ── */
+.feet-wrap{
+  display:flex; gap:16px; justify-content:center; align-items:flex-start;
+  margin-top:14px;
+}
+.foot-card{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:8px 10px; border-radius:14px;
+  background:var(--surface2); border:1px solid var(--border);
+}
+.foot-card.disabled{ opacity:0.45; }
+.foot-card-label{
+  font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.06em; color:var(--text2);
+}
+.foot-card.disabled .foot-card-label{ color:var(--text3); }
+.foot-svg{ width:90px; height:170px; display:block; }
+.foot-outline{
+  fill:#f7f9ff; stroke:#cbd5ff; stroke-width:1.5;
+}
+.foot-card.disabled .foot-outline{ fill:#f4f4f4; stroke:#d0d0d0; }
+.foot-sensor{
+  fill:rgba(37,99,235,0.10);
+  stroke:rgba(37,99,235,0.35); stroke-width:1.2;
+  transition:fill 0.18s linear;
+}
+.foot-card.disabled .foot-sensor{
+  fill:#e0e0e0; stroke:#bdbdbd;
+}
+.foot-sensor.label{
+  font-size:7px; fill:var(--text3); pointer-events:none;
+}
+.foot-legend{
+  display:flex; align-items:center; gap:10px; justify-content:center;
+  margin-top:10px; font-size:11px; color:var(--text3);
+}
+.foot-legend-bar{
+  width:120px; height:6px; border-radius:3px;
+  background:linear-gradient(to right, rgba(37,99,235,0.10), rgba(37,99,235,1));
+}
 .rec-bars{
   width:100%;max-width:340px;
   display:flex;gap:5px;height:80px;align-items:flex-end;
@@ -584,10 +624,56 @@ body{
       </div>
       <div class="rec-chip">
         <div class="rec-chip-val" id="chip-rate">—</div>
-        <div class="rec-chip-label">Load Rate</div>
+        <div class="rec-chip-label">Peak Load (σ)</div>
       </div>
     </div>
-    <div class="rec-bars" id="rec-bars"></div>
+
+    <div class="feet-wrap" id="feet-wrap">
+      <!-- Left foot: 6 sensors at anatomical positions, viewed from below.
+           Heel at bottom, toe at top, lateral on left, medial on right. -->
+      <div class="foot-card" id="foot-left">
+        <div class="foot-card-label">Left foot</div>
+        <svg class="foot-svg" viewBox="0 0 90 170">
+          <path class="foot-outline"
+                d="M 30 10 Q 60 6 60 25 L 65 50 Q 75 70 70 100 Q 72 130 55 158 Q 35 168 22 158 Q 14 130 18 100 Q 14 70 22 50 L 28 25 Q 26 12 30 10 Z"/>
+          <!-- ch5 toe (hallux) — top, slightly medial (right of centre) -->
+          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="50" cy="20" r="7"/>
+          <!-- ch4 ball medial — right of centre, upper -->
+          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="55" cy="50" r="6.5"/>
+          <!-- ch3 ball lateral — left of centre, upper -->
+          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="28" cy="50" r="6.5"/>
+          <!-- ch2 medial mid — right side, middle -->
+          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="56" cy="95" r="6.5"/>
+          <!-- ch1 lateral mid — left side, middle -->
+          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="24" cy="95" r="6.5"/>
+          <!-- ch0 heel — bottom centre -->
+          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="40" cy="148" r="9"/>
+        </svg>
+      </div>
+
+      <!-- Right foot: visual placeholder. No second insole wired in v0.1; circles
+           stay greyed-out so the user sees the eventual layout but doesn't
+           expect data. -->
+      <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
+        <div class="foot-card-label">Right (offline)</div>
+        <svg class="foot-svg" viewBox="0 0 90 170">
+          <path class="foot-outline"
+                d="M 60 10 Q 30 6 30 25 L 25 50 Q 15 70 20 100 Q 18 130 35 158 Q 55 168 68 158 Q 76 130 72 100 Q 76 70 68 50 L 62 25 Q 64 12 60 10 Z"/>
+          <circle class="foot-sensor" cx="40" cy="20" r="7"/>
+          <circle class="foot-sensor" cx="35" cy="50" r="6.5"/>
+          <circle class="foot-sensor" cx="62" cy="50" r="6.5"/>
+          <circle class="foot-sensor" cx="34" cy="95" r="6.5"/>
+          <circle class="foot-sensor" cx="66" cy="95" r="6.5"/>
+          <circle class="foot-sensor" cx="50" cy="148" r="9"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="foot-legend">
+      <span>no pressure</span>
+      <span class="foot-legend-bar"></span>
+      <span>full pressure</span>
+    </div>
   </div>
 
   <div class="rec-bottom">
@@ -640,9 +726,9 @@ body{
       <div class="metrics-card">
         <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Loading rate</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">BW/s</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Pronation angle</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">L / R balance</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Peak loading</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">σ</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°/s</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
       </div>
     </div>
@@ -779,8 +865,10 @@ async function pollLiveReport(){
     const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
     set('rec-steps', d.steps ?? 0);
     set('chip-cadence', (d.cadence>0)? d.cadence : '—');
+    // GCT not measured in v0.2 — firmware always returns 0; render '—'.
     set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
-    set('chip-rate',    (d.loadingRate>0)? d.loadingRate.toFixed(1)+' BW/s' : '—');
+    // Loading reported in σ units (see firmware comment) — not BW/s.
+    set('chip-rate',    (d.loadingSigma>0)? d.loadingSigma.toFixed(1)+'σ' : '—');
   }catch(e){/* network blip — keep last displayed values */}
   finally{ liveReportInFlight=false; }
 }
@@ -809,35 +897,41 @@ function setPausedBadge(paused){
   el.style.display = paused ? 'inline-block' : 'none';
 }
 
-/* Recording-screen bars: one per FSR channel, polled at 5 Hz from /api/sensor.
-   Bar height is proportional to the live ADC reading. If a bar isn't moving
-   when you press the corresponding FSR, the wiring or firmware is wrong. */
-const FSR_LABELS = ['Heel','Lat Mid','Med Mid','Ball Lat','Ball Med','Toe'];
+/* Recording-screen foot diagrams: each of 6 FSR channels lights up its own
+   anatomically-positioned circle on the left foot. Polled at 5 Hz from
+   /api/sensor. The right foot stays greyed-out to communicate "single insole,
+   second one not connected." If a circle doesn't fill in when you press the
+   matching FSR, the wiring or firmware is wrong. */
 const ADC_MAX = 4095;
 
 function buildBars(){
-  const w=document.getElementById('rec-bars');
-  w.innerHTML=FSR_LABELS.map((label,i)=>
-    `<div class="rec-bar" id="rbar-${i}" title="${label}" style="height:8px"></div>`
-  ).join('');
+  // No-op now — the foot-diagram SVG is static markup. Keeping the function
+  // name so startRun's call site doesn't have to change.
+  // Reset all left-foot sensor circles to baseline colour.
+  for(let i=0;i<6;i++){
+    const el=document.getElementById('L-ch'+i);
+    if(el) el.style.fill='rgba(37,99,235,0.10)';
+  }
 }
 
 let barFetchInFlight=false;
 async function animateBars(){
-  if(barFetchInFlight) return;            // skip tick if last call hasn't returned
+  if(barFetchInFlight) return;
   barFetchInFlight=true;
   try{
     const r=await fetch('/api/sensor');
     if(!r.ok) return;
     const d=await r.json();
     if(!Array.isArray(d.fsr)) return;
-    for(let i=0;i<FSR_LABELS.length;i++){
-      const bar=document.getElementById('rbar-'+i);
-      if(!bar) continue;
+    for(let i=0;i<6;i++){
+      const dot=document.getElementById('L-ch'+i);
+      if(!dot) continue;
       const v=Math.max(0,Math.min(ADC_MAX,Number(d.fsr[i])||0));
-      bar.style.height=(8 + (v/ADC_MAX)*78)+'px';
+      const intensity = v / ADC_MAX;                     // 0..1
+      const alpha = 0.10 + intensity * 0.90;             // baseline 0.10 → max 1.0
+      dot.style.fill=`rgba(37, 99, 235, ${alpha.toFixed(3)})`;
     }
-  }catch(e){/* network blip — keep last bar heights, no fake data */}
+  }catch(e){/* network blip — keep last fill colours, no fake data */}
   finally{ barFetchInFlight=false; }
 }
 
@@ -873,22 +967,28 @@ const FLAG_DEFS={
   low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5–10% — don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
   overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy — it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
   supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
-  bilateral_asym:{name:'L/R Asymmetry',severity:'low',what:'One foot is consistently carrying more load than the other. Large differences suggest a strength or mobility imbalance that can cause overuse injuries on the overloaded side.',fix:'Single-leg exercises — deadlifts, step-ups, calf raises — help even out strength differences.'},
-  contact_long:{name:'Long Contact Time',severity:'low',what:"Your foot spends more time on the ground than is typical for efficient running. This usually means you're pushing down into the ground rather than springing off it.",fix:'Think about lifting your feet rather than pushing down. Jump rope and bounding drills train leg reactivity for quicker ground contact.'},
+  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other side. On a single insole this is medial vs lateral pressure imbalance — not left foot vs right foot. Persistent asymmetry can lead to overuse injuries on the overloaded side.',fix:'Stretching the underloaded side and strengthening hip stabilisers tends to help. Single-leg exercises — deadlifts, step-ups, calf raises — even out strength differences. (Detecting true left vs right asymmetry needs a second insole.)'},
 };
 
 /* ── RENDER ── */
 function render(r){
   const fmt=(v,d=0)=>isNaN(v)?'—':Number(v).toFixed(d);
   set('s-steps',r.steps);
-  set('s-cadence',fmt(r.cadence));
+  // v0.2 keys: loadingSigma (σ, no unit conversion), medialPct/lateralPct.
+  // Cadence and contactMs may be 0 — render '—' instead of '0' to be honest.
+  const dashIfZero=(v,decimals=0)=>(!v||v===0)?'—':fmt(v,decimals);
+  set('s-cadence',dashIfZero(r.cadence));
   const m=Math.floor(r.durSec/60),s=Math.round(r.durSec%60);
   set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
-  set('m-cadence',fmt(r.cadence));
-  set('m-contact',fmt(r.contactMs));
-  set('m-loading',fmt(r.loadingRate,1));
-  set('m-pronate',fmt(r.pronate,1));
-  set('m-balance',fmt(r.lPct,0)+'% L / '+fmt(r.rPct,0)+'% R');
+  set('m-cadence',dashIfZero(r.cadence));
+  set('m-contact',dashIfZero(r.contactMs));
+  set('m-loading',dashIfZero(r.loadingSigma,1));
+  set('m-pronate',dashIfZero(r.pronate,1));
+  if(r.medialPct>0 || r.lateralPct>0){
+    set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');
+  } else {
+    set('m-balance','—');
+  }
   set('m-steps',r.steps);
   // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
   // This is more meaningful than % of ADC max — it shows how the runner distributed load.

@@ -175,13 +175,14 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 //   6..8   = accel x/y/z
 //   9..11  = gyro x/y/z
 static void handle_run_report(AsyncWebServerRequest* req) {
-  // ── Cadence: peak FFT bin in the heel channel within the 1–4 Hz stride band
-  // Require a meaningful magnitude before claiming a real cadence. Floating-pin
-  // noise produces tiny non-zero magnitudes in every bin; without a threshold
-  // the loop below would always pick *some* bin and we'd report fake steps.
-  // A clean foot-strike on the heel FSR drives the cadence bin to ~100+; rest
-  // noise sits well under 20. 30 splits them with margin.
-  constexpr float CADENCE_MIN_MAG = 30.0f;
+  // ── Cadence: peak FFT bin in the heel channel within the 1–4 Hz stride band.
+  // Require BOTH a meaningful magnitude AND a minimum number of heel-channel
+  // outliers (= detected impacts). A pure-noise window can occasionally cross
+  // a magnitude threshold; it cannot also produce N>=5 σ-outlier events. The
+  // double gate kills the "67 / 100 fake steps with nothing pressed" bug.
+  constexpr float CADENCE_MIN_MAG       = 50.0f;
+  constexpr uint8_t CADENCE_MIN_OUTLIERS = 5;
+
   uint8_t cadenceBin = 0;
   float   cadenceMag = 0.0f;
   for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
@@ -190,7 +191,15 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     float m = fft_get_magnitude(0, b);   // channel 0 = heel
     if (m > cadenceMag) { cadenceMag = m; cadenceBin = b; }
   }
-  float strideHz = cadenceMag > CADENCE_MIN_MAG ? FFT_BIN_FREQS_HZ[cadenceBin] : 0.0f;
+
+  uint8_t heelOutliers = 0;
+  for (uint8_t i = 0; i < outliers_count(); i++) {
+    if (outliers_at(i).channel == 0) heelOutliers++;
+  }
+
+  bool cadenceValid = (cadenceMag > CADENCE_MIN_MAG)
+                   && (heelOutliers >= CADENCE_MIN_OUTLIERS);
+  float strideHz = cadenceValid ? FFT_BIN_FREQS_HZ[cadenceBin] : 0.0f;
   int   cadence  = (int)(strideHz * 60.0f);
 
   // ── Zone means (raw FSR units; the frontend percentage-ifies for display)
@@ -199,41 +208,44 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float zBall    = (stats_get_mean(3) + stats_get_mean(4)) * 0.5f;
   float zToe     = stats_get_mean(5);
 
-  // ── L/R balance (medial vs lateral on a single foot — UI labels it "L/R")
+  // ── Medial vs lateral on a single insole.
+  // This is NOT left-foot vs right-foot — the system has one insole. The split
+  // is medial (inside of the foot) vs lateral (outside of the foot) loading,
+  // averaging the relevant FSR channels.
   float medial  = (stats_get_mean(2) + stats_get_mean(4) + stats_get_mean(5)) / 3.0f;
   float lateral = (stats_get_mean(1) + stats_get_mean(3)) * 0.5f;
-  float lrTotal = medial + lateral;
-  float lPct    = lrTotal > 0.0f ? medial  / lrTotal * 100.0f : 50.0f;
-  float rPct    = lrTotal > 0.0f ? lateral / lrTotal * 100.0f : 50.0f;
-  float asymPct = fabsf(lPct - rPct);
+  float mlTotal = medial + lateral;
+  float medialPct  = mlTotal > 0.0f ? medial  / mlTotal * 100.0f : 50.0f;
+  float lateralPct = mlTotal > 0.0f ? lateral / mlTotal * 100.0f : 50.0f;
+  float asymPct    = fabsf(medialPct - lateralPct);
 
   // ── Heel-vs-forefoot strike ratio
   float foreLoad  = (zBall + zToe) * 0.5f;
   float hfTotal   = zHeel + foreLoad;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
-  // ── Loading rate (proxy from the largest FSR-channel outlier sigma)
-  float maxFsrSigma = 0.0f;
+  // ── Peak loading (sigma units, NOT body-weight/sec).
+  // Real BW/s requires knowing the runner's body weight and the FSR's force-
+  // calibration curve. We have neither in v0.2, so we report the largest
+  // FSR-channel outlier in σ units (how many stddev above the channel's
+  // running mean). Honest unit, no fake conversion.
+  float loadingSigma = 0.0f;
   for (uint8_t i = 0; i < outliers_count(); i++) {
     const Outlier& o = outliers_at(i);
-    if (o.channel < N_FSR && o.sigma > maxFsrSigma) maxFsrSigma = o.sigma;
+    if (o.channel < N_FSR && o.sigma > loadingSigma) loadingSigma = o.sigma;
   }
-  // Sigma units → BW/s proxy. Scaling is calibration-pending; ~10× sigma puts
-  // typical hard heel-strike outliers in the 30–80 range, which lines up with
-  // the v0.1 thresholds the dao UI used.
-  float loadingRate = maxFsrSigma * 10.0f;
 
   // ── Pronation: running mean of gyro_x (degrees/s).
   // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.
-  // Note: this is a first-order indicator. Per-stride integration would be
-  // more accurate but needs time-domain sample access we don't keep in v0.2.
+  // First-order only. Reports 0 if the IMU isn't connected (Welford mean is 0).
   float pronate = stats_get_mean(N_FSR + 3);   // channel 9 = gyro_x
 
-  // ── Ground contact time (proxy from cadence)
-  // Distance running typically has GCT ≈ 30–40% of stride period. Without
-  // time-domain raw samples we estimate from cadence; tune by team if needed.
-  float strideMs = strideHz > 0.0f ? 1000.0f / strideHz : 0.0f;
-  float contactMs = strideMs * 0.35f;
+  // ── Ground contact time
+  // Real GCT requires per-stride heel-strike-to-toe-off detection in the time
+  // domain, which v0.2 doesn't keep (we only store the FFT spectrum + outliers).
+  // The "35% of stride period" proxy was misleading; better to report 0/null
+  // than a fabricated value.
+  float contactMs = 0.0f;
 
   // ── Step count (from cadence × duration)
   uint32_t durMs  = gRunElapsedMs;
@@ -256,8 +268,10 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   if (heelRatio > 65.0f && zHeel > zBall + 10.0f) {
     pushFlag("heel_strike", String((int)heelRatio) + "% heel load");
   }
-  if (loadingRate > 60.0f) {
-    pushFlag("high_loading", String(loadingRate, 1) + " BW/s");
+  // Loading-spike flag: σ above 6.0 = ~2× the σ-threshold the outlier detector
+  // already requires (3.0). Empirical, tune later when we have body-weight cal.
+  if (loadingSigma > 6.0f) {
+    pushFlag("high_loading", String(loadingSigma, 1) + " σ peak");
   }
   if (cadence > 0 && cadence < 160) {
     pushFlag("low_cadence", String(cadence) + " steps/min");
@@ -268,34 +282,36 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     pushFlag("supination", String(fabsf(pronate), 1) + "°/s outward");
   }
   if (asymPct > 10.0f) {
-    pushFlag("bilateral_asym",
-             String((int)lPct) + "% L / " + String((int)rPct) + "% R");
+    pushFlag("medial_lateral_asym",
+             String((int)medialPct) + "% med / " + String((int)lateralPct) + "% lat");
   }
-  if (contactMs > 300.0f) {
-    pushFlag("contact_long", String((int)contactMs) + " ms");
-  }
+  // GCT flag suppressed in v0.2 — we don't measure it honestly. Re-enable
+  // when time-domain step detection lands.
   flags += "]";
 
-  // ── Build response (shape matches what dao/index.html's render() consumes)
+  // ── Build response.
+  // v0.2 schema: medialPct/lateralPct (not lPct/rPct), loadingSigma (not
+  // loadingRate BW/s), contactMs reports 0 when unmeasured. Frontend uses
+  // these new keys and shows "—" for any value at 0.
   String j = "{";
-  j += "\"steps\":";       j += steps;                    j += ",";
-  j += "\"cadence\":";     j += cadence;                  j += ",";
-  j += "\"durSec\":";      j += (unsigned long)durSec;    j += ",";
-  j += "\"contactMs\":";   j += String(contactMs, 1);     j += ",";
-  j += "\"loadingRate\":"; j += String(loadingRate, 1);   j += ",";
-  j += "\"pronate\":";     j += String(pronate, 2);       j += ",";
-  j += "\"lPct\":";        j += String(lPct, 1);          j += ",";
-  j += "\"rPct\":";        j += String(rPct, 1);          j += ",";
+  j += "\"steps\":";        j += steps;                     j += ",";
+  j += "\"cadence\":";      j += cadence;                   j += ",";
+  j += "\"durSec\":";       j += (unsigned long)durSec;     j += ",";
+  j += "\"contactMs\":";    j += String(contactMs, 1);      j += ",";
+  j += "\"loadingSigma\":"; j += String(loadingSigma, 2);   j += ",";
+  j += "\"pronate\":";      j += String(pronate, 2);        j += ",";
+  j += "\"medialPct\":";    j += String(medialPct, 1);      j += ",";
+  j += "\"lateralPct\":";   j += String(lateralPct, 1);     j += ",";
   j += "\"zoneAvg\":{";
-  j +=   "\"heel\":";      j += String(zHeel, 1);         j += ",";
-  j +=   "\"midfoot\":";   j += String(zMidfoot, 1);      j += ",";
-  j +=   "\"ball\":";      j += String(zBall, 1);         j += ",";
-  j +=   "\"toe\":";       j += String(zToe, 1);
+  j +=   "\"heel\":";       j += String(zHeel, 1);          j += ",";
+  j +=   "\"midfoot\":";    j += String(zMidfoot, 1);       j += ",";
+  j +=   "\"ball\":";       j += String(zBall, 1);          j += ",";
+  j +=   "\"toe\":";        j += String(zToe, 1);
   j += "},";
-  j += "\"flags\":";       j += flags;                    j += ",";
-  j += "\"durationMs\":";  j += (unsigned long)durMs;     j += ",";
-  j += "\"samples\":";     j += (unsigned long)gSampleCount; j += ",";
-  j += "\"outliers\":";    j += (unsigned)outliers_count();
+  j += "\"flags\":";        j += flags;                     j += ",";
+  j += "\"durationMs\":";   j += (unsigned long)durMs;      j += ",";
+  j += "\"samples\":";      j += (unsigned long)gSampleCount; j += ",";
+  j += "\"outliers\":";     j += (unsigned)outliers_count();
   j += "}";
   req->send(200, "application/json", j);
 }
