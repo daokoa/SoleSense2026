@@ -726,8 +726,9 @@ function showScreen(id){
   window.scrollTo(0,0);
 }
 
-/* ── RECORDING (v0.2: timer + paused state come from /api/run-state) ── */
-let stateInterval=null,barInterval=null;
+/* ── RECORDING (v0.2: timer + paused state come from /api/run-state;
+       chips and steps come from /api/run-report polled during recording) ── */
+let stateInterval=null,barInterval=null,reportInterval=null;
 let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 
 function startRun(){
@@ -735,25 +736,53 @@ function startRun(){
   recSeconds=0;
   document.getElementById('rec-timer').textContent='0:00';
   setPausedBadge(false);
+  // Reset chips so stale values from a prior run don't linger.
+  ['rec-steps','chip-cadence','chip-contact','chip-rate'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='—';
+  });
+  document.getElementById('rec-steps').textContent='0';
   showScreen('recording');
   buildBars();
   // 1 Hz timer + paused-state poll. Truth comes from MCU, not JS.
   stateInterval=setInterval(pollRunState,1000);
   // 5 Hz live FSR snapshot for the bars.
   barInterval=setInterval(animateBars,200);
+  // 0.5 Hz report poll for the live cadence/contact/rate chips + step counter.
+  // Don't run this faster than ~2 sec — /api/run-report walks all FFT bins
+  // and the outlier buffer to assemble its JSON, so it's heavier than
+  // /api/run-state. Report values only meaningfully refresh once per FFT
+  // window anyway (FFT_WIN_SIZE=256 / Fs=50 = ~5 sec).
+  reportInterval=setInterval(pollLiveReport,2000);
 }
 
 function stopRun(){
-  clearInterval(stateInterval); clearInterval(barInterval);
+  clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
   fetch('/api/stop',{method:'POST'}).catch(()=>{});
   showLoading('Processing your run…');
   setTimeout(()=>loadReport(), 1200);
 }
 
 function cancelRun(){
-  clearInterval(stateInterval); clearInterval(barInterval);
+  clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
   fetch('/api/stop',{method:'POST'}).catch(()=>{});
   showScreen('home');
+}
+
+let liveReportInFlight=false;
+async function pollLiveReport(){
+  if(liveReportInFlight) return;
+  liveReportInFlight=true;
+  try{
+    const r=await fetch('/api/run-report');
+    if(!r.ok) return;
+    const d=await r.json();
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    set('rec-steps', d.steps ?? 0);
+    set('chip-cadence', (d.cadence>0)? d.cadence : '—');
+    set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
+    set('chip-rate',    (d.loadingRate>0)? d.loadingRate.toFixed(1)+' BW/s' : '—');
+  }catch(e){/* network blip — keep last displayed values */}
+  finally{ liveReportInFlight=false; }
 }
 
 let stateFetchInFlight=false;

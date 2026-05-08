@@ -176,6 +176,12 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 //   9..11  = gyro x/y/z
 static void handle_run_report(AsyncWebServerRequest* req) {
   // ── Cadence: peak FFT bin in the heel channel within the 1–4 Hz stride band
+  // Require a meaningful magnitude before claiming a real cadence. Floating-pin
+  // noise produces tiny non-zero magnitudes in every bin; without a threshold
+  // the loop below would always pick *some* bin and we'd report fake steps.
+  // A clean foot-strike on the heel FSR drives the cadence bin to ~100+; rest
+  // noise sits well under 20. 30 splits them with margin.
+  constexpr float CADENCE_MIN_MAG = 30.0f;
   uint8_t cadenceBin = 0;
   float   cadenceMag = 0.0f;
   for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
@@ -184,7 +190,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     float m = fft_get_magnitude(0, b);   // channel 0 = heel
     if (m > cadenceMag) { cadenceMag = m; cadenceBin = b; }
   }
-  float strideHz = cadenceMag > 0.0f ? FFT_BIN_FREQS_HZ[cadenceBin] : 0.0f;
+  float strideHz = cadenceMag > CADENCE_MIN_MAG ? FFT_BIN_FREQS_HZ[cadenceBin] : 0.0f;
   int   cadence  = (int)(strideHz * 60.0f);
 
   // ── Zone means (raw FSR units; the frontend percentage-ifies for display)
