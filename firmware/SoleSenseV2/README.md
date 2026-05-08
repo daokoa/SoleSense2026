@@ -52,7 +52,16 @@ What's still pending:
 
 ## Compile / flash
 
-The same Arduino IDE setup as v0.1. Open `firmware/SoleSenseV2/SoleSenseV2.ino` (note the matching folder + file name — Arduino IDE requirement) and Upload.
+The same Arduino IDE setup as v0.1. Open `firmware/SoleSenseV2/SoleSenseV2.ino` (note the matching folder + file name — Arduino IDE requirement) and Upload to flash the sketch.
+
+For LittleFS data (the frontend), sync from `software/frontend/dao-v2/` then run the v0.2 flash script:
+
+```bash
+cp software/frontend/dao-v2/index.html firmware/SoleSenseV2/data/index.html
+bash firmware/SoleSenseV2/flash-littlefs.sh
+```
+
+The script auto-detects mklittlefs/esptool/USB port — same logic as the v0.1 one, just pointed at the v0.2 sketch's `data/` folder. After flashing, verify v0.2 is running by hitting `http://192.168.4.1/api/device` and confirming the firmware field reports v0.2.
 
 ## Where to start contributing
 
