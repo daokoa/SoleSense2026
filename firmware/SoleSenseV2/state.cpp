@@ -35,6 +35,7 @@ static uint32_t sLastFlushMs = 0;
 static bool     sHeelInContact          = false;
 static uint32_t sStepContactStartMs     = 0;
 static uint32_t sStepLastImpactMs       = 0;
+static float    sStepPeak               = 0.0f;   // peak heel ADC seen during current contact
 
 void state_init() {
   gState           = RS_IDLE;
@@ -64,6 +65,7 @@ static void enter_recording() {
   sHeelInContact      = false;
   sStepContactStartMs = 0;
   sStepLastImpactMs   = 0;
+  sStepPeak           = 0.0f;
   fft_reset();
   outliers_reset();
   stats_reset();
@@ -131,20 +133,27 @@ const char* state_name() {
 }
 
 // ── Time-domain step detector ─────────────────────────────────────────────────
-// Schmitt-trigger on the heel channel. Rising edge above ABSOLUTE FSR floor is
-// a heel-strike; falling edge below the release floor is a toe-off. The
-// refractory period (150 ms ≈ 6.7 Hz cap) suppresses double-counting on FSR
-// bounce or fingertip lift-tap. Contact intervals outside [50, 800] ms are
-// dropped from the GCT average — anything shorter is debounce noise, anything
-// longer is leaning rather than a step.
+// Schmitt-trigger on the heel channel with a *peak-relative* fall threshold so
+// it survives FSR baseline drift. The previous absolute fall (heel < 200 ADC)
+// silently broke when the FSR's at-rest reading sat above 200: the detector
+// fired once on the first press, then never re-armed for the entire run.
 //
-// We use absolute ADC values (not mean-relative) on purpose: the Welford
-// running mean would drift upward with every press and the running σ would
-// be poisoned by the press samples themselves, killing detection of the
-// second-and-later presses. The FSR rests around 0–150 ADC and a real press
-// reaches 500–3000+, so a fixed 400-ADC cutoff cleanly separates them
-// without any mean/σ tracking. heelMean / heelStddev are still passed in for
-// future EMA-baseline work but currently unused.
+// Algorithm per sample, while heel composite = max(ch0, ch1):
+//   - Idle, heel > RISE_THRESHOLD, refractory expired → STRIKE.
+//                Track sStepPeak from the strike onward.
+//   - In-contact, heel > sStepPeak → update peak.
+//   - In-contact, heel < sStepPeak × FALL_FRACTION → TOE-OFF.
+//   - In-contact, contactMs > MAX_CONTACT_MS → TIMEOUT release (force-clear,
+//                bump refractory so we don't immediately re-strike on a
+//                still-high signal).
+//
+// Contact intervals outside [50, 800] ms are dropped from the GCT average:
+// shorter is debounce noise, longer is a lean rather than a step. The 150 ms
+// refractory caps detected cadence at ≈6.7 Hz — well above any real running
+// stride rate.
+//
+// heelMean / heelStddev are still passed in for future EMA-baseline work but
+// currently unused.
 void step_detector_update(float heelValue, float heelMean, float heelStddev,
                           uint32_t nowMs) {
   (void)heelMean;
@@ -152,32 +161,51 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
   if (gState != RS_RECORDING) return;
 
   constexpr float    STEP_RISE_THRESHOLD = 400.0f;   // raw ADC: clearly pressed
-  constexpr float    STEP_FALL_THRESHOLD = 200.0f;   // raw ADC: clearly released
+  constexpr float    STEP_FALL_FRACTION  = 0.5f;     // fall < peak × this
   constexpr uint32_t STEP_REFRACTORY_MS  = 150;      // min interval between strikes
   constexpr uint32_t MIN_CONTACT_MS      = 50;       // shorter = bounce, drop
-  constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, drop
+  constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, force-release
 
   if (!sHeelInContact
       && heelValue > STEP_RISE_THRESHOLD
       && (nowMs - sStepLastImpactMs) > STEP_REFRACTORY_MS) {
-    // Heel strike.
+    // Tentative strike: start tracking contact, but DON'T increment gStepCount
+    // yet. We only credit a step when the contact passes the validity gate at
+    // toe-off. FSR signals ring during a single physical press (rises, drops
+    // below peak/2, rises again), and without this gate every ring counts as
+    // a step — that's the "98 steps from 6 presses" bug.
     sHeelInContact      = true;
     sStepContactStartMs = nowMs;
     sStepLastImpactMs   = nowMs;
-    gStepCount++;
-    Serial.printf("[Step] strike #%lu  heel=%.0f @ %lu ms\n",
-                  (unsigned long)gStepCount, heelValue, (unsigned long)nowMs);
-  } else if (sHeelInContact && heelValue < STEP_FALL_THRESHOLD) {
-    // Toe-off.
-    sHeelInContact = false;
-    uint32_t contactMs = nowMs - sStepContactStartMs;
-    Serial.printf("[Step] toeoff      heel=%.0f  contact=%lu ms %s\n",
-                  heelValue, (unsigned long)contactMs,
-                  (contactMs >= MIN_CONTACT_MS && contactMs <= MAX_CONTACT_MS)
-                    ? "[counted]" : "[dropped]");
-    if (contactMs >= MIN_CONTACT_MS && contactMs <= MAX_CONTACT_MS) {
-      gContactSumMs += contactMs;
-      gContactCount++;
+    sStepPeak           = heelValue;
+    Serial.printf("[Step] tentative   heel=%.0f @ %lu ms\n",
+                  heelValue, (unsigned long)nowMs);
+  } else if (sHeelInContact) {
+    // Track impact peak so the relative fall threshold scales with each strike.
+    if (heelValue > sStepPeak) sStepPeak = heelValue;
+
+    uint32_t contactSoFar  = nowMs - sStepContactStartMs;
+    bool relativeRelease   = heelValue < sStepPeak * STEP_FALL_FRACTION;
+    bool timeoutRelease    = contactSoFar > MAX_CONTACT_MS;
+
+    if (relativeRelease || timeoutRelease) {
+      sHeelInContact = false;
+      bool valid = (contactSoFar >= MIN_CONTACT_MS && contactSoFar <= MAX_CONTACT_MS);
+      if (valid) {
+        gStepCount++;
+        gContactSumMs += contactSoFar;
+        gContactCount++;
+      }
+      Serial.printf("[Step] %s heel=%.0f peak=%.0f contact=%lu ms #%lu%s\n",
+                    valid ? "STEP    " : "discard ",
+                    heelValue, sStepPeak, (unsigned long)contactSoFar,
+                    (unsigned long)gStepCount,
+                    timeoutRelease ? " TIMEOUT" : "");
+      if (timeoutRelease) {
+        // Don't immediately re-strike on a still-high signal — bump the
+        // refractory window so the user must release-and-press again.
+        sStepLastImpactMs = nowMs;
+      }
     }
   }
 }

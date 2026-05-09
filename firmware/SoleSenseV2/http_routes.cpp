@@ -237,8 +237,11 @@ static void handle_run_report(AsyncWebServerRequest* req) {
 
   // ── Pronation: running mean of gyro_x (degrees/s).
   // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.
-  // First-order only. Reports 0 if the IMU isn't connected (Welford mean is 0).
+  // First-order only. Clamp to 0 if below the noise-floor (|x| < 0.5 °/s,
+  // well under the 8-15 °/s flag thresholds) so the UI shows "0.0°" instead
+  // of an ugly "-0.00°" when the IMU is disconnected or perfectly zeroed.
   float pronate = stats_get_mean(N_FSR + 3);   // channel 9 = gyro_x
+  if (fabsf(pronate) < 0.5f) pronate = 0.0f;
 
   // ── Ground contact time: average of per-step heel-strike→toe-off intervals
   // recorded by the time-domain step detector. 0 until at least one valid
