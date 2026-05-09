@@ -795,7 +795,7 @@ body{
       </div>
       <div class="rec-chip">
         <div class="rec-chip-val" id="chip-rate">—</div>
-        <div class="rec-chip-label">Loading (BW/s)</div>
+        <div class="rec-chip-label">Impact</div>
       </div>
     </div>
 
@@ -924,7 +924,7 @@ body{
       <div class="metrics-card">
         <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Loading rate</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">BW/s</span></span></div>
+        <div class="metrics-row"><span class="metrics-key" title="How quickly force builds when your foot hits the ground. Healthy / Elevated / High.">Impact rate</span><span class="metrics-val"><span id="m-loading">—</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°/s</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
         <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
@@ -1283,10 +1283,8 @@ async function pollLiveReport(){
     set('chip-cadence', (d.cadence>0)? d.cadence : '—');
     // GCT not measured in v0.2 — firmware always returns 0; render '—'.
     set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
-    // Loading rate from IMU jerk (BW/s = body-weights per second).
-    // 30–60 BW/s = healthy; 60–80 = elevated; > 80 = injury risk.
-    // 0 means the IMU isn't connected or the device hasn't moved.
-    set('chip-rate',    (d.loadingRate>1)? Math.round(d.loadingRate)+' BW/s' : '—');
+    // Impact category — plain English instead of BW/s.
+    set('chip-rate',    impactCategory(d.loadingRate).label);
   }catch(e){/* network blip — keep last displayed values */}
   finally{ liveReportInFlight=false; }
 }
@@ -1375,6 +1373,19 @@ async function animateBars(){
     }
   }catch(e){/* network blip — keep last fill colours, no fake data */}
   finally{ barFetchInFlight=false; }
+}
+
+/* Impact Rate is what we used to call "loading rate (BW/s)". The number
+ * itself is body-weights-per-second — an honest biomechanics metric, but
+ * incomprehensible to a runner who hasn't read Milner 2006. We display
+ * a plain-English category instead, with the number tucked alongside for
+ * runners who care. The firmware payload still uses loading_rate_bws so
+ * the LLM coach has the precision it needs. */
+function impactCategory(bws){
+  if (!bws || bws < 1)   return { label: '—',         num: '' };
+  if (bws < 60)          return { label: 'Healthy',   num: Math.round(bws).toString() };
+  if (bws < 80)          return { label: 'Elevated',  num: Math.round(bws).toString() };
+  return                       { label: 'High',      num: Math.round(bws).toString() };
 }
 
 /* ── AI COACH (LLM analysis via Cloudflare Worker proxy) ────────────────────
@@ -1536,7 +1547,7 @@ function viewLastReport(){
 /* ── FLAG DEFS ── */
 const FLAG_DEFS={
   heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot. This creates a braking force with every step that sends a shock wave up through your knee and hip.',fix:'Try landing with your foot closer under your hips. A slight forward lean from the ankles naturally encourages a midfoot landing. Shorter, quicker steps help more than consciously changing foot placement.'},
-  high_loading:{name:'High Loading Rate',severity:'high',what:"Force is building through your foot very quickly on impact. High loading rate is one of the strongest predictors of stress fractures and shin splints — your muscles aren't absorbing impact gradually enough.",fix:'Focus on landing softly — imagine running quietly. Increasing your cadence by 5–10% is the most reliable way to reduce loading rate. Slightly more knee bend at landing also helps.'},
+  high_loading:{name:'High Impact Rate',severity:'high',what:"Force is building through your foot very quickly when you land. A high impact rate is one of the strongest predictors of stress fractures and shin splints — your muscles aren't absorbing the landing gradually enough.",fix:'Focus on landing softly — imagine running quietly. Increasing your cadence by 5–10 % is the most reliable way to reduce impact rate. A slightly more bent knee at landing also helps.'},
   low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5–10% — don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
   overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy — it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
   supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
@@ -1555,7 +1566,10 @@ function render(r){
   set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
   set('m-cadence',dashIfZero(r.cadence));
   set('m-contact',dashIfZero(r.contactMs));
-  set('m-loading',(r.loadingRate>1)? Math.round(r.loadingRate) : '—');
+  // Impact rate: render category + the precise number in parentheses for
+  // those who want it. e.g. "Healthy (45)" / "Elevated (72)" / "High (90)".
+  const ic = impactCategory(r.loadingRate);
+  set('m-loading', ic.num ? `${ic.label} (${ic.num})` : ic.label);
   set('m-pronate',dashIfZero(r.pronate,1));
   if(r.medialPct>0 || r.lateralPct>0){
     set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');

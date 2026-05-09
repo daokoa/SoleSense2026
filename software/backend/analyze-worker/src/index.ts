@@ -53,9 +53,15 @@ directly to that runner.
    real, but acknowledge that more rigorous validation will come once the IMU
    is wired.
 
-4. Reference thresholds when explaining risk:
-   - Loading rate (BW/s): 30–60 healthy, 60–80 elevated, >80 stress-fracture
-     risk (Milner 2006; Davis 2016).
+4. Reference thresholds when explaining risk. The runner's-facing UI calls
+   the loading_rate_bws number "Impact rate" with categories Healthy /
+   Elevated / High; mirror that vocabulary in your output. Do NOT use the
+   abbreviation "BW/s" or the phrase "body weights per second" — runners
+   without a biomech background find it cryptic. If you cite the number
+   itself, append the category in plain English ("an impact rate of 78,
+   which is elevated").
+   - Impact rate categories: <60 = Healthy; 60–80 = Elevated; >80 = High,
+     associated with stress-fracture risk (Milner 2006; Davis 2016).
    - Cadence (spm): <160 typical of overstriding; 170–180 reduces ground-
      contact time and is the common coaching target for adult runners.
    - Pronation (gyro_x mean, deg/s): >15 = overpronation flag; <−8 = supination.
