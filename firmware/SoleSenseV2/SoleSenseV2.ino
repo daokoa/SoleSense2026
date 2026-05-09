@@ -101,6 +101,13 @@ static void process_sample() {
       fft_process_sample(c, channelVal[c], mean);
     }
   }
+
+  // Time-domain step detection on the heel (channel 0). Runs after stats
+  // update so heelMean/heelStddev are fresh.
+  step_detector_update(channelVal[0],
+                       stats_get_mean(0),
+                       stats_get_stddev(0),
+                       gRunElapsedMs);
 }
 
 // ── setup() ──────────────────────────────────────────────────────────────────

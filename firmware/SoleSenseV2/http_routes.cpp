@@ -175,32 +175,17 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 //   6..8   = accel x/y/z
 //   9..11  = gyro x/y/z
 static void handle_run_report(AsyncWebServerRequest* req) {
-  // ── Cadence: peak FFT bin in the heel channel within the 1–4 Hz stride band.
-  // Require BOTH a meaningful magnitude AND a minimum number of heel-channel
-  // outliers (= detected impacts). A pure-noise window can occasionally cross
-  // a magnitude threshold; it cannot also produce N>=5 σ-outlier events. The
-  // double gate kills the "67 / 100 fake steps with nothing pressed" bug.
-  constexpr float CADENCE_MIN_MAG       = 50.0f;
-  constexpr uint8_t CADENCE_MIN_OUTLIERS = 5;
-
-  uint8_t cadenceBin = 0;
-  float   cadenceMag = 0.0f;
-  for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
-    float f = FFT_BIN_FREQS_HZ[b];
-    if (f < 1.0f || f > 4.0f) continue;
-    float m = fft_get_magnitude(0, b);   // channel 0 = heel
-    if (m > cadenceMag) { cadenceMag = m; cadenceBin = b; }
+  // ── Cadence + step count: time-domain heel-strike detector (state.cpp).
+  // Each rising edge through max(floor, 4σ) is a step; cadence is just
+  // steps × 60 / runtime. Wait for ≥2 s of recording before reporting cadence
+  // so very-short-run noise doesn't produce a wild number.
+  uint32_t durMs  = gRunElapsedMs;
+  uint32_t durSec = durMs / 1000UL;
+  int   steps   = (int)gStepCount;
+  int   cadence = 0;
+  if (durMs >= 2000UL && gStepCount > 0) {
+    cadence = (int)((uint64_t)gStepCount * 60000ULL / (uint64_t)durMs);
   }
-
-  uint8_t heelOutliers = 0;
-  for (uint8_t i = 0; i < outliers_count(); i++) {
-    if (outliers_at(i).channel == 0) heelOutliers++;
-  }
-
-  bool cadenceValid = (cadenceMag > CADENCE_MIN_MAG)
-                   && (heelOutliers >= CADENCE_MIN_OUTLIERS);
-  float strideHz = cadenceValid ? FFT_BIN_FREQS_HZ[cadenceBin] : 0.0f;
-  int   cadence  = (int)(strideHz * 60.0f);
 
   // ── Zone means (raw FSR units; the frontend percentage-ifies for display)
   float zHeel    = stats_get_mean(0);
@@ -242,17 +227,13 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   // First-order only. Reports 0 if the IMU isn't connected (Welford mean is 0).
   float pronate = stats_get_mean(N_FSR + 3);   // channel 9 = gyro_x
 
-  // ── Ground contact time
-  // Real GCT requires per-stride heel-strike-to-toe-off detection in the time
-  // domain, which v0.2 doesn't keep (we only store the FFT spectrum + outliers).
-  // The "35% of stride period" proxy was misleading; better to report 0/null
-  // than a fabricated value.
-  float contactMs = 0.0f;
-
-  // ── Step count (from cadence × duration)
-  uint32_t durMs  = gRunElapsedMs;
-  uint32_t durSec = durMs / 1000UL;
-  int      steps  = strideHz > 0.0f ? (int)(strideHz * (float)durSec) : 0;
+  // ── Ground contact time: average of per-step heel-strike→toe-off intervals
+  // recorded by the time-domain step detector. 0 until at least one valid
+  // contact interval (frontend renders that as "—").
+  float contactMs = gContactCount > 0
+                  ? (float)gContactSumMs / (float)gContactCount
+                  : 0.0f;
+  (void)durSec;
 
   // ── Injury flags (same thresholds as v0.1 dao THRESH constants)
   String flags = "[";

@@ -24,7 +24,16 @@ volatile bool gStopRequested    = false;
 volatile bool gSleepRequested   = false;
 volatile uint32_t gPauseStartMs = 0;
 
+volatile uint32_t gStepCount    = 0;
+volatile uint32_t gContactSumMs = 0;
+volatile uint32_t gContactCount = 0;
+
 static uint32_t sLastFlushMs = 0;
+
+// Step-detector state (private to this translation unit; reset at /api/start).
+static bool     sHeelInContact          = false;
+static uint32_t sStepContactStartMs     = 0;
+static uint32_t sStepLastImpactMs       = 0;
 
 void state_init() {
   gState           = RS_IDLE;
@@ -47,6 +56,12 @@ static void enter_recording() {
   gMaxJerkZ     = 0.0f;
   gLastActiveMs = millis();
   gPauseStartMs = 0;
+  gStepCount    = 0;
+  gContactSumMs = 0;
+  gContactCount = 0;
+  sHeelInContact      = false;
+  sStepContactStartMs = 0;
+  sStepLastImpactMs   = 0;
   fft_reset();
   outliers_reset();
   stats_reset();
@@ -111,4 +126,45 @@ void state_tick() {
 
 const char* state_name() {
   return gState == RS_IDLE ? "idle" : "recording";
+}
+
+// ── Time-domain step detector ─────────────────────────────────────────────────
+// Schmitt-trigger on the heel channel. Rising edge above max(floor, 4σ) is a
+// heel-strike; falling edge below the hysteresis floor is a toe-off. The
+// refractory period (150 ms ≈ 6.7 Hz cap) suppresses double-counting on FSR
+// bounce or fingertip lift-tap. Contact intervals outside [50, 800] ms are
+// dropped from the GCT average — anything shorter is debounce noise, anything
+// longer is leaning rather than a step.
+void step_detector_update(float heelValue, float heelMean, float heelStddev,
+                          uint32_t nowMs) {
+  if (gState != RS_RECORDING) return;
+
+  constexpr float    STEP_RISE_FLOOR     = 200.0f;   // ADC counts above mean
+  constexpr float    STEP_RISE_SIGMA     = 4.0f;     // OR exceeds Nσ above mean
+  constexpr float    STEP_FALL_FLOOR     = 80.0f;    // hysteresis release
+  constexpr uint32_t STEP_REFRACTORY_MS  = 150;      // min interval between strikes
+  constexpr uint32_t MIN_CONTACT_MS      = 50;       // shorter = bounce, drop
+  constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, drop
+
+  float delta       = heelValue - heelMean;
+  float sigmaThresh = STEP_RISE_SIGMA * heelStddev;
+  float riseThresh  = sigmaThresh > STEP_RISE_FLOOR ? sigmaThresh : STEP_RISE_FLOOR;
+
+  if (!sHeelInContact
+      && delta > riseThresh
+      && (nowMs - sStepLastImpactMs) > STEP_REFRACTORY_MS) {
+    // Heel strike.
+    sHeelInContact      = true;
+    sStepContactStartMs = nowMs;
+    sStepLastImpactMs   = nowMs;
+    gStepCount++;
+  } else if (sHeelInContact && delta < STEP_FALL_FLOOR) {
+    // Toe-off.
+    sHeelInContact = false;
+    uint32_t contactMs = nowMs - sStepContactStartMs;
+    if (contactMs >= MIN_CONTACT_MS && contactMs <= MAX_CONTACT_MS) {
+      gContactSumMs += contactMs;
+      gContactCount++;
+    }
+  }
 }

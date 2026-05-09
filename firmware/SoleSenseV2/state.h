@@ -30,6 +30,24 @@ extern volatile uint32_t gLastActiveMs;
 // Total sample count for the current run (rolls back to 0 on /api/start).
 extern volatile uint32_t gSampleCount;
 
+// Time-domain step detection. Updated by step_detector_update() from
+// process_sample() once per sample. Reset to 0 on /api/start.
+//   gStepCount    — total heel-strikes detected this run
+//   gContactSumMs — sum of valid heel-strike-to-toe-off durations
+//   gContactCount — number of valid contact intervals contributing to the sum
+// Average contact time = gContactSumMs / gContactCount when count > 0.
+extern volatile uint32_t gStepCount;
+extern volatile uint32_t gContactSumMs;
+extern volatile uint32_t gContactCount;
+
+// Time-domain step detector. Call once per sample from process_sample(),
+// after stats_update() for the heel channel so heelMean / heelStddev are
+// fresh. Detects heel strikes (rising-edge through max(floor, 4σ)) and
+// toe-offs (falling-edge through hysteresis floor), with a 150 ms refractory
+// period to suppress double-counting.
+void step_detector_update(float heelValue, float heelMean, float heelStddev,
+                          uint32_t nowMs);
+
 // Peak vertical jerk (|d(accel_z)/dt|) seen during the current run, in m/s³.
 // FSR 402 saturates at ~10 kg so it can't measure peak running force directly
 // (running impact is 100–200 kg of ground reaction). Vertical jerk from the
