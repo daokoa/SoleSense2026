@@ -102,9 +102,13 @@ static void process_sample() {
     }
   }
 
-  // Time-domain step detection on the heel (channel 0). Runs after stats
-  // update so heelMean/heelStddev are fresh.
-  step_detector_update(channelVal[0],
+  // Time-domain step detection on the heel zone. Two heel sensors (ch0
+  // medial, ch1 lateral); take the max so a strike on EITHER side fires
+  // the detector. Mean/stddev are passed in for future EMA-baseline use
+  // but currently unused by the absolute-threshold detector.
+  float heelComposite = channelVal[0] > channelVal[1]
+                      ? channelVal[0] : channelVal[1];
+  step_detector_update(heelComposite,
                        stats_get_mean(0),
                        stats_get_stddev(0),
                        gRunElapsedMs);

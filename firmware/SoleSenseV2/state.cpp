@@ -163,10 +163,16 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
     sStepContactStartMs = nowMs;
     sStepLastImpactMs   = nowMs;
     gStepCount++;
+    Serial.printf("[Step] strike #%lu  heel=%.0f @ %lu ms\n",
+                  (unsigned long)gStepCount, heelValue, (unsigned long)nowMs);
   } else if (sHeelInContact && heelValue < STEP_FALL_THRESHOLD) {
     // Toe-off.
     sHeelInContact = false;
     uint32_t contactMs = nowMs - sStepContactStartMs;
+    Serial.printf("[Step] toeoff      heel=%.0f  contact=%lu ms %s\n",
+                  heelValue, (unsigned long)contactMs,
+                  (contactMs >= MIN_CONTACT_MS && contactMs <= MAX_CONTACT_MS)
+                    ? "[counted]" : "[dropped]");
     if (contactMs >= MIN_CONTACT_MS && contactMs <= MAX_CONTACT_MS) {
       gContactSumMs += contactMs;
       gContactCount++;

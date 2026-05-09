@@ -170,10 +170,14 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 // channel stats. Mirrors the v0.1 dao analyse() function but pulls data from
 // the device-side modules instead of parsed CSV rows.
 //
-// Channel index reminder:
-//   0..5   = FSRs (heel, lat-mid, med-mid, ball-lat, ball-med, toe-1)
-//   6..8   = accel x/y/z
-//   9..11  = gyro x/y/z
+// Channel index reminder (3-zone × medial/lateral layout, Choi 2024 +E-at-heel):
+//   0 = heel medial,     1 = heel lateral
+//   2 = midfoot medial,  3 = midfoot lateral
+//   4 = forefoot medial, 5 = forefoot lateral   (sensors at the front, near
+//                                                 the metatarsal heads /
+//                                                 just behind the toe row)
+//   6..8  = accel x/y/z
+//   9..11 = gyro x/y/z
 static void handle_run_report(AsyncWebServerRequest* req) {
   // ── Cadence + step count: time-domain heel-strike detector (state.cpp).
   // Each rising edge through max(floor, 4σ) is a step; cadence is just
@@ -187,26 +191,25 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     cadence = (int)((uint64_t)gStepCount * 60000ULL / (uint64_t)durMs);
   }
 
-  // ── Zone means (raw FSR units; the frontend percentage-ifies for display)
-  float zHeel    = stats_get_mean(0);
-  float zMidfoot = (stats_get_mean(1) + stats_get_mean(2)) * 0.5f;
-  float zBall    = (stats_get_mean(3) + stats_get_mean(4)) * 0.5f;
-  float zToe     = stats_get_mean(5);
+  // ── Zone means (raw FSR units; the frontend percentage-ifies for display).
+  // Three zones × two sensors each.
+  float zHeel     = (stats_get_mean(0) + stats_get_mean(1)) * 0.5f;
+  float zMidfoot  = (stats_get_mean(2) + stats_get_mean(3)) * 0.5f;
+  float zForefoot = (stats_get_mean(4) + stats_get_mean(5)) * 0.5f;
 
   // ── Medial vs lateral on a single insole.
   // This is NOT left-foot vs right-foot — the system has one insole. The split
-  // is medial (inside of the foot) vs lateral (outside of the foot) loading,
-  // averaging the relevant FSR channels.
-  float medial  = (stats_get_mean(2) + stats_get_mean(4) + stats_get_mean(5)) / 3.0f;
-  float lateral = (stats_get_mean(1) + stats_get_mean(3)) * 0.5f;
+  // is medial (inside-of-foot) vs lateral (outside-of-foot) loading. With the
+  // 3×2 layout, medial = ch{0,2,4} and lateral = ch{1,3,5}.
+  float medial  = (stats_get_mean(0) + stats_get_mean(2) + stats_get_mean(4)) / 3.0f;
+  float lateral = (stats_get_mean(1) + stats_get_mean(3) + stats_get_mean(5)) / 3.0f;
   float mlTotal = medial + lateral;
   float medialPct  = mlTotal > 0.0f ? medial  / mlTotal * 100.0f : 50.0f;
   float lateralPct = mlTotal > 0.0f ? lateral / mlTotal * 100.0f : 50.0f;
   float asymPct    = fabsf(medialPct - lateralPct);
 
   // ── Heel-vs-forefoot strike ratio
-  float foreLoad  = (zBall + zToe) * 0.5f;
-  float hfTotal   = zHeel + foreLoad;
+  float hfTotal   = zHeel + zForefoot;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
   // ── Loading rate (TODO: implement FSR-jerk extrapolation).
@@ -248,7 +251,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     firstFlag = false;
   };
 
-  if (heelRatio > 65.0f && zHeel > zBall + 10.0f) {
+  if (heelRatio > 65.0f && zHeel > zForefoot + 10.0f) {
     pushFlag("heel_strike", String((int)heelRatio) + "% heel load");
   }
   // High-loading flag: > 80 BW/s. Threshold from biomechanics literature
@@ -289,8 +292,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   j += "\"zoneAvg\":{";
   j +=   "\"heel\":";       j += String(zHeel, 1);          j += ",";
   j +=   "\"midfoot\":";    j += String(zMidfoot, 1);       j += ",";
-  j +=   "\"ball\":";       j += String(zBall, 1);          j += ",";
-  j +=   "\"toe\":";        j += String(zToe, 1);
+  j +=   "\"forefoot\":";   j += String(zForefoot, 1);
   j += "},";
   j += "\"flags\":";        j += flags;                     j += ",";
   j += "\"durationMs\":";   j += (unsigned long)durMs;      j += ",";
