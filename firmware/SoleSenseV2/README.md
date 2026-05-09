@@ -102,6 +102,60 @@ curl --noproxy '*' -s http://192.168.4.1/api/device | python3 -m json.tool | hea
 
 `firmware` should read `SoleSense v0.2-dev` and `sampleRateHz` should read `500`.
 
+## Security & resilience model
+
+What's protected, what's not, and how the firmware survives the obvious failure modes.
+
+### Data at rest
+
+| Data | Where | Integrity | Confidentiality |
+|---|---|---|---|
+| User PINs | NVS namespace `solesense_auth` (`h_<user>` keys) | NVS provides per-page CRC + wear-leveling. Atomic on partial writes — a power loss mid-write either keeps the old value or rolls back, never half-applied. | SHA-256 with a 16-byte per-user random salt. Pulling the flash chip and dumping NVS reveals only `(salt, hash)` pairs — recovering the PIN requires brute-forcing the hash, which on a 4-digit PIN is fast unless rate-limited at the auth layer (which it is, see below). |
+| Run data | LittleFS `/run.bin`, 10-slot ring buffer | Each slot is wrapped with a magic header (`0x55EAB001`) + CRC32 + magic trailer (`0xC0DEF00D`). On boot/reconnect we scan all 10 slots and pick the newest with a valid trailer. A power loss mid-flush corrupts at most one slot; the previous valid slot is loaded transparently. | Not encrypted. Anyone with physical USB can read the recorded run. |
+| Calibration offsets (FSR / IMU) | NVS `solesense_main` | NVS-protected | Plaintext (no PII) |
+| Body weight | NVS `solesense_auth` (`w_<user>`) | NVS-protected | Plaintext within NVS — see PIN row for what that means |
+
+### Auth attacks
+
+| Attack | Defense |
+|---|---|
+| **PIN brute-force over the AP** | 3 wrong PINs in any 60-second window for the same username → 30-second lockout (in-RAM, per-username, see `auth.cpp::auth_record_failure_and_check_lockout`). |
+| **Session-token forgery** | 32-byte token from `esp_random()` (hardware TRNG). 256 bits of entropy. Compared with `memcmp` (constant-time enough — the token's a one-shot, not an HMAC). |
+| **Token replay after expiry** | Every successful auth check compares `expires_ms` against `millis()` and drops the session if past. Idle timeout: 30 minutes. |
+| **Token replay after logout** | Logout clears the slot in RAM. Subsequent requests with that token get 401. |
+| **Walk-up account creation** | Only the first `/api/auth/register` is unrestricted (claim mode). After that, registration requires the existing owner's token. |
+| **Physical USB attacker** | Out of scope. They can re-flash firmware; nothing in software stops that. The `factory_reset` USB-serial command is intentionally available so a legitimate device owner can recover from a forgotten PIN. |
+| **DoS via login flood** | Per-username lockout limits cost. No global rate limiter today; if the device is exposed to a hostile network for long periods, add one in `auth.cpp`. |
+
+### Run-time edge cases
+
+| Edge case | Behaviour |
+|---|---|
+| **WiFi client disconnects mid-run** | `state.cpp` flips `gRunActive=false`, freezes the elapsed-time counter, keeps the last sample-loop state in RAM. Reconnect → counter resumes. The frontend's `pollRunState` shows a "Paused" badge while disconnected. |
+| **Phone leaves AP entirely (out of range)** | Same as above on the device side. The frontend's `/api/run-state` polls fail; after 3 consecutive failures the recording screen shows a `Device unreachable — reconnect to SoleSense WiFi` banner instead of fabricating timer values. |
+| **Power loss mid-recording** | Last valid CRC-protected slot in `/run.bin` is the source of truth on next boot. At most ~3 seconds of post-flush data is lost (the inter-flush interval). |
+| **User hits Stop with bad WiFi** | Frontend retries `/api/stop` 4 times with backoff (`authPostRetry`). 409 ("not recording") is treated as success. After failures, the local UI advances to the report anyway — `/api/run-report` will succeed once the device is reachable again. |
+| **AI Coach with no internet** | Frontend's `runAiAnalysis()` catches the fetch failure and renders a friendly message ("Couldn't reach the AI coach…") under the Coach panel; the rule-based flags above remain authoritative. |
+| **AI Coach with internet but worker quota hit** | Worker returns 502 with a structured error; frontend surfaces the message in the same error banner. |
+| **`/api/start` while already recording** | 409. Frontend doesn't depend on this for correctness. |
+| **`/api/stop` while idle** | 409. Treated as success by `authPostRetry`. |
+| **Sleep request while recording** | 409 — `gSleepRequested` is only honoured from idle. |
+| **NVS write failure during register** | `auth_register` returns -2 with a `[Auth] register NVS write failed: w1=… w2=… w3=…` log line. Frontend shows "nvs error". User retries (transient) or runs `factory_reset` over USB serial. |
+| **Concurrent registers** | Single-core MCU, AsyncTCP serializes route handlers — only one register runs at a time. |
+| **Browser cache after LittleFS reflash** | Documented gotcha. Hard-refresh required. The firmware version + sample rate in `/api/device` are the easiest way to confirm what's actually running. |
+
+### Frontend-only resilience
+
+- `localStorage` corruption → next protected fetch returns 401 → `authFetch` wipes localStorage and bounces to login.
+- The token is never logged or written to a query string.
+- The Cloudflare Worker URL is the only outbound network call; if blocked (corporate WiFi, captive portal), the AI Coach panel falls back to its error state without breaking the rest of the report.
+
+### Out of scope
+
+- **Encrypted run data at rest.** Adding AES-CTR with a key derived from the owner's PIN would protect against flash-chip extraction, but bricks the device on PIN loss. Not worth it for our use case.
+- **Per-device certificates / TLS on the AP.** SoleSense serves plaintext HTTP over its own AP. Anyone on the AP can sniff the JSON. Defended by: it's the user's own AP, password-gated WiFi (`solesense`), and there's no PII richer than body weight on the wire.
+- **Audit log of state transitions.** Recording start/stop happen, but there's no per-user history of past runs persisted across reboots. Once the IMU lands and the run-history feature ships, this becomes worth doing.
+
 ## Auth / profile system
 
 Spec: [`../../docs/superpowers/specs/2026-05-09-profile-system.md`](../../docs/superpowers/specs/2026-05-09-profile-system.md).

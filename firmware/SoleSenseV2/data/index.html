@@ -140,6 +140,15 @@ body{
 .btn-start:active{transform:scale(.97)}
 .btn-start svg{width:20px;height:20px;fill:white;margin-left:-2px}
 
+/* Recording-screen disconnect warning */
+.rec-disconnect-badge{
+  display:inline-block; margin-top:10px;
+  background:#fef2f2; color:#991b1b;
+  border:1px solid #fecaca; border-radius:8px;
+  padding:8px 12px; font-size:13px; line-height:1.4;
+  max-width:90%;
+}
+
 /* AI-coach panel on the report screen */
 .ai-title{ display:flex; align-items:center; gap:8px; }
 .ai-badge{
@@ -939,11 +948,24 @@ body{
     </div>
 
     <div class="settings-group">
+      <div class="settings-group-title">Account</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Signed in as</div>
+            <div class="settings-desc" id="settings-username">—</div>
+          </div>
+          <button class="btn-cal" onclick="confirmLogout()">Log out</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
       <div class="settings-group-title">Device Info</div>
       <div class="settings-card">
         <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">—</div></div>
         <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">—</div></div>
-        <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">50 Hz</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">500 Hz</div></div>
         <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6× FSR + IMU</div></div>
       </div>
     </div>
@@ -1045,6 +1067,8 @@ async function submitAuth(){
 }
 
 async function logout(){
+  // Best-effort server logout; the client always wipes regardless so a
+  // network blip can't strand the user in a half-authed state.
   try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch {}
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_BODYKG_KEY);
@@ -1052,11 +1076,39 @@ async function logout(){
   refreshAuthScreen();
 }
 
+function confirmLogout(){
+  if(!confirm('Log out? You will need your username and PIN to sign back in.')) return;
+  logout();
+}
+
+/* Populate the settings screen with the current user's profile + the
+ * device-info fields. Called when the settings screen is shown. */
+async function refreshSettings(){
+  document.getElementById('settings-username').textContent = '—';
+  try {
+    const r = await authFetch('/api/auth/profile');
+    if(r.ok){
+      const d = await r.json();
+      const el = document.getElementById('settings-username');
+      if(el) el.textContent = d.username + (d.body_kg ? ` · ${d.body_kg} kg` : '');
+    }
+  } catch {/* offline / 401 already redirects */}
+  try {
+    const r = await fetch('/api/device');
+    if(r.ok){
+      const d = await r.json();
+      const v = document.getElementById('fw-ver');   if(v) v.textContent = d.firmware || '—';
+      const h = document.getElementById('fw-heap');  if(h) h.textContent = d.heap_free ? Math.round(d.heap_free/1024) + ' KB' : '—';
+    }
+  } catch {/* device unreachable — leave dashes */}
+}
+
 /* ── NAV ── */
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
   window.scrollTo(0,0);
+  if(id === 'settings') refreshSettings();
 }
 
 /* On first paint, decide which screen to show. */
@@ -1075,6 +1127,8 @@ let stateInterval=null,barInterval=null,reportInterval=null;
 let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 
 function startRun(){
+  stateFetchFailures = 0;
+  setDisconnectBadge(false);
   authFetch('/api/start',{method:'POST'}).catch(()=>{});
   recSeconds=0;
   document.getElementById('rec-timer').textContent='0:00';
@@ -1098,16 +1152,34 @@ function startRun(){
   reportInterval=setInterval(pollLiveReport,2000);
 }
 
-function stopRun(){
+/* Retry a small POST a few times with backoff. Used by Stop/Cancel so a
+ * connectivity blip when the user hits the button doesn't leave the device
+ * stuck in RECORDING with no way to view the report. */
+async function authPostRetry(url, attempts = 4){
+  for(let i = 0; i < attempts; i++){
+    try {
+      const r = await authFetch(url, { method: 'POST' });
+      if(r.ok) return true;
+      // 409 (already in/out of state) is fine — treat as success.
+      if(r.status === 409) return true;
+    } catch (e) { /* network blip; retry */ }
+    await new Promise(res => setTimeout(res, 250 * (i + 1)));
+  }
+  return false;
+}
+
+async function stopRun(){
   clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
-  authFetch('/api/stop',{method:'POST'}).catch(()=>{});
   showLoading('Processing your run…');
+  await authPostRetry('/api/stop');
+  // Either way (success or repeated failure), try to load the report.
+  // If the device is unreachable, loadReport()'s own catch will toast.
   setTimeout(()=>loadReport(), 1200);
 }
 
-function cancelRun(){
+async function cancelRun(){
   clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
-  authFetch('/api/stop',{method:'POST'}).catch(()=>{});
+  authPostRetry('/api/stop').catch(()=>{});
   showScreen('home');
 }
 
@@ -1133,21 +1205,45 @@ async function pollLiveReport(){
 }
 
 let stateFetchInFlight=false;
+let stateFetchFailures=0;
+const STATE_FAIL_THRESHOLD=3;   // consecutive failures before showing "device unreachable"
 async function pollRunState(){
   if(stateFetchInFlight) return;
   stateFetchInFlight=true;
   try{
     const r=await fetch('/api/run-state');
-    if(!r.ok) return;
+    if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
+    stateFetchFailures=0;
+    setDisconnectBadge(false);
     // Elapsed_ms is sourced from the latest valid flash slot in v0.2 — pauses on disconnect.
     const ms=Number(d.elapsed_ms)||0;
     recSeconds=Math.floor(ms/1000);
     const m=Math.floor(recSeconds/60), s=String(recSeconds%60).padStart(2,'0');
     document.getElementById('rec-timer').textContent=m+':'+s;
     setPausedBadge(d.run_active===false);
-  }catch(e){/* network blip — keep last displayed time */}
+  }catch(e){
+    // Successive failures = the phone has lost the AP. Don't fabricate
+    // timer values; surface the disconnect to the user instead.
+    stateFetchFailures++;
+    if(stateFetchFailures >= STATE_FAIL_THRESHOLD) setDisconnectBadge(true);
+  }
   finally{ stateFetchInFlight=false; }
+}
+
+function setDisconnectBadge(disconnected){
+  let el = document.getElementById('rec-disconnected');
+  if(!el){
+    // Lazily create — only injected when first needed.
+    const host = document.getElementById('rec-paused')?.parentElement || document.body;
+    el = document.createElement('div');
+    el.id = 'rec-disconnected';
+    el.className = 'rec-disconnect-badge';
+    el.textContent = 'Device unreachable — reconnect to SoleSense WiFi';
+    el.style.display = 'none';
+    host.appendChild(el);
+  }
+  el.style.display = disconnected ? 'block' : 'none';
 }
 
 function setPausedBadge(paused){
