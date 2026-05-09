@@ -457,39 +457,33 @@ static void handle_auth_state(AsyncWebServerRequest* req) {
 }
 
 // Register a new user. URL-encoded body: username, pin, body_kg.
-// First call (claim-mode) is unrestricted and auto-grants the new owner a
-// session. Later calls require an owner token AND keep the owner's session
-// (the new account exists but isn't auto-logged-in).
+// Self-signup: anyone connected to the AP can create an account. The shared
+// WiFi password already gates network access; layering an owner-token check
+// on top would block a legitimate household member from making themselves
+// an account. The new user is auto-logged-in atomically.
 static void handle_auth_register(AsyncWebServerRequest* req) {
-  const bool claimMode = auth_in_claim_mode();
-  if (!claimMode) {
-    if (!require_auth(req)) return;   // only existing owner can add accounts
-  }
   String username = req->arg("username");
   String pin      = req->arg("pin");
   float  body_kg  = req->arg("body_kg").toFloat();
   int rc = auth_register(username, pin, body_kg);
   if (rc == 0) {
-    if (claimMode) {
-      // First account: return token + body so frontend can stash and proceed.
-      String j = "{\"ok\":true,\"token\":\"";
-      j += gSession.token_hex;
-      j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
-      j += ",\"username\":\""; j += gSession.username; j += "\"}";
-      req->send(200, "application/json", j);
-    } else {
-      // Owner added a secondary account; do NOT return a token (the owner
-      // remains logged in). Frontend just needs to know it succeeded.
-      String j = "{\"ok\":true,\"username\":\""; j += username; j += "\"}";
-      req->send(200, "application/json", j);
-    }
-  } else {
-    const char* err = (rc == -1) ? "username taken"
-                    : (rc == -2) ? "nvs error"
-                    :              "invalid input";
-    String j = "{\"ok\":false,\"error\":\""; j += err; j += "\"}";
-    req->send(400, "application/json", j);
+    String j = "{\"ok\":true,\"token\":\"";
+    j += gSession.token_hex;
+    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += ",\"username\":\""; j += gSession.username; j += "\"}";
+    req->send(200, "application/json", j);
+    return;
   }
+  // Granular error → specific human-readable message.
+  const char* err =
+    (rc == -1) ? "Username already taken — pick another." :
+    (rc == -2) ? "Could not save (NVS error). Try again." :
+    (rc == -3) ? "Username must be 4–13 letters, digits, or underscore." :
+    (rc == -4) ? "PIN must be 4–16 digits." :
+    (rc == -5) ? "Body weight must be 25–250 kg." :
+                 "Invalid input.";
+  String j = "{\"ok\":false,\"error\":\""; j += err; j += "\"}";
+  req->send(400, "application/json", j);
 }
 
 // Login. URL-encoded body: username, pin.
@@ -503,13 +497,17 @@ static void handle_auth_login(AsyncWebServerRequest* req) {
     j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
     j += "}";
     req->send(200, "application/json", j);
-  } else if (rc == -3) {
-    req->send(429, "application/json",
-              "{\"ok\":false,\"error\":\"too many attempts\"}");
-  } else {
-    req->send(401, "application/json",
-              "{\"ok\":false,\"error\":\"invalid credentials\"}");
+    return;
   }
+  if (rc == -3) {
+    req->send(429, "application/json",
+              "{\"ok\":false,\"error\":\"Too many attempts — locked for 30 seconds.\"}");
+    return;
+  }
+  // -1 unknown user, -2 wrong PIN: collapse to one message so attackers
+  // can't enumerate which usernames exist.
+  req->send(401, "application/json",
+            "{\"ok\":false,\"error\":\"Username or PIN is incorrect.\"}");
 }
 
 static void handle_auth_logout(AsyncWebServerRequest* req) {

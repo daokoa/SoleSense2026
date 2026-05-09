@@ -254,6 +254,15 @@ body{
 .auth-error{
   color:#dc2626; font-size:13px; min-height:20px; text-align:center; margin-top:4px;
 }
+.auth-toggle{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  margin-top:6px; font-size:13.5px; color:var(--text2);
+}
+.auth-toggle-btn{
+  background:none; border:none; padding:0; cursor:pointer;
+  font:inherit; color:var(--blue); font-weight:600;
+}
+.auth-toggle-btn:hover{ text-decoration:underline; }
 
 .home-status{
   display:inline-flex;align-items:center;gap:8px;
@@ -674,12 +683,12 @@ body{
       <label class="auth-field">
         <span class="auth-label">Username</span>
         <input id="auth-username" type="text" autocomplete="username"
-               maxlength="13" placeholder="Pick a username">
+               maxlength="13" placeholder="4–13 letters, digits, or _">
       </label>
       <label class="auth-field">
         <span class="auth-label">PIN</span>
         <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
-               autocomplete="current-password" placeholder="Enter your PIN">
+               autocomplete="current-password" placeholder="4–16 digits">
       </label>
       <label class="auth-field" id="auth-bodykg-field" style="display:none;">
         <span class="auth-label">Body weight (kg)</span>
@@ -689,6 +698,12 @@ body{
         <span id="auth-submit-label">Log in</span>
       </button>
       <div id="auth-error" class="auth-error"></div>
+      <div class="auth-toggle" id="auth-toggle-row">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <button type="button" class="auth-toggle-btn" onclick="toggleAuthMode()">
+          <span id="auth-toggle-action">Create one</span>
+        </button>
+      </div>
     </form>
   </div>
 </div>
@@ -973,13 +988,6 @@ body{
           </div>
           <button class="btn-cal" onclick="confirmLogout()">Log out</button>
         </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Add another user</div>
-            <div class="settings-desc">Create an additional account on this insole. You stay signed in.</div>
-          </div>
-          <button class="btn-cal" onclick="openAddUser()">Add user</button>
-        </div>
       </div>
     </div>
 
@@ -1001,37 +1009,6 @@ body{
       SoleSense · UCI · Spring 2026
     </div>
 
-  </div>
-</div>
-
-<!-- Add-user modal. Shown only from Settings → Add user. Owner's auth token
-     is sent automatically via authFetch; the firmware refuses if the caller
-     isn't already logged in. -->
-<div id="add-user-modal" class="modal" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-title">Add another user</div>
-    <div class="modal-sub">Create an account on this insole. You will stay signed in to your own account.</div>
-    <form class="auth-form" onsubmit="event.preventDefault();submitAddUser();">
-      <label class="auth-field">
-        <span class="auth-label">Username</span>
-        <input id="add-username" type="text" maxlength="13" placeholder="Pick a username">
-      </label>
-      <label class="auth-field">
-        <span class="auth-label">PIN</span>
-        <input id="add-pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Enter your PIN">
-      </label>
-      <label class="auth-field">
-        <span class="auth-label">Body weight (kg)</span>
-        <input id="add-bodykg" type="number" step="0.1" placeholder="e.g. 70.0">
-      </label>
-      <div id="add-user-error" class="auth-error"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn-cal" onclick="closeAddUser()">Cancel</button>
-        <button type="submit" class="btn-start auth-submit" style="margin:0;padding:12px 24px;font-size:14px;">
-          <span>Create account</span>
-        </button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -1064,45 +1041,83 @@ async function authFetch(url, opts = {}){
   return r;
 }
 
+// authMode ∈ { 'login', 'signup' }. When ownerExists is false the user has
+// no choice — signup is forced and the toggle is hidden.
+let authForced = false;
+
+function setText(id, t){ const el = document.getElementById(id); if (el) el.textContent = t; }
+
+function applyAuthMode(){
+  const isSignup = authMode === 'signup';
+  document.getElementById('auth-bodykg-field').style.display = isSignup ? 'flex' : 'none';
+  setText('auth-submit-label', isSignup ? 'Create account' : 'Log in');
+  setText('auth-headline',     isSignup ? (authForced ? 'Claim your insole.' : 'Create account.') : 'Sign in.');
+  setText('auth-eyebrow',      isSignup ? (authForced ? 'First-time setup' : 'New here?')         : 'Welcome back');
+  setText('auth-subtitle',     isSignup
+    ? (authForced
+        ? 'Pick a username and PIN. Body weight is used for honest loading-rate readings.'
+        : 'Pick a username, PIN, and your body weight to set up your account.')
+    : 'Enter your username and PIN to start a run.');
+  setText('auth-toggle-text',  isSignup ? 'Already have an account?' : "Don't have an account?");
+  setText('auth-toggle-action',isSignup ? 'Sign in'                  : 'Create one');
+  // Hide the toggle entirely when claim is forced (nobody to log in as).
+  document.getElementById('auth-toggle-row').style.display = authForced ? 'none' : 'flex';
+  document.getElementById('auth-error').textContent = '';
+}
+
+function toggleAuthMode(){
+  if (authForced) return;
+  authMode = (authMode === 'login') ? 'signup' : 'login';
+  applyAuthMode();
+}
+
 async function refreshAuthScreen(){
   document.getElementById('auth-error').textContent = '';
   try {
     const r = await fetch('/api/auth/state');
     const d = await r.json();
-    const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
     if (!d.ownerExists) {
-      authMode = 'claim';
-      setText('auth-eyebrow',  'First-time setup');
-      setText('auth-headline', 'Claim your insole.');
-      setText('auth-subtitle', 'Pick a username and PIN. Body weight is used for honest loading-rate readings.');
-      document.getElementById('auth-bodykg-field').style.display = 'flex';
-      setText('auth-submit-label', 'Create account');
+      authMode = 'signup';
+      authForced = true;     // no owner yet → can only claim
     } else {
       authMode = 'login';
-      setText('auth-eyebrow',  'Welcome back');
-      setText('auth-headline', 'Sign in.');
-      setText('auth-subtitle', 'Enter your username and PIN to start a run.');
-      document.getElementById('auth-bodykg-field').style.display = 'none';
-      setText('auth-submit-label', 'Log in');
+      authForced = false;
     }
+    applyAuthMode();
   } catch (e) {
     document.getElementById('auth-error').textContent = 'Could not reach device — is the SoleSense WiFi connected?';
   }
 }
 
 async function submitAuth(){
-  const u = document.getElementById('auth-username').value.trim();
-  const p = document.getElementById('auth-pin').value;
+  const u  = document.getElementById('auth-username').value.trim();
+  const p  = document.getElementById('auth-pin').value;
   const bk = document.getElementById('auth-bodykg').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
-  if (!u || !p) { errEl.textContent = 'Username and PIN required.'; return; }
-  if (authMode === 'claim' && (!bk || +bk < 25 || +bk > 250)) {
-    errEl.textContent = 'Body weight must be 25–250 kg.'; return;
+
+  // Client-side checks mirror the server so users get instant feedback for
+  // obvious mistakes. The server still has the authoritative validation.
+  if (!u) { errEl.textContent = 'Enter a username.'; return; }
+  if (u.length < 4 || u.length > 13) {
+    errEl.textContent = 'Username must be 4–13 characters.'; return;
   }
-  const url = (authMode === 'claim') ? '/api/auth/register' : '/api/auth/login';
+  if (!/^[a-zA-Z0-9_]+$/.test(u)) {
+    errEl.textContent = 'Username can only have letters, digits, or _.'; return;
+  }
+  if (!p) { errEl.textContent = 'Enter your PIN.'; return; }
+  if (authMode === 'signup'){
+    if (!/^\d{4,16}$/.test(p)) {
+      errEl.textContent = 'PIN must be 4–16 digits.'; return;
+    }
+    if (!bk || +bk < 25 || +bk > 250) {
+      errEl.textContent = 'Body weight must be between 25 and 250 kg.'; return;
+    }
+  }
+
+  const url = (authMode === 'signup') ? '/api/auth/register' : '/api/auth/login';
   const body = new URLSearchParams({ username: u, pin: p });
-  if (authMode === 'claim') body.append('body_kg', bk);
+  if (authMode === 'signup') body.append('body_kg', bk);
   try {
     const r = await fetch(url, {
       method: 'POST',
@@ -1110,13 +1125,13 @@ async function submitAuth(){
       body: body.toString()
     });
     const d = await r.json();
-    if (!d.ok) { errEl.textContent = d.error || 'Auth failed.'; return; }
+    if (!d.ok) { errEl.textContent = d.error || 'Authentication failed.'; return; }
     localStorage.setItem(AUTH_TOKEN_KEY, d.token);
     localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
     document.getElementById('auth-pin').value = '';
     showScreen('home');
   } catch (e) {
-    errEl.textContent = 'Network error.';
+    errEl.textContent = 'Network error — check the SoleSense WiFi.';
   }
 }
 
@@ -1135,44 +1150,6 @@ function confirmLogout(){
   logout();
 }
 
-/* ── ADD-USER MODAL ───────────────────────────────────────────────────────
- * Owner / signed-in user adds a secondary account. The firmware verifies
- * the caller's auth token (added automatically by authFetch); the new
- * account does NOT replace the current session. */
-function openAddUser(){
-  document.getElementById('add-username').value = '';
-  document.getElementById('add-pin').value = '';
-  document.getElementById('add-bodykg').value = '';
-  document.getElementById('add-user-error').textContent = '';
-  document.getElementById('add-user-modal').style.display = 'flex';
-}
-function closeAddUser(){
-  document.getElementById('add-user-modal').style.display = 'none';
-}
-async function submitAddUser(){
-  const u  = document.getElementById('add-username').value.trim();
-  const p  = document.getElementById('add-pin').value;
-  const bk = document.getElementById('add-bodykg').value;
-  const errEl = document.getElementById('add-user-error');
-  errEl.textContent = '';
-  if(!u || !p){ errEl.textContent = 'Username and PIN required.'; return; }
-  if(!bk || +bk < 25 || +bk > 250){ errEl.textContent = 'Body weight must be 25–250 kg.'; return; }
-
-  const body = new URLSearchParams({ username: u, pin: p, body_kg: bk });
-  try {
-    const r = await authFetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    });
-    const d = await r.json();
-    if(!d.ok){ errEl.textContent = d.error || 'Could not create account.'; return; }
-    closeAddUser();
-    toast('Account "' + d.username + '" created');
-  } catch (e) {
-    errEl.textContent = 'Network error — check the SoleSense WiFi.';
-  }
-}
 
 /* Populate the settings screen with the current user's profile + the
  * device-info fields. Called when the settings screen is shown. */

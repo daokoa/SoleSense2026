@@ -82,9 +82,9 @@ static String key_for(const char* user, char prefix) {
   return s;
 }
 
-// Allowed username characters: letters, digits, underscore. Length 3..13.
+// Validation helpers. Username 4–13 chars [a-zA-Z0-9_]; PIN 4–16 digits.
 static bool valid_username(const String& u) {
-  if (u.length() < 3 || u.length() > 13) return false;
+  if (u.length() < 4 || u.length() > 13) return false;
   for (size_t i = 0; i < u.length(); i++) {
     char c = u[i];
     bool ok = (c >= 'a' && c <= 'z') ||
@@ -92,6 +92,14 @@ static bool valid_username(const String& u) {
               (c >= '0' && c <= '9') ||
               c == '_';
     if (!ok) return false;
+  }
+  return true;
+}
+
+static bool valid_pin(const String& p) {
+  if (p.length() < 4 || p.length() > 16) return false;
+  for (size_t i = 0; i < p.length(); i++) {
+    if (p[i] < '0' || p[i] > '9') return false;
   }
   return true;
 }
@@ -113,13 +121,14 @@ bool auth_in_claim_mode() {
 }
 
 int auth_register(const String& username, const String& pin, float body_kg) {
-  if (!valid_username(username)) return -3;
-  if (pin.length() < 4 || pin.length() > 16) return -3;
-  if (body_kg < 25.0f || body_kg > 250.0f) return -3;
+  // Granular validation so handle_auth_register can return a specific
+  // human-readable error, instead of a generic "invalid input".
+  if (!valid_username(username)) return -3;   // bad username
+  if (!valid_pin(pin))           return -4;   // bad PIN
+  if (body_kg < 25.0f || body_kg > 250.0f) return -5;   // bad body weight
 
-  // Capture claim-mode state BEFORE we mutate it, so we can decide later
-  // whether to auto-login. (Existing-owner-adds-user must NOT replace the
-  // owner's active session with the new user's session.)
+  // Capture claim-mode state BEFORE we mutate it, so we know whether this
+  // is the very first registration on the device.
   const bool wasClaimMode = auth_in_claim_mode();
 
   // Username taken? Check with isKey on the salt key (matches the type we wrote).
@@ -142,11 +151,11 @@ int auth_register(const String& username, const String& pin, float body_kg) {
 
   if (wasClaimMode) {
     sNvs.putString("owner_user", username);
-    // First-ever account: this is the device claim, auto-grant a session.
-    return auth_login(username, pin);
   }
-  // Owner is adding a secondary account — keep the owner's active session.
-  return 0;
+  // Self-signup: always auto-login the freshly-created user. The owner is
+  // just whoever claimed first; subsequent users sign themselves up and
+  // sign themselves in atomically.
+  return auth_login(username, pin);
 }
 
 int auth_login(const String& username, const String& pin) {
