@@ -679,20 +679,20 @@ body{
 
     <div class="home-desc" id="auth-subtitle">Loading…</div>
 
-    <form class="auth-form" onsubmit="event.preventDefault();submitAuth();">
+    <form class="auth-form" autocomplete="off" onsubmit="event.preventDefault();submitAuth();">
       <label class="auth-field">
         <span class="auth-label">Username</span>
-        <input id="auth-username" type="text" autocomplete="username"
-               maxlength="13" placeholder="4–13 letters, digits, or _">
+        <input id="auth-username" type="text" autocomplete="off"
+               name="ssu" maxlength="13" placeholder="4–13 letters, digits, or _">
       </label>
       <label class="auth-field">
         <span class="auth-label">PIN</span>
         <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
-               autocomplete="current-password" placeholder="4–16 digits">
+               autocomplete="new-password" name="sspin" placeholder="4–16 digits">
       </label>
       <label class="auth-field" id="auth-bodykg-field" style="display:none;">
         <span class="auth-label">Body weight (kg)</span>
-        <input id="auth-bodykg" type="number" step="0.1" placeholder="e.g. 70.0">
+        <input id="auth-bodykg" type="number" step="0.1" autocomplete="off" placeholder="e.g. 70.0">
       </label>
       <button id="auth-submit-btn" type="submit" class="btn-start auth-submit">
         <span id="auth-submit-label">Log in</span>
@@ -1073,6 +1073,13 @@ function toggleAuthMode(){
 }
 
 async function refreshAuthScreen(){
+  // Always blank the form when entering the auth screen — we don't want
+  // the previous user's username pre-populated (or worse, autofilled by
+  // the browser's password manager). Username is only meant to be visible
+  // on the Settings screen for the currently signed-in user.
+  ['auth-username','auth-pin','auth-bodykg'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('auth-error').textContent = '';
   try {
     const r = await fetch('/api/auth/state');
