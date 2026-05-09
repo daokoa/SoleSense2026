@@ -1020,8 +1020,9 @@ body{
  * Single-session model. Token + body_kg cached in localStorage so a reload
  * doesn't bounce the user back to login. Any 401 from a protected endpoint
  * wipes the cache and returns to login. */
-const AUTH_TOKEN_KEY = 'solesense_token';
-const AUTH_BODYKG_KEY = 'solesense_body_kg';
+const AUTH_TOKEN_KEY    = 'solesense_token';
+const AUTH_BODYKG_KEY   = 'solesense_body_kg';
+const AUTH_USERNAME_KEY = 'solesense_username';
 let authMode = 'login';   // 'login' or 'claim'
 
 function authToken(){ return localStorage.getItem(AUTH_TOKEN_KEY) || ''; }
@@ -1128,6 +1129,7 @@ async function submitAuth(){
     if (!d.ok) { errEl.textContent = d.error || 'Authentication failed.'; return; }
     localStorage.setItem(AUTH_TOKEN_KEY, d.token);
     localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
+    if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
     document.getElementById('auth-pin').value = '';
     showScreen('home');
   } catch (e) {
@@ -1141,12 +1143,17 @@ async function logout(){
   try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch {}
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_BODYKG_KEY);
+  localStorage.removeItem(AUTH_USERNAME_KEY);
   showScreen('auth');
   refreshAuthScreen();
 }
 
 function confirmLogout(){
-  if(!confirm('Log out? You will need your username and PIN to sign back in.')) return;
+  const u = localStorage.getItem(AUTH_USERNAME_KEY) || '';
+  const msg = u
+    ? `Log out of "${u}"? You will need your username and PIN to sign back in.`
+    : 'Log out? You will need your username and PIN to sign back in.';
+  if(!confirm(msg)) return;
   logout();
 }
 
@@ -1161,6 +1168,9 @@ async function refreshSettings(){
       const d = await r.json();
       const el = document.getElementById('settings-username');
       if(el) el.textContent = d.username + (d.body_kg ? ` · ${d.body_kg} kg` : '');
+      // Sync the cache so confirmLogout (and anything else that needs the
+      // username before a /profile round-trip) always has it available.
+      if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
     }
   } catch {/* offline / 401 already redirects */}
   try {

@@ -495,6 +495,7 @@ static void handle_auth_login(AsyncWebServerRequest* req) {
     String j = "{\"ok\":true,\"token\":\"";
     j += gSession.token_hex;
     j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += ",\"username\":\""; j += gSession.username; j += "\"";
     j += "}";
     req->send(200, "application/json", j);
     return;
