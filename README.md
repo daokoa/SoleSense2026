@@ -10,11 +10,11 @@
 | Track | State |
 |---|---|
 | **Firmware v0.1** (demo) | ✅ Flashed and running. Records 50 Hz CSV to LittleFS, browser-side JS analysis. This is what's on the device for live demos. |
-| **Firmware v0.2** (post-demo architecture) | ⚠️ Modular rewrite, compiles, boots, runs the full state machine. Two known gaps: FSR-jerk loading-rate extrapolation and time-domain GCT detection. See [`firmware/README.md`](firmware/README.md) for the full module-status table. |
-| **Frontend dao** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. Currently flashed. |
-| **Frontend dao-v2** (v0.2-compat) | ✅ Same UI, polls `/api/run-state` + `/api/run-report` instead of running JS analysis. Awaiting v0.2 hardware verification. |
+| **Firmware v0.2** (active development) | ✅ Modular rewrite, **500 Hz sampling**, all metrics on-MCU: time-domain step counter + GCT, FSR-jerk loading rate (BW/s), 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect. Open follow-ups: per-user body-weight + FSR-saturation calibration for loading rate. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
+| **Frontend dao** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. |
+| **Frontend dao-v2** (v0.2-compat) | ✅ Anatomical foot SVG, 3-zone × medial/lateral live readout, polls `/api/run-state` + `/api/run-report` instead of running JS analysis. All headline metrics now display real numbers. |
 | **Frontend andony** | ✅ Dark-themed alternative SPA. Polls `/api/sensor` for live readout. |
-| **Sensors** | 1 FSR currently wired and verified (matrix-scan layout). 5 more FSRs and the IMU pending. |
+| **Sensors** | 6 FSRs in 3-zone × medial/lateral layout (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot. Hardware bring-up + per-channel verification ongoing. IMU optional (not required for any of the headline metrics). |
 | **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
 
 See **[Roadmap](#roadmap)** for the path to v1.0.
@@ -28,9 +28,11 @@ A self-contained biomechanical analysis insole that records pressure and motion 
 **Core loop:**
 1. Power on → ESP32-C3 boots, starts WiFi AP `SoleSense`
 2. User connects phone to AP → opens `http://192.168.4.1`
-3. Taps **Start Run** → firmware records at 50 Hz to LittleFS as CSV
-4. Taps **Stop** → frontend fetches CSV, runs JS analysis pipeline
-5. Report screen shows cadence, ground contact time, pronation, L/R balance, pressure distribution by zone, and up to 7 injury risk flags
+3. Taps **Start Run** → firmware samples sensors (50 Hz on v0.1, 500 Hz on v0.2)
+4. Taps **Stop** → report is computed
+   - **v0.1:** firmware writes raw CSV to LittleFS; frontend fetches and runs the JS analysis pipeline.
+   - **v0.2:** firmware computes everything on-MCU (FFT + outlier buffer + Welford stats + time-domain step detector); frontend just polls `/api/run-report` and renders.
+5. Report screen shows cadence, ground contact time, pronation, medial/lateral balance, pressure distribution by zone, loading rate (BW/s), and up to 7 injury risk flags
 
 ---
 
@@ -43,7 +45,7 @@ Sourced from peer-reviewed biomechanics literature (full citations in [`SOLESENS
 - Low cadence
 - Overpronation
 - Supination
-- Bilateral asymmetry
+- Medial / lateral asymmetry (single-insole; renamed from "bilateral" since we have one foot's worth of sensors)
 - Long ground contact time
 
 Thresholds are baked in from research; not user-tunable in the UI.
@@ -111,24 +113,42 @@ Pin defines live at the top of [`firmware/SoleSense/SoleSense.ino`](firmware/Sol
 
 All endpoints served at `http://192.168.4.1` once connected to the `SoleSense` WiFi AP.
 
+### Endpoints in both v0.1 and v0.2
+
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Serves the frontend SPA from LittleFS |
-| `GET` | `/api/device` | Device info: firmware/version, board, sample rate, free heap, state, fs bytes, hasData, thresholds |
+| `GET` | `/api/device` | Device info: firmware/version, board, sample rate (50 on v0.1, 500 on v0.2), free heap, state, fs bytes, hasData, thresholds |
 | `GET` | `/api/sensor` | Live FSR + IMU snapshot |
-| `POST` | `/api/start` | Begin server-side 50 Hz recording to `/data.csv` |
-| `POST` | `/api/stop` | End recording, flush + close file |
-| `GET` | `/data.csv` | Stream the recorded CSV (409 while recording) |
-| `POST` | `/api/data/clear` | Delete `/data.csv` |
+| `POST` | `/api/start` | Begin recording |
+| `POST` | `/api/stop` | End recording, flush state |
+| `POST` | `/api/data/clear` | Delete recorded run data |
 | `POST` | `/api/calibrate/zero` | Zero the 6 FSRs (insole unloaded), persist to NVS |
 | `POST` | `/api/calibrate/imu` | Zero accel + gyro offsets (insole flat), persist to NVS |
 | `POST` | `/api/settings` | Update injury-flag thresholds (validated, persisted; not currently exposed in UI) |
 | `POST` | `/api/sleep` | Enter deep sleep; wake on GPIO9 LOW |
 
+### v0.1-only
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/data.csv` | Stream the recorded 50 Hz CSV (409 while recording). Frontend parses + analyses in JS. |
+
 CSV schema (13 columns, 50 Hz):
 ```
 timestamp_ms, fsr1..fsr6, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 ```
+
+### v0.2-only
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/run-state` | Live run state: elapsed_ms (sourced from latest valid flash slot), sample count, paused flag, current state |
+| `GET` | `/api/run-report` | Computed metrics: steps, cadence, contactMs, loadingRate (BW/s), pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, flags |
+| `GET` | `/api/run-spectrum` | FFT magnitude spectrum (12 channels × 18 bins, Goertzel) |
+| `GET` | `/api/run-outliers` | Top-N outliers by σ (channel, ts_ms, value, delta, sigma) |
+| `GET` | `/api/storage-selftest` | On-bench validation of multi-slot ring buffer (writes 3 slots, corrupts newest, asserts load_latest returns second-newest) |
+| `GET` | `/api/fft-selftest` | Feeds a 1.95 Hz sine into channel 0 and prints per-bin magnitudes to Serial — expect ~100 amp on the on-bin frequency |
 
 ---
 
@@ -267,12 +287,19 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [ ] FSRs soldered with 10 kΩ pull-downs and reading real pressure
 - [ ] MPU-6050 soldered and reading real motion
 
-### v0.2 — *post-demo*
-- [ ] **Move all run state onto the MCU. No browser-side storage.** Replace raw-CSV recording with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a multi-slot ring buffer in flash. Run timer is derived from the latest valid flash slot — not a JS wall-clock — so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
-- [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO)
-- [ ] Pick canonical frontend (dao or andony — only one survives)
-- [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet)
-- [ ] Resolve cross-talk concern in the FSR set-scanning scheme (medial vs lateral readings during double-support)
+### v0.2 — *current development*
+- [x] **All run state on the MCU. No browser-side storage.** Raw-CSV recording replaced with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot — not a JS wall-clock — so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
+- [x] **Sample rate bumped to 500 Hz** (from 50 Hz). RAM usage is rate-independent because Goertzel is incremental. Captures impact rising edges with enough resolution for FSR-jerk extrapolation.
+- [x] **Time-domain step counter and ground-contact-time** (Schmitt trigger on the heel composite, 150 ms refractory).
+- [x] **FSR-jerk loading rate (BW/s)** — peak heel d(ADC)/dt converted via FSR-saturation × body-weight assumptions.
+- [x] **3-zone × medial/lateral sensor layout** (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot.
+- [x] **Anatomical foot SVG** in dao-v2: asymmetric medial/lateral edges, arch indent, toes anchored as ellipses.
+- [ ] User-configurable body weight (currently hardcoded 70 kg) and per-FSR saturation calibration via `/api/settings`.
+- [ ] EMA-baseline tracking in the step detector for FSR baseline drift (sweat / temperature).
+- [ ] End-to-end hardware verification: 30 s real-run test on a fully-wired insole.
+- [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO).
+- [ ] Pick canonical frontend (dao-v2 or andony — only one survives).
+- [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet).
 
 ### v1.0 — *future*
 - [ ] CNN/LSTM model trained on collected CSV data (per Choi et al. 2024)

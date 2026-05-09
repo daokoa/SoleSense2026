@@ -22,6 +22,8 @@ software/frontend/
 
 All three are self-contained single-file SPAs. `dao/` and `dao-v2/` use system fonts. `andony/` pulls Google Fonts at runtime (fails on the SoleSense AP since there's no internet — falls back to system fonts).
 
+The `dao-v2/` foot diagram shows the 3-zone × medial/lateral sensor layout (2 circles per zone) drawn on an anatomically-shaped foot SVG (toes are ellipses anchored to the foot body, asymmetric medial/lateral edges, arch indent on the medial side). Right foot is mirrored via SVG transform and greyed out — there's no second insole wired in v0.2.
+
 ## Which UI is currently on the device
 
 ```bash
@@ -89,7 +91,10 @@ The full HTTP API surface is documented in the root [`README.md`](../../README.m
 
 ## Pressure distribution math
 
-Dao's report shows four zone bars — Heel, Midfoot, Ball, Toe — with a percentage. Each value is the share of total foot pressure that zone carried during the run, not raw ADC counts. The four percentages sum to 100% (e.g., Heel 38%, Midfoot 19%, Ball 28%, Toe 15%). Lets you see "this runner heel-strikes hard" or "forefoot-dominant" at a glance.
+Dao's report shows zone bars with percentages of total foot pressure during the run, not raw ADC counts. The bars sum to 100%.
+
+- `dao/` (v0.1): four zones — Heel, Midfoot, Ball, Toe (1 heel + 2 midfoot + 2 ball + 1 toe sensor layout).
+- `dao-v2/` (v0.2): three zones — Heel, Midfoot, Forefoot — matching the new 3-zone × medial/lateral sensor layout (2 sensors per zone).
 
 ## Medial / Lateral, not Left / Right
 
@@ -101,14 +106,16 @@ The injury-flag thresholds (cadence < 160 spm, pronation > 15°, supination < �
 
 ## Known limitations and gaps
 
-- **Loading rate currently shows "—"** in dao-v2 because the v0.2 firmware doesn't have a working loading-rate calculation yet. Plan: FSR-jerk extrapolation (track the rate-of-rise of the FSR signal during the brief unsaturated portion of impact, since the FSR caps at 10 kg but a runner's impact is 100–200 kg). Until that lands, `loadingRate = 0` in the firmware response and the chip renders "—". Honest.
-- **Ground contact time** also "—" in dao-v2 — needs time-domain step detection in the firmware.
-- **Andony's recording is client-side only** at 5 Hz. The firmware's 50 Hz on-device recording isn't wired into Andony's UI.
+- **Loading rate** now reports a real BW/s value via FSR-jerk extrapolation (peak `d(heel_ADC)/dt` × conversion factor). The conversion currently assumes a 70 kg body weight and that the FSR + voltage divider hits 10 kg of force at full-scale ADC=4095; for users outside that envelope the displayed BW/s is a constant-factor scaling of the truth. User-configurable body weight and per-FSR saturation calibration are the next steps.
+- **Ground contact time** now works — averaged across heel-strike-to-toe-off intervals from the time-domain step detector. Drops anything <50 ms (debounce) or >800 ms (lean, not a step).
+- **Pressure-zone bars** show 3 zones now: Heel / Midfoot / Forefoot. The old Ball + Toe split is gone — the v0.2 sensor layout has 2 forefoot sensors averaged into one zone.
+- **Andony's recording is client-side only** at 5 Hz. The firmware's 500 Hz on-device recording isn't wired into Andony's UI.
 - **dao and andony cover different feature sets.** Pick one as canonical for v0.2 and fold the missing pieces in.
 - **Browser side state** — dao still keeps the parsed CSV in memory after Stop. dao-v2 fixes this entirely (browser holds nothing; reconnect re-fetches from MCU).
+- **Browser cache pitfall** — when the LittleFS gets a frontend update (different `zoneAvg` keys, etc.), iPhone Safari and desktop browsers will keep serving the cached old `index.html` and you'll see numbers like "26500%" because the JS reads keys that no longer exist. Force-refresh (Cmd+Shift+R on desktop, "Request New Page" or quit-and-reopen Safari on iOS) after every LittleFS reflash.
 
 ## When to use which UI
 
 - **Live demo today:** `dao/` (v0.1) — works end-to-end, real numbers from JS analysis.
-- **Future / showing the v0.2 architecture:** `dao-v2/` — but pair with v0.2 firmware. Some metrics will read "—" until the open firmware tasks land (loading rate, GCT).
+- **v0.2 architecture path:** `dao-v2/` — pair with v0.2 firmware. All headline metrics (steps, cadence, contactMs, loadingRate BW/s, pressure zones, medial/lateral split, injury flags) are real numbers from the MCU.
 - **Slide screenshots / standalone preview:** `andony/` (open in any browser) or `mock-server.py` against `dao/`.
