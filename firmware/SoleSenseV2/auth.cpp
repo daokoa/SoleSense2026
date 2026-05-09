@@ -224,6 +224,37 @@ String auth_extract_bearer(const String& header) {
   return header.substring(7);
 }
 
+void auth_factory_reset() {
+  Serial.println("[Auth] FACTORY RESET — wiping all profiles");
+  sNvs.clear();
+  memset(&gSession, 0, sizeof(gSession));
+  memset(sFails, 0, sizeof(sFails));
+  Serial.println("[Auth] reset complete; device is back in claim mode");
+}
+
+void auth_serial_console_tick() {
+  // Accumulate a line buffer; act on each newline.
+  static char  line[64];
+  static uint8_t pos = 0;
+  while (Serial.available()) {
+    int c = Serial.read();
+    if (c < 0) break;
+    if (c == '\r') continue;
+    if (c == '\n') {
+      line[pos] = 0;
+      if (strcmp(line, "factory_reset") == 0) {
+        auth_factory_reset();
+      } else if (pos > 0) {
+        Serial.printf("[Console] unknown command: %s\n", line);
+        Serial.println("  available: factory_reset");
+      }
+      pos = 0;
+    } else if (pos < sizeof(line) - 1) {
+      line[pos++] = (char)c;
+    }
+  }
+}
+
 bool auth_record_failure_and_check_lockout(const String& username) {
   FailEntry* fe = find_or_alloc_fail(username);
   uint32_t now = millis();

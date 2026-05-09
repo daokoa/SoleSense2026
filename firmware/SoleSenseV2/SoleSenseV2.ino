@@ -192,6 +192,7 @@ void setup() {
 // ── loop() ───────────────────────────────────────────────────────────────────
 void loop() {
   state_tick();
+  auth_serial_console_tick();   // listen for "factory_reset" from USB serial
 
   if (gSleepRequested) {
     gSleepRequested = false;

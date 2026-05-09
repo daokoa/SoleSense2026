@@ -66,3 +66,13 @@ bool auth_record_failure_and_check_lockout(const String& username);
 // One-time owner-claim check. Used by the register handler to decide if it
 // should require an existing-owner token.
 bool auth_in_claim_mode();
+
+// Wipe the entire auth NVS namespace and drop the active session. After
+// this returns the device is back in claim-mode. Triggered by the
+// "factory_reset" USB-serial command — there is no in-app reset path on
+// purpose, since that would defeat the security model.
+void auth_factory_reset();
+
+// Drain Serial input and act on any "factory_reset\n" line. Call once per
+// loop() iteration.
+void auth_serial_console_tick();
