@@ -24,10 +24,14 @@ volatile bool gStopRequested    = false;
 volatile bool gSleepRequested   = false;
 volatile uint32_t gPauseStartMs = 0;
 
-volatile uint32_t gStepCount    = 0;
-volatile uint32_t gContactSumMs = 0;
-volatile uint32_t gContactCount = 0;
-volatile float    gMaxHeelJerk  = 0.0f;
+volatile uint32_t gStepCount       = 0;
+volatile uint32_t gContactSumMs    = 0;
+volatile uint32_t gContactCount    = 0;
+volatile float    gMaxHeelJerk     = 0.0f;
+volatile uint32_t gLastImuImpactMs = 0;
+volatile bool     gImuConnected    = false;
+volatile uint32_t gImuImpactCount  = 0;
+volatile float    gMaxTotalPressure = 0.0f;
 
 static uint32_t sLastFlushMs = 0;
 
@@ -58,10 +62,14 @@ static void enter_recording() {
   gMaxJerkZ     = 0.0f;
   gLastActiveMs = millis();
   gPauseStartMs = 0;
-  gStepCount    = 0;
-  gContactSumMs = 0;
-  gContactCount = 0;
-  gMaxHeelJerk  = 0.0f;
+  gStepCount        = 0;
+  gContactSumMs     = 0;
+  gContactCount     = 0;
+  gMaxHeelJerk      = 0.0f;
+  gLastImuImpactMs  = 0;
+  gImuConnected     = false;
+  gImuImpactCount   = 0;
+  gMaxTotalPressure = 0.0f;
   sHeelInContact      = false;
   sStepContactStartMs = 0;
   sStepLastImpactMs   = 0;
@@ -170,9 +178,19 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
   constexpr uint32_t MIN_CONTACT_MS      = 50;       // shorter = bounce, drop
   constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, force-release
 
+  // IMU sensor-fusion gate: when the IMU is connected (real samples coming
+  // in), require a vertical-acceleration impact within the last 100 ms to
+  // validate the strike. Filters out picking-up-and-squeezing the insole and
+  // similar non-running events. Falls back gracefully when no IMU is wired
+  // (gImuConnected stays false, validation is bypassed).
+  constexpr uint32_t IMU_IMPACT_WINDOW_MS = 100;
+  bool imuValidated = !gImuConnected ||
+                      (nowMs - gLastImuImpactMs) <= IMU_IMPACT_WINDOW_MS;
+
   if (!sHeelInContact
       && heelValue > STEP_RISE_THRESHOLD
-      && (nowMs - sStepLastImpactMs) > STEP_REFRACTORY_MS) {
+      && (nowMs - sStepLastImpactMs) > STEP_REFRACTORY_MS
+      && imuValidated) {
     // Tentative strike: start tracking contact, but DON'T increment gStepCount
     // yet. We only credit a step when the contact passes the validity gate at
     // toe-off. FSR signals ring during a single physical press (rises, drops
@@ -182,8 +200,9 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
     sStepContactStartMs = nowMs;
     sStepLastImpactMs   = nowMs;
     sStepPeak           = heelValue;
-    Serial.printf("[Step] tentative   heel=%.0f @ %lu ms\n",
-                  heelValue, (unsigned long)nowMs);
+    Serial.printf("[Step] tentative   heel=%.0f @ %lu ms %s\n",
+                  heelValue, (unsigned long)nowMs,
+                  gImuConnected ? "[IMU-validated]" : "[FSR-only]");
   } else if (sHeelInContact) {
     // Track impact peak so the relative fall threshold scales with each strike.
     if (heelValue > sStepPeak) sStepPeak = heelValue;

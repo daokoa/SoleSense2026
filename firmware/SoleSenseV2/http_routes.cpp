@@ -310,7 +310,11 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   j += "\"flags\":";        j += flags;                     j += ",";
   j += "\"durationMs\":";   j += (unsigned long)durMs;      j += ",";
   j += "\"samples\":";      j += (unsigned long)gSampleCount; j += ",";
-  j += "\"outliers\":";     j += (unsigned)outliers_count();
+  j += "\"outliers\":";     j += (unsigned)outliers_count(); j += ",";
+  // Diagnostic / sensor-fusion fields (frontend may ignore).
+  j += "\"imuConnected\":"; j += (gImuConnected ? "true":"false"); j += ",";
+  j += "\"imuImpacts\":";   j += (unsigned long)gImuImpactCount; j += ",";
+  j += "\"maxTotalPressure\":"; j += String(gMaxTotalPressure, 0);
   j += "}";
   req->send(200, "application/json", j);
 }

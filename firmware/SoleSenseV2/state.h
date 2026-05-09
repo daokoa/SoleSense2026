@@ -47,11 +47,27 @@ extern volatile uint32_t gContactCount;
 // the standard biomechanics loading-rate metric.
 extern volatile float gMaxHeelJerk;
 
+// IMU sensor fusion. gLastImuImpactMs is the run-elapsed time of the most
+// recent vertical-acceleration impact (|az - mean(az)| > IMU_IMPACT_THRESH).
+// gImuConnected is set true once Welford stddev on az exceeds a tiny floor —
+// proxy for "the IMU is actually producing real samples". When false (IMU
+// disconnected or zero motion), the step detector skips IMU validation.
+extern volatile uint32_t gLastImuImpactMs;
+extern volatile bool     gImuConnected;
+extern volatile uint32_t gImuImpactCount;   // count of IMU impacts during the run
+
+// Total foot pressure metric (sum of all 6 FSR channels) — exposed via
+// /api/run-report for diagnostics and for cross-checking against the
+// any-zone-max strike signal.
+extern volatile float gMaxTotalPressure;   // peak SUM(ch0..5) seen this run
+
 // Time-domain step detector. Call once per sample from process_sample(),
-// after stats_update() for the heel channel so heelMean / heelStddev are
-// fresh. Detects heel strikes (rising-edge through max(floor, 4σ)) and
-// toe-offs (falling-edge through hysteresis floor), with a 150 ms refractory
-// period to suppress double-counting.
+// after the per-channel stats are fresh. Strike fires on a rising edge
+// through STEP_RISE_THRESHOLD; toe-off fires on heel < peak × FALL_FRACTION
+// or after MAX_CONTACT_MS (force-release). When the IMU is connected the
+// strike must also be paired with a recent IMU impact to count — kills
+// the "lift the insole and squeeze it" false positive. heelMean/heelStddev
+// are kept in the signature for the future EMA-baseline option.
 void step_detector_update(float heelValue, float heelMean, float heelStddev,
                           uint32_t nowMs);
 

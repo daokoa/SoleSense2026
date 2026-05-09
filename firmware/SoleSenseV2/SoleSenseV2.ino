@@ -102,11 +102,37 @@ static void process_sample() {
     }
   }
 
-  // Time-domain step detection: OR-gate across ALL FSR zones. A real step
+  // ── IMU sensor-fusion bookkeeping (used by step_detector_update below).
+  // Mark the IMU as "connected" once its vertical-axis stddev has grown above
+  // a tiny floor (real samples have noise; disconnected IMU stays at exactly
+  // zero stddev because gAccel never changes). Then detect any-axis impacts
+  // by deviation from the running mean, and stamp the most recent one.
+  float az        = channelVal[N_FSR + 2];   // accel_z
+  float az_mean   = stats_get_mean(N_FSR + 2);
+  float az_stddev = stats_get_stddev(N_FSR + 2);
+  if (az_stddev > 0.05f) gImuConnected = true;
+  if (gImuConnected) {
+    constexpr float IMU_IMPACT_DELTA = 8.0f;   // m/s² above background
+    if (fabsf(az - az_mean) > IMU_IMPACT_DELTA) {
+      gLastImuImpactMs = gRunElapsedMs;
+      gImuImpactCount++;
+    }
+  }
+
+  // ── Total foot pressure (sum of all 6 FSR zones). Smoother signal than
+  // single-channel max — useful for cross-checking the strike count and as
+  // an alternative trigger if max-based detection ever proves too noisy.
+  float totalPressure = 0.0f;
+  for (uint8_t i = 0; i < N_FSR; i++) totalPressure += channelVal[i];
+  if (totalPressure > gMaxTotalPressure) gMaxTotalPressure = totalPressure;
+
+  // ── Time-domain step detection: OR-gate across ALL FSR zones. A real step
   // can be heel-strike, midfoot-strike, or forefoot-strike depending on the
   // runner; whichever zone makes contact first counts. The detector's own
   // refractory window (250 ms in state.cpp) prevents double-counting the
   // heel→midfoot→forefoot pressure progression within a single stride.
+  // When the IMU is connected, the detector additionally requires a recent
+  // IMU impact for the strike to count.
   float anyZoneMax = channelVal[0];
   for (uint8_t i = 1; i < N_FSR; i++) {
     if (channelVal[i] > anyZoneMax) anyZoneMax = channelVal[i];
