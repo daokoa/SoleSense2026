@@ -27,6 +27,7 @@ volatile uint32_t gPauseStartMs = 0;
 volatile uint32_t gStepCount    = 0;
 volatile uint32_t gContactSumMs = 0;
 volatile uint32_t gContactCount = 0;
+volatile float    gMaxHeelJerk  = 0.0f;
 
 static uint32_t sLastFlushMs = 0;
 
@@ -59,6 +60,7 @@ static void enter_recording() {
   gStepCount    = 0;
   gContactSumMs = 0;
   gContactCount = 0;
+  gMaxHeelJerk  = 0.0f;
   sHeelInContact      = false;
   sStepContactStartMs = 0;
   sStepLastImpactMs   = 0;

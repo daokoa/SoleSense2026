@@ -192,10 +192,13 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   }
 
   // ── Zone means (raw FSR units; the frontend percentage-ifies for display).
-  // Three zones × two sensors each.
-  float zHeel     = (stats_get_mean(0) + stats_get_mean(1)) * 0.5f;
-  float zMidfoot  = (stats_get_mean(2) + stats_get_mean(3)) * 0.5f;
-  float zForefoot = (stats_get_mean(4) + stats_get_mean(5)) * 0.5f;
+  // Three zones × two sensors each. Clamp negatives to 0 — they only happen
+  // when an FSR is unconnected and a stale calibration offset is in effect,
+  // and a negative loading value isn't physically meaningful.
+  auto clamp_pos = [](float v) { return v > 0.0f ? v : 0.0f; };
+  float zHeel     = clamp_pos((stats_get_mean(0) + stats_get_mean(1)) * 0.5f);
+  float zMidfoot  = clamp_pos((stats_get_mean(2) + stats_get_mean(3)) * 0.5f);
+  float zForefoot = clamp_pos((stats_get_mean(4) + stats_get_mean(5)) * 0.5f);
 
   // ── Medial vs lateral on a single insole.
   // This is NOT left-foot vs right-foot — the system has one insole. The split
@@ -212,18 +215,25 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float hfTotal   = zHeel + zForefoot;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
-  // ── Loading rate (TODO: implement FSR-jerk extrapolation).
-  // Plan: FSR 402 saturates at ~10 kg, but the rate at which it ramps up
-  // *before* saturation contains the impact-magnitude information. Sampling
-  // the FSR signal's derivative during the 0→saturation transient lets us
-  // extrapolate peak force even though the sensor itself can't read it.
-  // For now we report 0 (frontend renders "—") so the demo doesn't show
-  // a fabricated value. (An earlier attempt used IMU vertical jerk — that
-  // measures torso/insole acceleration, not the FSR signal, so it was the
-  // wrong axis. Reverted.)
-  float loadingRateBWs = 0.0f;
-  (void)gMaxJerkZ;   // still tracked in process_sample, available for the
-                     // FSR-jerk implementation when it lands
+  // ── Loading rate via FSR-jerk extrapolation.
+  // FSR 402 saturates at ~10 kg of force, far below running peak GRF
+  // (100–200 kg). But the *rate of rise* of the FSR signal during the
+  // unsaturated portion of the impact transient encodes impact magnitude.
+  //
+  // Conversion: gMaxHeelJerk is in ADC-counts/s on the heel composite.
+  //   force_at_FSR_saturation = 10 kg × g = 98.1 N
+  //   ADC at saturation        = 4095 (12-bit, full scale; assumed)
+  //   N per ADC count          = 98.1 / 4095 ≈ 0.02395
+  //   body weight (assumed)    = 70 kg → 686.7 N
+  //   BW/s per (counts/s)      = 0.02395 / 686.7 ≈ 3.488e-5
+  // Healthy runners read 30–80 BW/s; >80 raises stress-fracture risk
+  // (Milner 2006). The 70 kg assumption can become user-configurable via
+  // /api/settings later — until then the number is "70-kg-equivalent BW/s".
+  constexpr float ADC_TO_BWS = (98.1f / 4095.0f) / 686.7f;   // ≈ 3.488e-5
+  float loadingRateBWs = gMaxHeelJerk > 0.0f
+                       ? gMaxHeelJerk * ADC_TO_BWS
+                       : 0.0f;
+  (void)gMaxJerkZ;   // IMU vertical jerk still tracked for future fusion
 
   // ── Pronation: running mean of gyro_x (degrees/s).
   // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.

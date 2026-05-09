@@ -17,9 +17,9 @@ static void read_set_a() {
   pinMode(PIN_PWR_SET1, OUTPUT);
   digitalWrite(PIN_PWR_SET1, HIGH);
   delayMicroseconds(50);
-  gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];   // Heel
-  gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];   // Lateral Mid
-  gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];   // Medial Mid
+  gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];   // Heel medial
+  gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];   // Heel lateral
+  gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];   // Midfoot medial
 }
 
 static void read_set_b() {
@@ -27,9 +27,9 @@ static void read_set_b() {
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, HIGH);
   delayMicroseconds(50);
-  gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];   // Ball Lateral
-  gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];   // Ball Medial
-  gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];   // Toe 1
+  gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];   // Midfoot lateral
+  gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];   // Forefoot medial
+  gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];   // Forefoot lateral
 }
 
 static void park_sets_high_z() {

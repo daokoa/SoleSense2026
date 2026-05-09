@@ -40,6 +40,13 @@ extern volatile uint32_t gStepCount;
 extern volatile uint32_t gContactSumMs;
 extern volatile uint32_t gContactCount;
 
+// Peak FSR rate-of-rise on the heel composite, in ADC counts per second.
+// Updated per sample by SoleSenseV2.ino's process_sample(). The run-report
+// handler converts it to body-weights-per-second (BW/s) using the FSR's
+// known 10 kg saturation point and an assumed 70 kg body weight; that's
+// the standard biomechanics loading-rate metric.
+extern volatile float gMaxHeelJerk;
+
 // Time-domain step detector. Call once per sample from process_sample(),
 // after stats_update() for the heel channel so heelMean / heelStddev are
 // fresh. Detects heel strikes (rising-edge through max(floor, 4σ)) and

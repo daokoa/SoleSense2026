@@ -112,6 +112,17 @@ static void process_sample() {
                        stats_get_mean(0),
                        stats_get_stddev(0),
                        gRunElapsedMs);
+
+  // FSR-jerk loading rate: track per-sample d(heelComposite)/dt and keep the
+  // peak. The run-report handler converts ADC-counts/s to BW/s.
+  static float sPrevHeel  = 0.0f;
+  static bool  sHeelHasPrev = false;
+  if (sHeelHasPrev) {
+    float jerk = (heelComposite - sPrevHeel) * (float)SAMPLE_RATE_HZ;
+    if (jerk > gMaxHeelJerk) gMaxHeelJerk = jerk;
+  }
+  sPrevHeel    = heelComposite;
+  sHeelHasPrev = true;
 }
 
 // ── setup() ──────────────────────────────────────────────────────────────────
