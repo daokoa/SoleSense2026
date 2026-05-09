@@ -129,36 +129,41 @@ const char* state_name() {
 }
 
 // ── Time-domain step detector ─────────────────────────────────────────────────
-// Schmitt-trigger on the heel channel. Rising edge above max(floor, 4σ) is a
-// heel-strike; falling edge below the hysteresis floor is a toe-off. The
+// Schmitt-trigger on the heel channel. Rising edge above ABSOLUTE FSR floor is
+// a heel-strike; falling edge below the release floor is a toe-off. The
 // refractory period (150 ms ≈ 6.7 Hz cap) suppresses double-counting on FSR
 // bounce or fingertip lift-tap. Contact intervals outside [50, 800] ms are
 // dropped from the GCT average — anything shorter is debounce noise, anything
 // longer is leaning rather than a step.
+//
+// We use absolute ADC values (not mean-relative) on purpose: the Welford
+// running mean would drift upward with every press and the running σ would
+// be poisoned by the press samples themselves, killing detection of the
+// second-and-later presses. The FSR rests around 0–150 ADC and a real press
+// reaches 500–3000+, so a fixed 400-ADC cutoff cleanly separates them
+// without any mean/σ tracking. heelMean / heelStddev are still passed in for
+// future EMA-baseline work but currently unused.
 void step_detector_update(float heelValue, float heelMean, float heelStddev,
                           uint32_t nowMs) {
+  (void)heelMean;
+  (void)heelStddev;
   if (gState != RS_RECORDING) return;
 
-  constexpr float    STEP_RISE_FLOOR     = 200.0f;   // ADC counts above mean
-  constexpr float    STEP_RISE_SIGMA     = 4.0f;     // OR exceeds Nσ above mean
-  constexpr float    STEP_FALL_FLOOR     = 80.0f;    // hysteresis release
+  constexpr float    STEP_RISE_THRESHOLD = 400.0f;   // raw ADC: clearly pressed
+  constexpr float    STEP_FALL_THRESHOLD = 200.0f;   // raw ADC: clearly released
   constexpr uint32_t STEP_REFRACTORY_MS  = 150;      // min interval between strikes
   constexpr uint32_t MIN_CONTACT_MS      = 50;       // shorter = bounce, drop
   constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, drop
 
-  float delta       = heelValue - heelMean;
-  float sigmaThresh = STEP_RISE_SIGMA * heelStddev;
-  float riseThresh  = sigmaThresh > STEP_RISE_FLOOR ? sigmaThresh : STEP_RISE_FLOOR;
-
   if (!sHeelInContact
-      && delta > riseThresh
+      && heelValue > STEP_RISE_THRESHOLD
       && (nowMs - sStepLastImpactMs) > STEP_REFRACTORY_MS) {
     // Heel strike.
     sHeelInContact      = true;
     sStepContactStartMs = nowMs;
     sStepLastImpactMs   = nowMs;
     gStepCount++;
-  } else if (sHeelInContact && delta < STEP_FALL_FLOOR) {
+  } else if (sHeelInContact && heelValue < STEP_FALL_THRESHOLD) {
     // Toe-off.
     sHeelInContact = false;
     uint32_t contactMs = nowMs - sStepContactStartMs;
