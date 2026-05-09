@@ -12,29 +12,46 @@ float   gGyro[3]         = {0,0,0};
 int     gFsrZero[N_FSR]  = {0,0,0,0,0,0};
 float   gImuOffset[6]    = {0,0,0,0,0,0};
 
+// Matrix-scan crosstalk fix: drive the INACTIVE set's power pin LOW (not
+// floating). Pressing an FSR raises voltage at its ADC pin; with the other
+// set's power pin floating, that voltage leaks back through any FSR in the
+// inactive set, raising the floating power pin's voltage and propagating
+// onto the other two ADC pins (classic "ghosting"). Driving the inactive
+// pin LOW shorts that ghost path to ground so each set is read cleanly.
+//
+// Settling time bumped to 150 µs because the LOW-driving means a real
+// transition to settle each scan, where the previous floating-pin scheme
+// settled almost instantly. Total per-sample budget at 500 Hz is 2 ms;
+// 6 reads × ~170 µs = ~1 ms, comfortably within budget.
 static void read_set_a() {
-  pinMode(PIN_PWR_SET2, INPUT);
+  pinMode(PIN_PWR_SET2, OUTPUT);
+  digitalWrite(PIN_PWR_SET2, LOW);
   pinMode(PIN_PWR_SET1, OUTPUT);
   digitalWrite(PIN_PWR_SET1, HIGH);
-  delayMicroseconds(50);
+  delayMicroseconds(150);
   gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];   // Heel medial
   gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];   // Heel lateral
   gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];   // Midfoot medial
 }
 
 static void read_set_b() {
-  pinMode(PIN_PWR_SET1, INPUT);
+  pinMode(PIN_PWR_SET1, OUTPUT);
+  digitalWrite(PIN_PWR_SET1, LOW);
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, HIGH);
-  delayMicroseconds(50);
+  delayMicroseconds(150);
   gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];   // Midfoot lateral
   gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];   // Forefoot medial
   gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];   // Forefoot lateral
 }
 
+// Park: drive both sets LOW (instead of high-Z) when not actively reading,
+// so any leakage path is grounded rather than floating.
 static void park_sets_high_z() {
-  pinMode(PIN_PWR_SET1, INPUT);
-  pinMode(PIN_PWR_SET2, INPUT);
+  pinMode(PIN_PWR_SET1, OUTPUT);
+  pinMode(PIN_PWR_SET2, OUTPUT);
+  digitalWrite(PIN_PWR_SET1, LOW);
+  digitalWrite(PIN_PWR_SET2, LOW);
 }
 
 static void read_imu() {

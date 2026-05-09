@@ -249,11 +249,15 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   uint32_t durSec = durMs / 1000UL;
   int   steps   = (int)gStepCount;
   int   cadence = 0;
-  if (durMs >= 2000UL && gStepCount > 0) {
+  // Show cadence as soon as we have a meaningful sample. Old gates (≥2 s,
+  // ≥60 spm) were too strict — a 3-second test with 2 presses came out at
+  // 40 spm and got clamped to 0, leaving the user staring at "—" on every
+  // first run. Loosened to: ≥1 s elapsed, ≥1 step detected, result in a
+  // very generous [20, 300] spm band (running peaks at ~200, finger
+  // tapping caps near 300).
+  if (durMs >= 1000UL && gStepCount > 0) {
     cadence = (int)((uint64_t)gStepCount * 60000ULL / (uint64_t)durMs);
-    // Sanity clamp: real running cadence is 60–240 spm. Anything outside
-    // that range is detector noise — better to show "—" than a wrong value.
-    if (cadence < 60 || cadence > 240) cadence = 0;
+    if (cadence < 20 || cadence > 300) cadence = 0;
   }
 
   // FSR saturation flag: any channel hit max ADC during the run? If so the
