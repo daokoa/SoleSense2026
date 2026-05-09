@@ -10,7 +10,7 @@
 | Track | State |
 |---|---|
 | **Firmware v0.1** (demo) | ✅ Flashed and running. Records 50 Hz CSV to LittleFS, browser-side JS analysis. This is what's on the device for live demos. |
-| **Firmware v0.2** (active development) | ✅ Modular rewrite, **500 Hz sampling**, all metrics on-MCU: time-domain step counter + GCT, FSR-jerk loading rate (BW/s), 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect. Open follow-ups: per-user body-weight + FSR-saturation calibration for loading rate. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
+| **Firmware v0.2** (active development) | ✅ Modular rewrite, **500 Hz sampling**, all metrics on-MCU: any-zone OR-gate step counter + GCT (with IMU sensor-fusion when wired), FSR-jerk loading rate (BW/s) using per-user body weight, 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect, NVS-backed user accounts with PIN auth. Open follow-ups: per-FSR saturation calibration, hardware verification under real running. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
 | **Frontend dao** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. |
 | **Frontend dao-v2** (v0.2-compat) | ✅ Anatomical foot SVG, 3-zone × medial/lateral live readout, polls `/api/run-state` + `/api/run-report` instead of running JS analysis. All headline metrics now display real numbers. |
 | **Frontend andony** | ✅ Dark-themed alternative SPA. Polls `/api/sensor` for live readout. |
@@ -141,14 +141,21 @@ timestamp_ms, fsr1..fsr6, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 
 ### v0.2-only
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/run-state` | Live run state: elapsed_ms (sourced from latest valid flash slot), sample count, paused flag, current state |
-| `GET` | `/api/run-report` | Computed metrics: steps, cadence, contactMs, loadingRate (BW/s), pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, flags |
-| `GET` | `/api/run-spectrum` | FFT magnitude spectrum (12 channels × 18 bins, Goertzel) |
-| `GET` | `/api/run-outliers` | Top-N outliers by σ (channel, ts_ms, value, delta, sigma) |
-| `GET` | `/api/storage-selftest` | On-bench validation of multi-slot ring buffer (writes 3 slots, corrupts newest, asserts load_latest returns second-newest) |
-| `GET` | `/api/fft-selftest` | Feeds a 1.95 Hz sine into channel 0 and prints per-bin magnitudes to Serial — expect ~100 amp on the on-bin frequency |
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `GET` | `/api/run-state` | public | Live run state: elapsed_ms (sourced from latest valid flash slot), sample count, paused flag, current state |
+| `GET` | `/api/run-report` | public | Computed metrics: steps, cadence, contactMs, loadingRate (BW/s), pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, imuConnected, imuImpacts, maxTotalPressure, flags |
+| `GET` | `/api/run-spectrum` | public | FFT magnitude spectrum (12 channels × 18 bins, Goertzel) |
+| `GET` | `/api/run-outliers` | public | Top-N outliers by σ (channel, ts_ms, value, delta, sigma) |
+| `GET` | `/api/storage-selftest` | public | On-bench validation of multi-slot ring buffer |
+| `GET` | `/api/fft-selftest` | public | Feeds a 1.95 Hz sine into channel 0 and prints per-bin magnitudes to Serial |
+| `GET` | `/api/auth/state` | public | `{ ownerExists, sessionActive, username }` — tells the frontend which screen to show |
+| `POST` | `/api/auth/register` | claim-mode public; afterwards owner-only | Create account; URL-encoded `username, pin, body_kg` |
+| `POST` | `/api/auth/login` | public | URL-encoded `username, pin` → `{ token, body_kg }` |
+| `POST` | `/api/auth/logout` | session | Clear active session |
+| `GET` | `/api/auth/profile` | session | Current user info |
+
+**Protected endpoints (require `Authorization: Bearer <token>`):** all `POST /api/start`, `POST /api/stop`, `POST /api/sleep`, `POST /api/calibrate/*`, `POST /api/data/clear`. Detail in [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md).
 
 ---
 

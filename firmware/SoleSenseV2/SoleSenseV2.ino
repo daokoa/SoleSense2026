@@ -22,6 +22,7 @@
 #include "stats.h"
 #include "storage.h"
 #include "http_routes.h"
+#include "auth.h"
 
 AsyncWebServer server(HTTP_PORT);
 
@@ -174,6 +175,7 @@ void setup() {
   stats_reset();
   storage_init();
   state_init();
+  auth_init();
 
   WiFi.softAP(SS_AP_SSID, SS_AP_PASS);
   IPAddress ip = WiFi.softAPIP();

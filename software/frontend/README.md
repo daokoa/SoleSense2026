@@ -104,6 +104,17 @@ Both Dao UIs label the L/R-style split as **Medial / Lateral** because the syste
 
 The injury-flag thresholds (cadence < 160 spm, pronation > 15°, supination < −8°, asymmetry > 10%, loading > 80 BW/s) come from peer-reviewed biomechanics research (sources in [`../../SOLESENSE.md`](../../SOLESENSE.md) §13) and aren't user-tunable. The firmware has a `/api/settings` endpoint and NVS-backed thresholds struct for future tooling, but no UI is wired to it.
 
+## Auth (dao-v2 only)
+
+dao-v2 now requires login. On first load it polls `/api/auth/state`:
+- If no owner exists, the user is in **claim mode** — they're prompted to set a username + PIN + body weight, which becomes the device owner.
+- Otherwise, a **login** form. Wrong PIN three times in 60 s locks the username for 30 s (firmware-side limiter).
+- Token is stored in `localStorage` under `solesense_token`. `body_kg` is cached so the report screen can do client-side BW/s sanity checks.
+- An `authFetch()` helper attaches `Authorization: Bearer <token>` to every protected call. Any 401 wipes localStorage and bounces the user back to login.
+- Logout: clear the session via `POST /api/auth/logout` and back to the auth screen.
+
+To factory-reset the device's user database, re-flash and clear the `solesense_auth` NVS namespace via USB serial. There is no in-app reset.
+
 ## Known limitations and gaps
 
 - **Loading rate** now reports a real BW/s value via FSR-jerk extrapolation (peak `d(heel_ADC)/dt` × conversion factor). The conversion currently assumes a 70 kg body weight and that the FSR + voltage divider hits 10 kg of force at full-scale ADC=4095; for users outside that envelope the displayed BW/s is a constant-factor scaling of the truth. User-configurable body weight and per-FSR saturation calibration are the next steps.

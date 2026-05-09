@@ -18,10 +18,67 @@
 #include "outliers.h"
 #include "stats.h"
 #include "storage.h"
+#include "auth.h"
 
 #include <LittleFS.h>
 #include <WiFi.h>
 #include <math.h>
+
+// ── Auth middleware ──────────────────────────────────────────────────────────
+// Returns true if the request carries a valid Bearer token. On false, sends
+// a 401 response and the caller MUST return immediately.
+static bool require_auth(AsyncWebServerRequest* req) {
+  if (!req->hasHeader("Authorization")) {
+    req->send(401, "application/json", "{\"ok\":false,\"error\":\"no auth\"}");
+    return false;
+  }
+  String tok = auth_extract_bearer(req->header("Authorization"));
+  if (tok.length() == 0 || !auth_check_token(tok)) {
+    req->send(401, "application/json", "{\"ok\":false,\"error\":\"invalid token\"}");
+    return false;
+  }
+  return true;
+}
+
+// Extract a JSON string field from a tiny request body. Caller-allocated buf.
+// Returns true if found; this is a poor-man's parser sufficient for our needs
+// (simple flat JSON like {"username":"x","pin":"1234"}).
+static bool json_get_string(const String& body, const char* field,
+                            char* out, size_t outlen) {
+  String key = String("\"") + field + "\"";
+  int k = body.indexOf(key);
+  if (k < 0) return false;
+  int colon = body.indexOf(':', k);
+  if (colon < 0) return false;
+  int q1 = body.indexOf('"', colon);
+  if (q1 < 0) return false;
+  int q2 = body.indexOf('"', q1 + 1);
+  if (q2 < 0) return false;
+  size_t n = q2 - q1 - 1;
+  if (n >= outlen) n = outlen - 1;
+  for (size_t i = 0; i < n; i++) out[i] = body[q1 + 1 + i];
+  out[n] = 0;
+  return true;
+}
+
+static bool json_get_number(const String& body, const char* field, float* out) {
+  String key = String("\"") + field + "\"";
+  int k = body.indexOf(key);
+  if (k < 0) return false;
+  int colon = body.indexOf(':', k);
+  if (colon < 0) return false;
+  size_t i = colon + 1;
+  while (i < body.length() && (body[i] == ' ' || body[i] == '\t')) i++;
+  // Capture until comma/brace
+  String num;
+  while (i < body.length() && body[i] != ',' && body[i] != '}') {
+    num += body[i++];
+  }
+  num.trim();
+  if (num.length() == 0) return false;
+  *out = num.toFloat();
+  return true;
+}
 
 // ── /api/device ──────────────────────────────────────────────────────────────
 static void handle_device(AsyncWebServerRequest* req) {
@@ -57,6 +114,7 @@ static void handle_sensor(AsyncWebServerRequest* req) {
 
 // ── /api/start /api/stop /api/sleep ──────────────────────────────────────────
 static void handle_start(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
   if (gState != RS_IDLE) {
     req->send(409, "application/json", "{\"ok\":false,\"error\":\"already recording\"}");
     return;
@@ -66,6 +124,7 @@ static void handle_start(AsyncWebServerRequest* req) {
 }
 
 static void handle_stop(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
   if (gState != RS_RECORDING) {
     req->send(409, "application/json", "{\"ok\":false,\"error\":\"not recording\"}");
     return;
@@ -75,6 +134,7 @@ static void handle_stop(AsyncWebServerRequest* req) {
 }
 
 static void handle_sleep(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
   if (gState == RS_RECORDING) {
     req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
     return;
@@ -85,6 +145,7 @@ static void handle_sleep(AsyncWebServerRequest* req) {
 
 // ── /api/calibrate/zero /api/calibrate/imu ───────────────────────────────────
 static void handle_cal_zero(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
   if (gState != RS_IDLE) {
     req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
     return;
@@ -97,6 +158,7 @@ static void handle_cal_zero(AsyncWebServerRequest* req) {
 }
 
 static void handle_cal_imu(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
   if (gState != RS_IDLE) {
     req->send(409, "application/json", "{\"ok\":false,\"error\":\"recording\"}");
     return;
@@ -189,7 +251,21 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   int   cadence = 0;
   if (durMs >= 2000UL && gStepCount > 0) {
     cadence = (int)((uint64_t)gStepCount * 60000ULL / (uint64_t)durMs);
+    // Sanity clamp: real running cadence is 60–240 spm. Anything outside
+    // that range is detector noise — better to show "—" than a wrong value.
+    if (cadence < 60 || cadence > 240) cadence = 0;
   }
+
+  // FSR saturation flag: any channel hit max ADC during the run? If so the
+  // loading-rate metric is conservative (real impact was bigger than what
+  // our 10 kg-saturation conversion can express).
+  bool anySaturated = false;
+  for (uint8_t i = 0; i < N_FSR; i++) {
+    // peak FSR per channel isn't tracked separately; use total-pressure
+    // ceiling as a proxy: sum near 6 × 4095 = 24570 means all channels saturated.
+  }
+  // Use maxTotalPressure / N_FSR as average peak; flag if avg approaches saturation.
+  bool fsrSaturated = (gMaxTotalPressure / (float)N_FSR) > 3500.0f;
 
   // ── Zone means (raw FSR units; the frontend percentage-ifies for display).
   // Three zones × two sensors each. Clamp negatives to 0 — they only happen
@@ -220,18 +296,17 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   // (100–200 kg). But the *rate of rise* of the FSR signal during the
   // unsaturated portion of the impact transient encodes impact magnitude.
   //
-  // Conversion: gMaxHeelJerk is in ADC-counts/s on the heel composite.
+  // Conversion uses:
   //   force_at_FSR_saturation = 10 kg × g = 98.1 N
   //   ADC at saturation        = 4095 (12-bit, full scale; assumed)
-  //   N per ADC count          = 98.1 / 4095 ≈ 0.02395
-  //   body weight (assumed)    = 70 kg → 686.7 N
-  //   BW/s per (counts/s)      = 0.02395 / 686.7 ≈ 3.488e-5
+  //   user body weight         = gSession.body_kg if logged in, else 70 kg
+  //   BW/s = (counts/s) × (98.1 / 4095) / (body_kg × 9.81)
   // Healthy runners read 30–80 BW/s; >80 raises stress-fracture risk
-  // (Milner 2006). The 70 kg assumption can become user-configurable via
-  // /api/settings later — until then the number is "70-kg-equivalent BW/s".
-  constexpr float ADC_TO_BWS = (98.1f / 4095.0f) / 686.7f;   // ≈ 3.488e-5
+  // (Milner 2006).
+  float bw_kg = gSession.active ? gSession.body_kg : 70.0f;
+  float bw_n  = bw_kg * 9.81f;
   float loadingRateBWs = gMaxHeelJerk > 0.0f
-                       ? gMaxHeelJerk * ADC_TO_BWS
+                       ? gMaxHeelJerk * (98.1f / 4095.0f) / bw_n
                        : 0.0f;
   (void)gMaxJerkZ;   // IMU vertical jerk still tracked for future fusion
 
@@ -285,8 +360,11 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     pushFlag("medial_lateral_asym",
              String((int)medialPct) + "% med / " + String((int)lateralPct) + "% lat");
   }
-  // GCT flag suppressed in v0.2 — we don't measure it honestly. Re-enable
-  // when time-domain step detection lands.
+  // FSR saturation flag — alerts the user that the loading-rate number
+  // is a lower bound (the FSR peaked out before it could measure the real impact).
+  if (fsrSaturated) {
+    pushFlag("fsr_saturated", "loading rate may be underreported");
+  }
   flags += "]";
 
   // ── Build response.
@@ -366,6 +444,76 @@ static void handle_storage_state(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
+// ── /api/auth/* ──────────────────────────────────────────────────────────────
+// Public state endpoint: tells the frontend whether to show login or
+// claim-mode (first-user registration).
+static void handle_auth_state(AsyncWebServerRequest* req) {
+  String j = "{";
+  j += "\"ownerExists\":";    j += (auth_owner_exists() ? "true" : "false");
+  j += ",\"sessionActive\":"; j += (gSession.active     ? "true" : "false");
+  j += ",\"username\":\"";    j += (gSession.active ? gSession.username : "");
+  j += "\"}";
+  req->send(200, "application/json", j);
+}
+
+// Register a new user. URL-encoded body: username, pin, body_kg.
+// First call (claim-mode) is unrestricted; later calls require an owner token.
+static void handle_auth_register(AsyncWebServerRequest* req) {
+  if (!auth_in_claim_mode()) {
+    if (!require_auth(req)) return;   // only existing owner can add accounts
+  }
+  String username = req->arg("username");
+  String pin      = req->arg("pin");
+  float  body_kg  = req->arg("body_kg").toFloat();
+  int rc = auth_register(username, pin, body_kg);
+  if (rc == 0) {
+    String j = "{\"ok\":true,\"token\":\"";
+    j += gSession.token_hex;
+    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += "}";
+    req->send(200, "application/json", j);
+  } else {
+    const char* err = (rc == -1) ? "username taken"
+                    : (rc == -2) ? "nvs error"
+                    :              "invalid input";
+    String j = "{\"ok\":false,\"error\":\""; j += err; j += "\"}";
+    req->send(400, "application/json", j);
+  }
+}
+
+// Login. URL-encoded body: username, pin.
+static void handle_auth_login(AsyncWebServerRequest* req) {
+  String username = req->arg("username");
+  String pin      = req->arg("pin");
+  int rc = auth_login(username, pin);
+  if (rc == 0) {
+    String j = "{\"ok\":true,\"token\":\"";
+    j += gSession.token_hex;
+    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += "}";
+    req->send(200, "application/json", j);
+  } else if (rc == -3) {
+    req->send(429, "application/json",
+              "{\"ok\":false,\"error\":\"too many attempts\"}");
+  } else {
+    req->send(401, "application/json",
+              "{\"ok\":false,\"error\":\"invalid credentials\"}");
+  }
+}
+
+static void handle_auth_logout(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
+  auth_logout();
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
+static void handle_auth_profile(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
+  String j = "{\"username\":\""; j += gSession.username;
+  j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1); j += "}";
+  req->send(200, "application/json", j);
+}
+
 // ── Registration ─────────────────────────────────────────────────────────────
 void http_register_routes(AsyncWebServer& server) {
   server.on("/api/device",         HTTP_GET,  handle_device);
@@ -382,5 +530,11 @@ void http_register_routes(AsyncWebServer& server) {
   server.on("/api/fft-selftest",     HTTP_POST, handle_fft_selftest);
   server.on("/api/storage-selftest", HTTP_POST, handle_storage_selftest);
   server.on("/api/storage-state",    HTTP_GET,  handle_storage_state);
+  // Auth (owner-claim, login, logout, profile)
+  server.on("/api/auth/state",     HTTP_GET,  handle_auth_state);
+  server.on("/api/auth/register",  HTTP_POST, handle_auth_register);
+  server.on("/api/auth/login",     HTTP_POST, handle_auth_login);
+  server.on("/api/auth/logout",    HTTP_POST, handle_auth_logout);
+  server.on("/api/auth/profile",   HTTP_GET,  handle_auth_profile);
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }

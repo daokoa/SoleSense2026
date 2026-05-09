@@ -537,7 +537,31 @@ body{
 <body>
 
 <!-- ══════════════════════════════════════ HOME ══════════════════════════════════════ -->
-<div class="screen active" id="screen-home">
+<!-- Auth screen: shown first if no token in localStorage. Two modes — login
+     (when an owner already exists) and claim (first-ever registration). -->
+<div class="screen active" id="screen-auth">
+  <div style="max-width:340px;margin:80px auto;padding:24px;">
+    <div style="font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;">SoleSense</div>
+    <div style="color:var(--text2);margin-bottom:24px;" id="auth-subtitle">Loading…</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <input id="auth-username" type="text" placeholder="Username" autocomplete="username"
+             style="padding:12px;border-radius:10px;border:1px solid var(--border);font-size:15px;">
+      <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
+             placeholder="PIN (4–16 digits)" autocomplete="current-password"
+             style="padding:12px;border-radius:10px;border:1px solid var(--border);font-size:15px;">
+      <input id="auth-bodykg" type="number" step="0.1" placeholder="Body weight (kg)"
+             style="padding:12px;border-radius:10px;border:1px solid var(--border);font-size:15px;display:none;">
+      <button id="auth-submit-btn" onclick="submitAuth()"
+              style="padding:14px;border:none;border-radius:10px;background:var(--blue);color:white;font-size:15px;font-weight:600;cursor:pointer;">
+        Log in
+      </button>
+      <div id="auth-error" style="color:#dc2626;font-size:13px;min-height:18px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-home">
 
   <nav class="home-nav">
     <div class="home-wordmark">Sole<span>Sense</span></div>
@@ -807,6 +831,90 @@ body{
 <div id="toast"></div>
 
 <script>
+/* ── AUTH ───────────────────────────────────────────────────────────────────
+ * Single-session model. Token + body_kg cached in localStorage so a reload
+ * doesn't bounce the user back to login. Any 401 from a protected endpoint
+ * wipes the cache and returns to login. */
+const AUTH_TOKEN_KEY = 'solesense_token';
+const AUTH_BODYKG_KEY = 'solesense_body_kg';
+let authMode = 'login';   // 'login' or 'claim'
+
+function authToken(){ return localStorage.getItem(AUTH_TOKEN_KEY) || ''; }
+
+async function authFetch(url, opts = {}){
+  const tok = authToken();
+  const headers = Object.assign({}, opts.headers || {});
+  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+  const r = await fetch(url, Object.assign({}, opts, { headers }));
+  if (r.status === 401) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_BODYKG_KEY);
+    showScreen('auth');
+    refreshAuthScreen();
+    throw new Error('unauthorized');
+  }
+  return r;
+}
+
+async function refreshAuthScreen(){
+  document.getElementById('auth-error').textContent = '';
+  try {
+    const r = await fetch('/api/auth/state');
+    const d = await r.json();
+    if (!d.ownerExists) {
+      authMode = 'claim';
+      document.getElementById('auth-subtitle').textContent = 'Claim this device. Set your username and PIN.';
+      document.getElementById('auth-bodykg').style.display = 'block';
+      document.getElementById('auth-submit-btn').textContent = 'Claim';
+    } else {
+      authMode = 'login';
+      document.getElementById('auth-subtitle').textContent = 'Log in to start a run.';
+      document.getElementById('auth-bodykg').style.display = 'none';
+      document.getElementById('auth-submit-btn').textContent = 'Log in';
+    }
+  } catch (e) {
+    document.getElementById('auth-error').textContent = 'Could not reach device — is the SoleSense WiFi connected?';
+  }
+}
+
+async function submitAuth(){
+  const u = document.getElementById('auth-username').value.trim();
+  const p = document.getElementById('auth-pin').value;
+  const bk = document.getElementById('auth-bodykg').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  if (!u || !p) { errEl.textContent = 'Username and PIN required.'; return; }
+  if (authMode === 'claim' && (!bk || +bk < 25 || +bk > 250)) {
+    errEl.textContent = 'Body weight must be 25–250 kg.'; return;
+  }
+  const url = (authMode === 'claim') ? '/api/auth/register' : '/api/auth/login';
+  const body = new URLSearchParams({ username: u, pin: p });
+  if (authMode === 'claim') body.append('body_kg', bk);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    const d = await r.json();
+    if (!d.ok) { errEl.textContent = d.error || 'Auth failed.'; return; }
+    localStorage.setItem(AUTH_TOKEN_KEY, d.token);
+    localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
+    document.getElementById('auth-pin').value = '';
+    showScreen('home');
+  } catch (e) {
+    errEl.textContent = 'Network error.';
+  }
+}
+
+async function logout(){
+  try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch {}
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_BODYKG_KEY);
+  showScreen('auth');
+  refreshAuthScreen();
+}
+
 /* ── NAV ── */
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -814,13 +922,23 @@ function showScreen(id){
   window.scrollTo(0,0);
 }
 
+/* On first paint, decide which screen to show. */
+window.addEventListener('DOMContentLoaded', () => {
+  if (authToken()) {
+    showScreen('home');
+  } else {
+    showScreen('auth');
+    refreshAuthScreen();
+  }
+});
+
 /* ── RECORDING (v0.2: timer + paused state come from /api/run-state;
        chips and steps come from /api/run-report polled during recording) ── */
 let stateInterval=null,barInterval=null,reportInterval=null;
 let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 
 function startRun(){
-  fetch('/api/start',{method:'POST'}).catch(()=>{});
+  authFetch('/api/start',{method:'POST'}).catch(()=>{});
   recSeconds=0;
   document.getElementById('rec-timer').textContent='0:00';
   setPausedBadge(false);
@@ -845,14 +963,14 @@ function startRun(){
 
 function stopRun(){
   clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
-  fetch('/api/stop',{method:'POST'}).catch(()=>{});
+  authFetch('/api/stop',{method:'POST'}).catch(()=>{});
   showLoading('Processing your run…');
   setTimeout(()=>loadReport(), 1200);
 }
 
 function cancelRun(){
   clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
-  fetch('/api/stop',{method:'POST'}).catch(()=>{});
+  authFetch('/api/stop',{method:'POST'}).catch(()=>{});
   showScreen('home');
 }
 
@@ -1022,9 +1140,9 @@ function render(r){
 }
 
 /* ── SETTINGS ── */
-async function zeroSensors(){try{await fetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
-async function zeroIMU(){try{await fetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
-async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await fetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
+async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
+async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
+async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await authFetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 
 /* ── HELPERS ── */
