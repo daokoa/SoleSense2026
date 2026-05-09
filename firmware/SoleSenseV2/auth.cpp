@@ -69,12 +69,31 @@ static void hex_encode(const uint8_t* in, size_t n, char* out) {
   out[n*2] = 0;
 }
 
-static String key_for(const char* user, const char* field) {
-  String s = "u/";
+// NVS key names are limited to 15 characters. Use a 2-char prefix per field
+// + the username, giving us 13 chars for the username. Validation in
+// auth_register enforces this. Prefixes are lowercase letters; the global
+// "owner_user" key is distinct and won't collide.
+static String key_for(const char* user, char prefix) {
+  String s;
+  s.reserve(15);
+  s += prefix;
+  s += '_';
   s += user;
-  s += "/";
-  s += field;
   return s;
+}
+
+// Allowed username characters: letters, digits, underscore. Length 3..13.
+static bool valid_username(const String& u) {
+  if (u.length() < 3 || u.length() > 13) return false;
+  for (size_t i = 0; i < u.length(); i++) {
+    char c = u[i];
+    bool ok = (c >= 'a' && c <= 'z') ||
+              (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') ||
+              c == '_';
+    if (!ok) return false;
+  }
+  return true;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -94,22 +113,27 @@ bool auth_in_claim_mode() {
 }
 
 int auth_register(const String& username, const String& pin, float body_kg) {
-  if (username.length() == 0 || username.length() >= sizeof(gSession.username)) return -3;
+  if (!valid_username(username)) return -3;
   if (pin.length() < 4 || pin.length() > 16) return -3;
   if (body_kg < 25.0f || body_kg > 250.0f) return -3;
 
-  String existing = sNvs.getString(key_for(username.c_str(), "salt").c_str(), "");
-  if (existing.length() > 0) return -1;   // username taken
+  // Username taken? Check with isKey on the salt key (matches the type we wrote).
+  String saltKey = key_for(username.c_str(), 's');
+  if (sNvs.isKey(saltKey.c_str())) return -1;
 
   uint8_t salt[16];
   random_bytes(salt, sizeof(salt));
   uint8_t hash[32];
   sha256_concat((const uint8_t*)pin.c_str(), pin.length(), salt, sizeof(salt), hash);
 
-  size_t w1 = sNvs.putBytes(key_for(username.c_str(), "salt").c_str(), salt, sizeof(salt));
-  size_t w2 = sNvs.putBytes(key_for(username.c_str(), "pinhash").c_str(), hash, sizeof(hash));
-  size_t w3 = sNvs.putFloat(key_for(username.c_str(), "body_kg").c_str(), body_kg);
-  if (w1 != sizeof(salt) || w2 != sizeof(hash) || w3 == 0) return -2;
+  size_t w1 = sNvs.putBytes(saltKey.c_str(),                        salt, sizeof(salt));
+  size_t w2 = sNvs.putBytes(key_for(username.c_str(), 'h').c_str(), hash, sizeof(hash));
+  size_t w3 = sNvs.putFloat(key_for(username.c_str(), 'w').c_str(), body_kg);
+  if (w1 != sizeof(salt) || w2 != sizeof(hash) || w3 == 0) {
+    Serial.printf("[Auth] register NVS write failed: w1=%u w2=%u w3=%u\n",
+                  (unsigned)w1, (unsigned)w2, (unsigned)w3);
+    return -2;
+  }
 
   if (auth_in_claim_mode()) {
     sNvs.putString("owner_user", username);
@@ -128,7 +152,9 @@ int auth_login(const String& username, const String& pin) {
     }
   }
 
-  String saltKey = key_for(username.c_str(), "salt");
+  if (!valid_username(username)) return -1;
+
+  String saltKey = key_for(username.c_str(), 's');
   if (!sNvs.isKey(saltKey.c_str())) {
     auth_record_failure_and_check_lockout(username);
     return -1;
@@ -138,7 +164,7 @@ int auth_login(const String& username, const String& pin) {
   if (saltLen != sizeof(salt)) return -1;
 
   uint8_t storedHash[32];
-  size_t hashLen = sNvs.getBytes(key_for(username.c_str(), "pinhash").c_str(),
+  size_t hashLen = sNvs.getBytes(key_for(username.c_str(), 'h').c_str(),
                                  storedHash, sizeof(storedHash));
   if (hashLen != sizeof(storedHash)) return -1;
 
@@ -158,7 +184,7 @@ int auth_login(const String& username, const String& pin) {
   gSession.username[sizeof(gSession.username) - 1] = 0;
   hex_encode(tok, sizeof(tok), gSession.token_hex);
   gSession.expires_ms = millis() + SESSION_IDLE_MS;
-  gSession.body_kg    = sNvs.getFloat(key_for(username.c_str(), "body_kg").c_str(), 70.0f);
+  gSession.body_kg    = sNvs.getFloat(key_for(username.c_str(), 'w').c_str(), 70.0f);
 
   // Reset failure count for this user
   for (auto& e : sFails) {
