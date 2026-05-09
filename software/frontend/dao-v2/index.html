@@ -630,80 +630,85 @@ body{
 
     <div class="feet-wrap" id="feet-wrap">
       <!-- Left foot, viewed from below (sole). Toes at top with the hallux on
-           the medial (right) side, narrowing through the arch waist on the
-           medial side, widening to a rounded heel. Path is asymmetric on
-           purpose so it actually reads as a foot, not a generic blob. -->
+           the medial (right) side. Anatomy modelled from a standard podiatric
+           sole-view diagram: lateral edge mostly straight with a 5th-metatarsal
+           bulge, medial edge with the 1st-MT bulge → arch indent → heel curve.
+           Right foot is the same path mirrored via SVG transform. -->
       <div class="foot-card" id="foot-left">
         <div class="foot-card-label">Left foot</div>
         <svg class="foot-svg" viewBox="0 0 90 180">
           <!-- main sole outline -->
           <path class="foot-outline" d="
-            M 50 18
-            C 65 16 73 22 74 36
-            C 80 46 80 60 76 78
-            C 80 96 76 118 74 138
-            C 73 158 66 170 54 172
-            L 38 172
-            C 26 170 19 158 18 138
-            C 16 118 12 96 16 78
-            C 12 60 12 46 18 36
-            C 19 22 27 16 38 16
+            M 45 173
+            C 32 176, 22 168, 22 156
+            C 18 144, 14 124, 16 100
+            C 12 84, 12 66, 20 52
+            C 22 42, 28 36, 38 33
+            L 70 33
+            C 78 33, 84 38, 86 50
+            C 90 64, 86 78, 80 88
+            C 74 100, 66 108, 62 120
+            C 58 135, 64 152, 70 162
+            C 72 170, 62 177, 45 173
             Z
           "/>
-          <!-- toes (5 small circles on top, hallux largest, others tapering) -->
-          <circle class="foot-outline" cx="58" cy="9"  r="6"/>
-          <circle class="foot-outline" cx="46" cy="11" r="4.5"/>
-          <circle class="foot-outline" cx="36" cy="14" r="3.7"/>
-          <circle class="foot-outline" cx="28" cy="18" r="3.2"/>
-          <circle class="foot-outline" cx="22" cy="22" r="2.8"/>
+          <!-- toes — hallux (right, larger, on the medial side), then four
+               progressively smaller toes curving toward the lateral edge.
+               Toes 2-3 sit highest; pinky is shortest. -->
+          <circle class="foot-outline" cx="70" cy="14" r="7.5"/>
+          <circle class="foot-outline" cx="55" cy="9"  r="5.2"/>
+          <circle class="foot-outline" cx="41" cy="11" r="4.4"/>
+          <circle class="foot-outline" cx="29" cy="16" r="3.7"/>
+          <circle class="foot-outline" cx="20" cy="23" r="3.0"/>
 
           <!-- 6 sensor positions (channel-to-zone mapping per firmware) -->
           <!-- ch5 toe-1 / hallux base -->
-          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="56" cy="32" r="6.5"/>
+          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="70" cy="42" r="6.5"/>
           <!-- ch4 ball medial -->
-          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="58" cy="56" r="6.5"/>
+          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="74" cy="65" r="6.5"/>
           <!-- ch3 ball lateral -->
-          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="30" cy="56" r="6.5"/>
-          <!-- ch2 medial mid (under the arch) -->
-          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="58" cy="100" r="6"/>
+          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="24" cy="65" r="6.5"/>
+          <!-- ch2 medial mid (just before the arch) -->
+          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="60" cy="115" r="5.5"/>
           <!-- ch1 lateral mid -->
-          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="26" cy="100" r="6"/>
+          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="22" cy="110" r="5.5"/>
           <!-- ch0 heel -->
-          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="46" cy="152" r="9"/>
+          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="45" cy="157" r="9"/>
         </svg>
       </div>
 
-      <!-- Right foot — visual placeholder, mirrored via SVG transform. No
-           second insole wired in v0.1; circles stay greyed-out so the user
+      <!-- Right foot — same path, mirrored via SVG transform. No second
+           insole wired in v0.1/v0.2; circles stay greyed-out so the user
            sees the eventual layout but doesn't expect live data. -->
       <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
         <div class="foot-card-label">Right (offline)</div>
         <svg class="foot-svg" viewBox="0 0 90 180">
           <g transform="translate(90 0) scale(-1 1)">
             <path class="foot-outline" d="
-              M 50 18
-              C 65 16 73 22 74 36
-              C 80 46 80 60 76 78
-              C 80 96 76 118 74 138
-              C 73 158 66 170 54 172
-              L 38 172
-              C 26 170 19 158 18 138
-              C 16 118 12 96 16 78
-              C 12 60 12 46 18 36
-              C 19 22 27 16 38 16
+              M 45 173
+              C 32 176, 22 168, 22 156
+              C 18 144, 14 124, 16 100
+              C 12 84, 12 66, 20 52
+              C 22 42, 28 36, 38 33
+              L 70 33
+              C 78 33, 84 38, 86 50
+              C 90 64, 86 78, 80 88
+              C 74 100, 66 108, 62 120
+              C 58 135, 64 152, 70 162
+              C 72 170, 62 177, 45 173
               Z
             "/>
-            <circle class="foot-outline" cx="58" cy="9"  r="6"/>
-            <circle class="foot-outline" cx="46" cy="11" r="4.5"/>
-            <circle class="foot-outline" cx="36" cy="14" r="3.7"/>
-            <circle class="foot-outline" cx="28" cy="18" r="3.2"/>
-            <circle class="foot-outline" cx="22" cy="22" r="2.8"/>
-            <circle class="foot-sensor" cx="56" cy="32"  r="6.5"/>
-            <circle class="foot-sensor" cx="58" cy="56"  r="6.5"/>
-            <circle class="foot-sensor" cx="30" cy="56"  r="6.5"/>
-            <circle class="foot-sensor" cx="58" cy="100" r="6"/>
-            <circle class="foot-sensor" cx="26" cy="100" r="6"/>
-            <circle class="foot-sensor" cx="46" cy="152" r="9"/>
+            <circle class="foot-outline" cx="70" cy="14" r="7.5"/>
+            <circle class="foot-outline" cx="55" cy="9"  r="5.2"/>
+            <circle class="foot-outline" cx="41" cy="11" r="4.4"/>
+            <circle class="foot-outline" cx="29" cy="16" r="3.7"/>
+            <circle class="foot-outline" cx="20" cy="23" r="3.0"/>
+            <circle class="foot-sensor" cx="70" cy="42"  r="6.5"/>
+            <circle class="foot-sensor" cx="74" cy="65"  r="6.5"/>
+            <circle class="foot-sensor" cx="24" cy="65"  r="6.5"/>
+            <circle class="foot-sensor" cx="60" cy="115" r="5.5"/>
+            <circle class="foot-sensor" cx="22" cy="110" r="5.5"/>
+            <circle class="foot-sensor" cx="45" cy="157" r="9"/>
           </g>
         </svg>
       </div>
