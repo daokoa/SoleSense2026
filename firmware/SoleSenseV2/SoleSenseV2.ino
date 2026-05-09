@@ -102,27 +102,30 @@ static void process_sample() {
     }
   }
 
-  // Time-domain step detection on the heel zone. Two heel sensors (ch0
-  // medial, ch1 lateral); take the max so a strike on EITHER side fires
-  // the detector. Mean/stddev are passed in for future EMA-baseline use
-  // but currently unused by the absolute-threshold detector.
-  float heelComposite = channelVal[0] > channelVal[1]
-                      ? channelVal[0] : channelVal[1];
-  step_detector_update(heelComposite,
+  // Time-domain step detection: OR-gate across ALL FSR zones. A real step
+  // can be heel-strike, midfoot-strike, or forefoot-strike depending on the
+  // runner; whichever zone makes contact first counts. The detector's own
+  // refractory window (250 ms in state.cpp) prevents double-counting the
+  // heel→midfoot→forefoot pressure progression within a single stride.
+  float anyZoneMax = channelVal[0];
+  for (uint8_t i = 1; i < N_FSR; i++) {
+    if (channelVal[i] > anyZoneMax) anyZoneMax = channelVal[i];
+  }
+  step_detector_update(anyZoneMax,
                        stats_get_mean(0),
                        stats_get_stddev(0),
                        gRunElapsedMs);
 
-  // FSR-jerk loading rate: track per-sample d(heelComposite)/dt and keep the
-  // peak. The run-report handler converts ADC-counts/s to BW/s.
-  static float sPrevHeel  = 0.0f;
-  static bool  sHeelHasPrev = false;
-  if (sHeelHasPrev) {
-    float jerk = (heelComposite - sPrevHeel) * (float)SAMPLE_RATE_HZ;
+  // FSR-jerk loading rate: track per-sample d(anyZoneMax)/dt and keep the
+  // peak. Same OR-gate: peak rate-of-rise wherever the impact lands counts.
+  static float sPrevAny  = 0.0f;
+  static bool  sAnyHasPrev = false;
+  if (sAnyHasPrev) {
+    float jerk = (anyZoneMax - sPrevAny) * (float)SAMPLE_RATE_HZ;
     if (jerk > gMaxHeelJerk) gMaxHeelJerk = jerk;
   }
-  sPrevHeel    = heelComposite;
-  sHeelHasPrev = true;
+  sPrevAny    = anyZoneMax;
+  sAnyHasPrev = true;
 }
 
 // ── setup() ──────────────────────────────────────────────────────────────────

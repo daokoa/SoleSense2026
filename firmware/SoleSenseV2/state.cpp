@@ -162,7 +162,11 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
 
   constexpr float    STEP_RISE_THRESHOLD = 400.0f;   // raw ADC: clearly pressed
   constexpr float    STEP_FALL_FRACTION  = 0.5f;     // fall < peak × this
-  constexpr uint32_t STEP_REFRACTORY_MS  = 150;      // min interval between strikes
+  constexpr uint32_t STEP_REFRACTORY_MS  = 250;      // any-zone OR-gate: 250 ms
+                                                     // covers a full stride
+                                                     // contact phase (~200 ms)
+                                                     // so heel→forefoot in one
+                                                     // stride only counts once
   constexpr uint32_t MIN_CONTACT_MS      = 50;       // shorter = bounce, drop
   constexpr uint32_t MAX_CONTACT_MS      = 800;      // longer  = lean, force-release
 
