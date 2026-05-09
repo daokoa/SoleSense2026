@@ -7,6 +7,7 @@ Web-side and host-side code for SoleSense. The MCU firmware lives in [`../firmwa
 | Folder | Purpose |
 |---|---|
 | [`frontend/`](frontend/) | The single-page web app served from the XIAO ESP32-C3 over its WiFi access point. Three parallel UIs — `dao/` (v0.1), `dao-v2/` (v0.2), `andony/` (alt). See [`frontend/README.md`](frontend/README.md). |
+| [`backend/`](backend/) | Server-side helpers that need real internet. Contains the Cloudflare Worker proxy that does LLM-powered run analysis (OpenAI key lives only there as an encrypted secret). |
 | [`scripts/`](scripts/) | Host-side Python utilities for FSR bring-up and debugging. Run from a laptop while the device serves its AP. |
 
 ## scripts/
