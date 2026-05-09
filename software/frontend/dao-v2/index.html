@@ -268,9 +268,14 @@ body{
   display:inline-flex;align-items:center;gap:8px;
   font-size:14px;color:var(--text3);
 }
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
-.status-dot.warn{background:var(--amber)}
-.status-dot.off{background:var(--text3)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;
+  transition:background .3s; box-shadow:0 0 0 3px rgba(34,197,94,.18);}
+.status-dot.warn{background:var(--amber); box-shadow:0 0 0 3px rgba(245,158,11,.18);}
+.status-dot.off{background:var(--text3); box-shadow:0 0 0 3px rgba(142,153,187,.18);}
+.status-dot.danger{background:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.20);
+  animation:pulse-danger 1.5s ease-in-out infinite;}
+@keyframes pulse-danger{ 0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.20)}
+                          50%{box-shadow:0 0 0 6px rgba(220,38,38,.10)} }
 
 .home-bottom{
   width:100%;
@@ -712,10 +717,6 @@ body{
 
   <nav class="home-nav">
     <div class="home-wordmark">Sole<span>Sense</span></div>
-    <div class="home-nav-links">
-      <button class="home-nav-link" onclick="viewLastReport()">Report</button>
-      <button class="home-nav-link" onclick="showScreen('settings')">Settings</button>
-    </div>
   </nav>
 
   <div class="home-hero">
@@ -1617,11 +1618,35 @@ function hideLoading(){document.getElementById('loading-overlay').classList.remo
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
 
+/* ── CONNECTIVITY PING ─────────────────────────────────────────────────────
+ * Periodically pokes /api/device. Any HTTP response → connected (green).
+ * Network failure (phone left the AP, AP went down, captive portal) → red,
+ * pulsing. Polled every 5 seconds with a short 3-second timeout so we
+ * don't hang the UI on a slow disconnect. */
+async function pingDevice(){
+  const dot = document.getElementById('conn-dot');
+  if (!dot) return;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 3000);
+    await fetch('/api/device', { signal: ctrl.signal });
+    clearTimeout(t);
+    dot.className = 'status-dot';
+    set('conn-text', 'Connected');
+  } catch {
+    dot.className = 'status-dot danger';
+    set('conn-text', 'Disconnected — rejoin SoleSense WiFi');
+  }
+}
+function startConnectivityWatch(){
+  pingDevice();
+  if (window.__solesense_ping) return;
+  window.__solesense_ping = setInterval(pingDevice, 5000);
+}
+
 /* ── INIT ── */
 fetchDeviceInfo();
-fetch('/api/device')
-  .then(()=>{document.getElementById('conn-dot').className='status-dot';set('conn-text','Connected');})
-  .catch(()=>{document.getElementById('conn-dot').className='status-dot off';set('conn-text','Not connected');});
+startConnectivityWatch();
 </script>
 </body>
 </html>
