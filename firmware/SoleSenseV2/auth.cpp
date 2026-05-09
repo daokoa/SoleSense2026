@@ -117,6 +117,11 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   if (pin.length() < 4 || pin.length() > 16) return -3;
   if (body_kg < 25.0f || body_kg > 250.0f) return -3;
 
+  // Capture claim-mode state BEFORE we mutate it, so we can decide later
+  // whether to auto-login. (Existing-owner-adds-user must NOT replace the
+  // owner's active session with the new user's session.)
+  const bool wasClaimMode = auth_in_claim_mode();
+
   // Username taken? Check with isKey on the salt key (matches the type we wrote).
   String saltKey = key_for(username.c_str(), 's');
   if (sNvs.isKey(saltKey.c_str())) return -1;
@@ -135,12 +140,13 @@ int auth_register(const String& username, const String& pin, float body_kg) {
     return -2;
   }
 
-  if (auth_in_claim_mode()) {
+  if (wasClaimMode) {
     sNvs.putString("owner_user", username);
+    // First-ever account: this is the device claim, auto-grant a session.
+    return auth_login(username, pin);
   }
-
-  // Auto-grant session for the freshly registered user.
-  return auth_login(username, pin);
+  // Owner is adding a secondary account — keep the owner's active session.
+  return 0;
 }
 
 int auth_login(const String& username, const String& pin) {

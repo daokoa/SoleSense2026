@@ -140,6 +140,22 @@ body{
 .btn-start:active{transform:scale(.97)}
 .btn-start svg{width:20px;height:20px;fill:white;margin-left:-2px}
 
+/* Modal — used by the "Add user" flow in Settings. */
+.modal{
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(15,26,58,0.55); backdrop-filter:blur(4px);
+  padding:24px;
+}
+.modal-card{
+  background:var(--surface); border-radius:18px;
+  padding:24px; max-width:360px; width:100%;
+  box-shadow:0 20px 60px rgba(15,26,58,.3);
+}
+.modal-title{ font-size:20px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.modal-sub{   font-size:14px; color:var(--text2); line-height:1.5; margin-bottom:18px; }
+.modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+
 /* Recording-screen disconnect warning */
 .rec-disconnect-badge{
   display:inline-block; margin-top:10px;
@@ -957,6 +973,13 @@ body{
           </div>
           <button class="btn-cal" onclick="confirmLogout()">Log out</button>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Add another user</div>
+            <div class="settings-desc">Create an additional account on this insole. You stay signed in.</div>
+          </div>
+          <button class="btn-cal" onclick="openAddUser()">Add user</button>
+        </div>
       </div>
     </div>
 
@@ -978,6 +1001,37 @@ body{
       SoleSense · UCI · Spring 2026
     </div>
 
+  </div>
+</div>
+
+<!-- Add-user modal. Shown only from Settings → Add user. Owner's auth token
+     is sent automatically via authFetch; the firmware refuses if the caller
+     isn't already logged in. -->
+<div id="add-user-modal" class="modal" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-title">Add another user</div>
+    <div class="modal-sub">Create an account on this insole. You will stay signed in to your own account.</div>
+    <form class="auth-form" onsubmit="event.preventDefault();submitAddUser();">
+      <label class="auth-field">
+        <span class="auth-label">Username</span>
+        <input id="add-username" type="text" maxlength="13" placeholder="Pick a username">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">PIN</span>
+        <input id="add-pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Enter your PIN">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">Body weight (kg)</span>
+        <input id="add-bodykg" type="number" step="0.1" placeholder="e.g. 70.0">
+      </label>
+      <div id="add-user-error" class="auth-error"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cal" onclick="closeAddUser()">Cancel</button>
+        <button type="submit" class="btn-start auth-submit" style="margin:0;padding:12px 24px;font-size:14px;">
+          <span>Create account</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1079,6 +1133,45 @@ async function logout(){
 function confirmLogout(){
   if(!confirm('Log out? You will need your username and PIN to sign back in.')) return;
   logout();
+}
+
+/* ── ADD-USER MODAL ───────────────────────────────────────────────────────
+ * Owner / signed-in user adds a secondary account. The firmware verifies
+ * the caller's auth token (added automatically by authFetch); the new
+ * account does NOT replace the current session. */
+function openAddUser(){
+  document.getElementById('add-username').value = '';
+  document.getElementById('add-pin').value = '';
+  document.getElementById('add-bodykg').value = '';
+  document.getElementById('add-user-error').textContent = '';
+  document.getElementById('add-user-modal').style.display = 'flex';
+}
+function closeAddUser(){
+  document.getElementById('add-user-modal').style.display = 'none';
+}
+async function submitAddUser(){
+  const u  = document.getElementById('add-username').value.trim();
+  const p  = document.getElementById('add-pin').value;
+  const bk = document.getElementById('add-bodykg').value;
+  const errEl = document.getElementById('add-user-error');
+  errEl.textContent = '';
+  if(!u || !p){ errEl.textContent = 'Username and PIN required.'; return; }
+  if(!bk || +bk < 25 || +bk > 250){ errEl.textContent = 'Body weight must be 25–250 kg.'; return; }
+
+  const body = new URLSearchParams({ username: u, pin: p, body_kg: bk });
+  try {
+    const r = await authFetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    const d = await r.json();
+    if(!d.ok){ errEl.textContent = d.error || 'Could not create account.'; return; }
+    closeAddUser();
+    toast('Account "' + d.username + '" created');
+  } catch (e) {
+    errEl.textContent = 'Network error — check the SoleSense WiFi.';
+  }
 }
 
 /* Populate the settings screen with the current user's profile + the

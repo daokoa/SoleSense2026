@@ -457,9 +457,12 @@ static void handle_auth_state(AsyncWebServerRequest* req) {
 }
 
 // Register a new user. URL-encoded body: username, pin, body_kg.
-// First call (claim-mode) is unrestricted; later calls require an owner token.
+// First call (claim-mode) is unrestricted and auto-grants the new owner a
+// session. Later calls require an owner token AND keep the owner's session
+// (the new account exists but isn't auto-logged-in).
 static void handle_auth_register(AsyncWebServerRequest* req) {
-  if (!auth_in_claim_mode()) {
+  const bool claimMode = auth_in_claim_mode();
+  if (!claimMode) {
     if (!require_auth(req)) return;   // only existing owner can add accounts
   }
   String username = req->arg("username");
@@ -467,11 +470,19 @@ static void handle_auth_register(AsyncWebServerRequest* req) {
   float  body_kg  = req->arg("body_kg").toFloat();
   int rc = auth_register(username, pin, body_kg);
   if (rc == 0) {
-    String j = "{\"ok\":true,\"token\":\"";
-    j += gSession.token_hex;
-    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
-    j += "}";
-    req->send(200, "application/json", j);
+    if (claimMode) {
+      // First account: return token + body so frontend can stash and proceed.
+      String j = "{\"ok\":true,\"token\":\"";
+      j += gSession.token_hex;
+      j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+      j += ",\"username\":\""; j += gSession.username; j += "\"}";
+      req->send(200, "application/json", j);
+    } else {
+      // Owner added a secondary account; do NOT return a token (the owner
+      // remains logged in). Frontend just needs to know it succeeded.
+      String j = "{\"ok\":true,\"username\":\""; j += username; j += "\"}";
+      req->send(200, "application/json", j);
+    }
   } else {
     const char* err = (rc == -1) ? "username taken"
                     : (rc == -2) ? "nvs error"
