@@ -262,7 +262,7 @@ body{
   letter-spacing:0.06em; color:var(--text2);
 }
 .foot-card.disabled .foot-card-label{ color:var(--text3); }
-.foot-svg{ width:110px; height:133px; display:block; }
+.foot-svg{ width:90px; height:180px; display:block; }
 .foot-outline{
   fill:#f7f9ff; stroke:#cbd5ff; stroke-width:1.5;
 }
@@ -629,43 +629,68 @@ body{
     </div>
 
     <div class="feet-wrap" id="feet-wrap">
-      <!-- Left foot — actual SoleSense insole CAD render with the 6 FSR pads
-           visible. Live data overlays (one circle per channel) are positioned
-           directly on top of the image's sensor pads. Right foot is the same
-           image flipped horizontally and greyed out — no second insole wired. -->
+      <!-- Left foot — outline drawn from the SoleSense insole CAD proportions.
+           Flipped: heel at the TOP, toes at the BOTTOM. Lateral edge (left)
+           with a 5th-MT bulge; medial edge (right) with the arch indent and
+           1st-MT bulge. 6 live-data sensor circles sit at the actual pad
+           positions on the insole. Right foot is the same path mirrored. -->
       <div class="foot-card" id="foot-left">
         <div class="foot-card-label">Left foot</div>
-        <svg class="foot-svg" viewBox="0 0 796 964" preserveAspectRatio="xMidYMid meet">
-          <image href="solesense.png" x="0" y="0" width="796" height="964"/>
+        <svg class="foot-svg" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+          <path class="foot-outline" d="
+            M 50 5
+            C 32 5, 25 12, 25 25
+            C 22 45, 18 70, 18 95
+            C 12 115, 10 145, 14 165
+            C 18 178, 28 188, 38 192
+            C 45 195, 55 195, 62 192
+            C 72 188, 82 178, 86 165
+            C 90 145, 88 115, 82 95
+            C 78 75, 66 65, 60 50
+            C 58 30, 70 12, 50 5
+            Z
+          "/>
 
           <!-- 6 sensor live-data overlays, channel order fixed by firmware. -->
-          <!-- ch5 forefoot lateral -->
-          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="350" cy="165" r="40"/>
-          <!-- ch4 forefoot medial -->
-          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="450" cy="165" r="40"/>
-          <!-- ch3 midfoot lateral -->
-          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="295" cy="290" r="40"/>
-          <!-- ch2 midfoot medial -->
-          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="485" cy="285" r="40"/>
-          <!-- ch1 heel lateral -->
-          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="370" cy="805" r="45"/>
           <!-- ch0 heel medial -->
-          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="450" cy="800" r="45"/>
+          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="60" cy="25" r="8"/>
+          <!-- ch1 heel lateral -->
+          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="40" cy="25" r="8"/>
+          <!-- ch2 midfoot medial -->
+          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="62" cy="95" r="7"/>
+          <!-- ch3 midfoot lateral -->
+          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="24" cy="95" r="7"/>
+          <!-- ch4 forefoot medial -->
+          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="74" cy="150" r="8"/>
+          <!-- ch5 forefoot lateral -->
+          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="22" cy="150" r="8"/>
         </svg>
       </div>
 
-      <!-- Right foot — same image mirrored via SVG transform, greyed out. -->
+      <!-- Right foot — same path mirrored, greyed out (no second insole). -->
       <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
         <div class="foot-card-label">Right (offline)</div>
-        <svg class="foot-svg" viewBox="0 0 796 964" preserveAspectRatio="xMidYMid meet">
-          <g transform="translate(796 0) scale(-1 1)">
-            <image href="solesense.png" x="0" y="0" width="796" height="964"/>
-            <circle class="foot-sensor" cx="350" cy="165" r="40"/>
-            <circle class="foot-sensor" cx="450" cy="165" r="40"/>
-            <circle class="foot-sensor" cx="295" cy="290" r="40"/>
-            <circle class="foot-sensor" cx="485" cy="285" r="40"/>
-            <circle class="foot-sensor" cx="370" cy="805" r="45"/>
-            <circle class="foot-sensor" cx="450" cy="800" r="45"/>
+        <svg class="foot-svg" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+          <g transform="translate(100 0) scale(-1 1)">
+            <path class="foot-outline" d="
+              M 50 5
+              C 32 5, 25 12, 25 25
+              C 22 45, 18 70, 18 95
+              C 12 115, 10 145, 14 165
+              C 18 178, 28 188, 38 192
+              C 45 195, 55 195, 62 192
+              C 72 188, 82 178, 86 165
+              C 90 145, 88 115, 82 95
+              C 78 75, 66 65, 60 50
+              C 58 30, 70 12, 50 5
+              Z
+            "/>
+            <circle class="foot-sensor" cx="60" cy="25"  r="8"/>
+            <circle class="foot-sensor" cx="40" cy="25"  r="8"/>
+            <circle class="foot-sensor" cx="62" cy="95"  r="7"/>
+            <circle class="foot-sensor" cx="24" cy="95"  r="7"/>
+            <circle class="foot-sensor" cx="74" cy="150" r="8"/>
+            <circle class="foot-sensor" cx="22" cy="150" r="8"/>
           </g>
         </svg>
       </div>
