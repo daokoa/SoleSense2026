@@ -140,6 +140,57 @@ body{
 .btn-start:active{transform:scale(.97)}
 .btn-start svg{width:20px;height:20px;fill:white;margin-left:-2px}
 
+/* AI-coach panel on the report screen */
+.ai-title{ display:flex; align-items:center; gap:8px; }
+.ai-badge{
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  color:white; padding:2px 8px; border-radius:8px;
+}
+.ai-card{
+  background:linear-gradient(135deg,#f5f8ff 0%,#eaf0ff 100%);
+  border:1px solid var(--blue-lt); border-radius:14px; padding:16px;
+}
+.ai-empty{ text-align:center; padding:8px 4px; }
+.ai-empty-text{ color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:14px; }
+.btn-ai{
+  display:inline-flex; align-items:center; gap:8px;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  color:white; border:none; border-radius:24px;
+  padding:11px 22px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 14px rgba(37,99,235,.3);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-ai:hover{ transform:scale(1.03); box-shadow:0 6px 18px rgba(37,99,235,.4); }
+.btn-ai:active{ transform:scale(.97); }
+.btn-ai svg{ flex-shrink:0; }
+.ai-loading{
+  display:flex; align-items:center; gap:10px; justify-content:center;
+  color:var(--blue); font-size:14px; padding:12px 0;
+}
+.spinner-sm{
+  width:18px; height:18px; border-radius:50%;
+  border:2.5px solid var(--blue-lt); border-top-color:var(--blue);
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.ai-result{ font-size:14.5px; line-height:1.6; color:var(--text); }
+.ai-result:empty{ display:none; }
+.ai-result h3, .ai-result strong{ color:var(--blue2); }
+.ai-result p{ margin:8px 0; }
+.ai-result strong{ display:block; margin:14px 0 6px; font-size:13px;
+  text-transform:uppercase; letter-spacing:.06em; }
+.ai-result strong:first-child{ margin-top:0; }
+.ai-result ul{ margin:6px 0 12px; padding-left:20px; }
+.ai-result li{ margin:4px 0; }
+.ai-result em{ color:var(--text2); }
+.ai-error{
+  background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+  padding:12px; border-radius:10px; font-size:13px; line-height:1.5;
+}
+.ai-error a{ color:#991b1b; text-decoration:underline; }
+
 /* Auth screen — same visual language as the home hero. */
 .auth-hero{
   display:flex; flex-direction:column; align-items:center; text-align:center;
@@ -799,6 +850,31 @@ body{
       <div id="flags-container"></div>
     </div>
 
+    <!-- LLM-personalized analysis. Hits the Cloudflare worker which holds
+         the OpenAI key. Falls back to the rule-based flags above when
+         offline / worker unreachable. -->
+    <div class="section ai-section">
+      <div class="section-title ai-title">
+        <span>AI Coach</span>
+        <span class="ai-badge">beta</span>
+      </div>
+      <div class="ai-card">
+        <div id="ai-empty" class="ai-empty">
+          <div class="ai-empty-text">Get a personalized breakdown of this run, calibrated to your body weight and gait.</div>
+          <button class="btn-ai" onclick="runAiAnalysis()">
+            <svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 2 L11.5 7 L17 8 L13 11.5 L14 17 L10 14 L6 17 L7 11.5 L3 8 L8.5 7 Z" fill="currentColor"/></svg>
+            Analyze with AI
+          </button>
+        </div>
+        <div id="ai-loading" class="ai-loading" style="display:none;">
+          <div class="spinner-sm"></div>
+          <span>Analyzing your run…</span>
+        </div>
+        <div id="ai-result" class="ai-result"></div>
+        <div id="ai-error" class="ai-error" style="display:none;"></div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-title">Run Metrics</div>
       <div class="metrics-card">
@@ -1114,6 +1190,115 @@ async function animateBars(){
   finally{ barFetchInFlight=false; }
 }
 
+/* ── AI COACH (LLM analysis via Cloudflare Worker proxy) ────────────────────
+ * The worker URL holds the OpenAI key as an encrypted secret. Hitting it
+ * requires real internet, so this is a graceful-fallback feature: if the
+ * phone is still on the SoleSense AP (no internet), or the worker is down,
+ * we keep the rule-based flags above and show an error instead. */
+const ANALYZE_WORKER_URL = 'https://solesense-analyze.daodoan.workers.dev';
+
+let lastReport = null;   // cached run-report from /api/run-report
+
+/* Tiny markdown → HTML for the LLM response. The system prompt locks the
+ * shape (Bold section headers + bulleted lists), so this only needs to
+ * handle **bold**, * lists, and paragraphs. Escapes HTML defensively. */
+function renderMarkdown(md){
+  if(!md) return '';
+  let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html = html.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+  // Bullet lists (- or *)
+  const lines = html.split('\n');
+  const out = []; let inList = false;
+  for(const ln of lines){
+    const m = ln.match(/^\s*[-*]\s+(.+)$/);
+    if(m){
+      if(!inList){ out.push('<ul>'); inList = true; }
+      out.push('<li>'+m[1]+'</li>');
+    } else {
+      if(inList){ out.push('</ul>'); inList = false; }
+      const t = ln.trim();
+      if(t.length === 0) out.push('');
+      else if(t.startsWith('<')) out.push(t);
+      else out.push('<p>'+t+'</p>');
+    }
+  }
+  if(inList) out.push('</ul>');
+  return out.join('\n');
+}
+
+async function runAiAnalysis(){
+  if(!lastReport){ return; }
+  document.getElementById('ai-empty').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-result').innerHTML = '';
+  document.getElementById('ai-loading').style.display = 'flex';
+
+  const bodyKg = parseFloat(localStorage.getItem(AUTH_BODYKG_KEY) || '0') || null;
+
+  // Map firmware run-report → worker schema. The worker prompt names these
+  // exactly so anything else is ignored. Skip undefined fields rather than
+  // sending zeros that the LLM might over-interpret.
+  const payload = {
+    user: { body_kg: bodyKg },
+    run: {
+      duration_sec:     Math.round((lastReport.durationMs || 0) / 1000) || undefined,
+      steps:            lastReport.steps || undefined,
+      cadence_spm:      lastReport.cadence || undefined,
+      contact_ms:       lastReport.contactMs || undefined,
+      loading_rate_bws: lastReport.loadingRate || undefined,
+      pronation_dps:    lastReport.pronate || undefined,
+      medial_pct:       lastReport.medialPct || undefined,
+      lateral_pct:      lastReport.lateralPct || undefined,
+      zones: lastReport.zoneAvg ? {
+        heel:     pctOfTotal(lastReport.zoneAvg, 'heel'),
+        midfoot:  pctOfTotal(lastReport.zoneAvg, 'midfoot'),
+        forefoot: pctOfTotal(lastReport.zoneAvg, 'forefoot'),
+      } : undefined,
+      fsr_saturated: lastReport.flags?.some(f => f.key === 'fsr_saturated') || false,
+      imu_validated: !!lastReport.imuConnected,
+      raw_flags: (lastReport.flags || []).map(f => f.key),
+    },
+  };
+
+  try {
+    const r = await fetch(ANALYZE_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    document.getElementById('ai-loading').style.display = 'none';
+    if(!d.ok){
+      showAiError('Analysis failed: ' + (d.error || 'unknown') + '. The rule-based findings above still apply.');
+      return;
+    }
+    document.getElementById('ai-result').innerHTML = renderMarkdown(d.analysis || '');
+  } catch (e) {
+    document.getElementById('ai-loading').style.display = 'none';
+    showAiError('Couldn\'t reach the AI coach. Make sure your phone has internet (the SoleSense WiFi has none on its own). The rule-based findings above still apply.');
+  }
+}
+
+function showAiError(msg){
+  const el = document.getElementById('ai-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('ai-empty').style.display = 'block';
+}
+
+function pctOfTotal(zoneAvg, key){
+  const total = (zoneAvg.heel || 0) + (zoneAvg.midfoot || 0) + (zoneAvg.forefoot || 0);
+  if(total <= 0) return 0;
+  return Math.round((zoneAvg[key] || 0) / total * 100);
+}
+
+function resetAiPanel(){
+  document.getElementById('ai-empty').style.display = 'block';
+  document.getElementById('ai-loading').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-result').innerHTML = '';
+}
+
 /* ── REPORT LOAD (v0.2: MCU computes the analysis, frontend just renders) ── */
 async function loadReport(){
   try{
@@ -1122,6 +1307,8 @@ async function loadReport(){
     const result=await res.json();
     hideLoading();
     if(!result||typeof result!=='object'){toast('No run data');showScreen('home');return;}
+    lastReport = result;
+    resetAiPanel();
     render(result);
     const now=new Date();
     document.getElementById('last-report-sub').textContent='Today '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
