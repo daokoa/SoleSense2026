@@ -1,6 +1,6 @@
 # SoleSense Pseudocode
 
-Two pseudocode documents describing the system, written by Andony at different stages. Both are kept because they cover different scopes.
+Two pseudocode documents describing the system, at different stages. Both are kept because they cover different scopes.
 
 | File | Lines | Scope | Purpose |
 |---|---|---|---|
