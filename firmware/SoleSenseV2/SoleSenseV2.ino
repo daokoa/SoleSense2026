@@ -1,5 +1,5 @@
 // SoleSense v0.2 main sketch.
-// Architecture: docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md
+// Architecture: docs/design/specs/2026-05-06-v0.2-data-architecture.md
 
 #include <Arduino.h>
 #include <WiFi.h>

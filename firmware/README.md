@@ -1,15 +1,12 @@
 # SoleSense Firmware
 
-Two firmware paths in this repo. Both target the **Seeed XIAO ESP32-C3**, the same pinout, the same hardware.
+Canonical firmware lives in [`SoleSenseV2/`](SoleSenseV2/) (Arduino IDE, targets the **Seeed XIAO ESP32-C3**). 500 Hz sampling, modular `.h/.cpp` layout, on-MCU step detector + GCT + FSR-jerk loading rate, incremental Goertzel FFT (1024-sample window), top-N outlier buffer, multi-slot crash-recoverable flash storage, pause-on-disconnect, NVS-backed user accounts, captive-portal-free mDNS hostname. Sensor layout is 3-zone x medial/lateral (Choi 2024 +E-at-heel).
 
-| Folder | Build system | Notes |
-|---|---|---|
-| [`SoleSenseV2/`](SoleSenseV2/) | Arduino IDE | **Canonical firmware.** 500 Hz sampling, modular `.h/.cpp` layout, on-MCU step detector + GCT + FSR-jerk loading rate, incremental Goertzel FFT (1024-sample window), top-N outlier buffer, multi-slot crash-recoverable flash storage, pause-on-disconnect, NVS-backed user accounts, captive-portal-free mDNS hostname. Sensor layout is 3-zone x medial/lateral (Choi 2024 +E-at-heel). |
-| [`platformio/`](platformio/) | PlatformIO | **Stub.** ~76-line `src/main.cpp` returning dummy random sensor data, alt SSID, ArduinoOTA. Not currently used. Keep around for the day we migrate the build off Arduino IDE. |
+A diagnostic IMU smoke-test sketch lives in [`imu-test/`](imu-test/) for hardware bring-up; pair it with `software/scripts/watch-imu.py` for a live terminal dashboard.
 
 ## Design overview
 
-`SoleSenseV2/` keeps every byte of run state on the MCU, stores FFT magnitudes + outliers + Welford stats in a CRC-protected ring buffer (not raw samples), and runs the full analysis on-device so the browser is just a renderer. 500 Hz sampling gives enough resolution to capture impact rising edges for FSR-jerk extrapolation of loading rate. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the architecture rationale.
+`SoleSenseV2/` keeps every byte of run state on the MCU, stores FFT magnitudes + outliers + Welford stats in a CRC-protected ring buffer (not raw samples), and runs the full analysis on-device so the browser is just a renderer. 500 Hz sampling gives enough resolution to capture impact rising edges for FSR-jerk extrapolation of loading rate. See [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](../docs/design/specs/2026-05-06-v0.2-data-architecture.md) for the architecture rationale.
 
 ## Sensor layout
 
@@ -45,15 +42,6 @@ LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `softw
 
 > **Heads-up:** the Arduino IDE auto-respawns its Serial Monitor whenever the XIAO re-enumerates after a flash, which holds the port and breaks the next upload. Close the Serial Monitor pane before flashing, or run `kill $(lsof -t /dev/cu.usbmodem*)` between attempts.
 
-### PlatformIO (not currently used)
-
-```bash
-cd firmware/platformio
-pio run --target upload
-pio run --target uploadfs
-pio device monitor
-```
-
 ## Hardware setup
 
 Pin map and matrix-scan FSR layout are documented in the [root README](../README.md). Key constants live in `firmware/SoleSenseV2/config.h`.
@@ -67,6 +55,6 @@ Pin map and matrix-scan FSR layout are documented in the [root README](../README
 
 ## Cross-references
 
-- Architecture spec: [`../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md)
-- Implementation plan: [`../docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](../docs/superpowers/plans/2026-05-06-v0.2-firmware.md)
-- Profile / auth spec: [`../docs/superpowers/specs/2026-05-09-profile-system.md`](../docs/superpowers/specs/2026-05-09-profile-system.md)
+- Architecture spec: [`../docs/design/specs/2026-05-06-v0.2-data-architecture.md`](../docs/design/specs/2026-05-06-v0.2-data-architecture.md)
+- Implementation plan: [`../docs/design/plans/2026-05-06-v0.2-firmware.md`](../docs/design/plans/2026-05-06-v0.2-firmware.md)
+- Profile / auth spec: [`../docs/design/specs/2026-05-09-profile-system.md`](../docs/design/specs/2026-05-09-profile-system.md)

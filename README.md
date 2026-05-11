@@ -14,7 +14,7 @@
 | **Sensors** | 6 FSRs in 3-zone x medial/lateral layout (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot. Hardware bring-up + per-channel verification ongoing. IMU optional (not required for any of the headline metrics). |
 | **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
 
-> **Architecture:** all run state lives on the MCU. The firmware computes the analysis on-device (FFT magnitudes + outliers + Welford stats in a CRC ring buffer); the browser is purely a renderer. WiFi blips no longer cost runs because the phone holds no state. Full rationale in [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
+> **Architecture:** all run state lives on the MCU. The firmware computes the analysis on-device (FFT magnitudes + outliers + Welford stats in a CRC ring buffer); the browser is purely a renderer. WiFi blips no longer cost runs because the phone holds no state. Full rationale in [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md).
 
 ---
 
@@ -148,14 +148,12 @@ solesense/
 |
 |-- firmware/                         <- see firmware/README.md
 |   |-- README.md
-|   |-- SoleSenseV2/                  <- (Arduino IDE) canonical firmware
+|   |-- SoleSenseV2/                  <- canonical firmware (Arduino IDE)
 |   |   |-- SoleSenseV2.ino
 |   |   |-- config.h / state.* / sensors.* / fft.* / outliers.* / stats.* / storage.* / auth.* / http_routes.*
 |   |   |-- flash-littlefs.sh
 |   |   `-- data/index.html           <- LittleFS deployment copy of solesense-v2/index.html
-|   `-- platformio/                   <- (PlatformIO) parallel stub firmware, not currently used
-|       |-- platformio.ini
-|       `-- src/main.cpp
+|   `-- imu-test/                     <- standalone MPU-6050 smoke-test sketch
 |
 |-- software/                         <- all browser/host-side code, see software/README.md
 |   |-- README.md
@@ -165,20 +163,19 @@ solesense/
 |   |   `-- solesense-v2/index.html   <- canonical SPA (auth + AI Coach)
 |   |-- backend/
 |   |   `-- analyze-worker/           <- Cloudflare Worker proxy holding the OpenAI key
-|   `-- scripts/                      <- host-side Python utilities for FSR bring-up
+|   `-- scripts/                      <- host-side Python utilities (FSR + IMU bring-up)
 |
 |-- hardware/
-|   |-- cad/FSR Cutout.SLDPRT         <- SolidWorks CAD
+|   |-- cad/                          <- SolidWorks CAD parts and assemblies
 |   |-- electrical/Solesense_WD.*     <- KiCad schematic + PCB
-|   `-- pcb/                          <- reserved for production PCB files (empty)
+|   |-- 3d printing/                  <- sliced .3mf gcode for the housing + lid
+|   `-- electricalpins.pdf            <- canonical pin assignment reference
 |
-|-- docs/
-|   |-- pseudocode/                   <- system-level pseudocode (system-flow + injury-analysis)
-|   `-- superpowers/
-|       |-- specs/                    <- design docs, profile-system spec
-|       `-- plans/                    <- implementation plans
-|
-`-- assets/                           <- images, diagrams (reserved, empty)
+`-- docs/
+    |-- pseudocode/                   <- system-level pseudocode (system-flow + injury-analysis)
+    `-- design/
+        |-- specs/                    <- architecture + profile-system specs
+        `-- plans/                    <- implementation plan
 ```
 
 ---
@@ -245,7 +242,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 ## Roadmap
 
 ### Shipped
-- [x] **All run state on the MCU. No browser-side storage.** FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot -- not a JS wall-clock -- so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
+- [x] **All run state on the MCU. No browser-side storage.** FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot -- not a JS wall-clock -- so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
 - [x] **500 Hz sampling.** RAM usage is rate-independent because Goertzel is incremental. Captures impact rising edges with enough resolution for FSR-jerk extrapolation.
 - [x] **Time-domain step counter and ground-contact-time** (Schmitt trigger on the heel composite, 150 ms refractory).
 - [x] **FSR-jerk loading rate (BW/s)** -- peak heel d(ADC)/dt converted via FSR-saturation x body-weight assumptions.
@@ -274,6 +271,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 | James Kim | Mechanical |
 | Daniel Grivennikov | Mechanical |
 | Ethan Kim | Mechanical |
+| Andony Velasquez | Software Lead |
 | Dao Doan | Firmware / Software |
 | Jasmine Dhaliwal | Software |
 | Natalie Dai | Software |
@@ -285,7 +283,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 - [`SOLESENSE.md`](SOLESENSE.md) -- canonical project spec (hardware, firmware, frontend, data pipeline, injury flags, research basis)
 - [`firmware/README.md`](firmware/README.md) -- Arduino IDE vs PlatformIO firmware breakdown + flash instructions
 - [`software/README.md`](software/README.md) and [`software/frontend/README.md`](software/frontend/README.md) -- frontend layout, mock-server usage, UI swap procedure
-- [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) -- data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
-- [`docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](docs/superpowers/plans/2026-05-06-v0.2-firmware.md) -- firmware implementation plan
-- [`docs/superpowers/specs/2026-05-09-profile-system.md`](docs/superpowers/specs/2026-05-09-profile-system.md) -- profile / auth system spec
+- [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) -- data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
+- [`docs/design/plans/2026-05-06-v0.2-firmware.md`](docs/design/plans/2026-05-06-v0.2-firmware.md) -- firmware implementation plan
+- [`docs/design/specs/2026-05-09-profile-system.md`](docs/design/specs/2026-05-09-profile-system.md) -- profile / auth system spec
 - [`docs/pseudocode/`](docs/pseudocode/) -- system-level pseudocode (high-level flow + detailed injury analysis)

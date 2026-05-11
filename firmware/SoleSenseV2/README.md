@@ -4,8 +4,8 @@ All run state lives on the MCU, no browser-side analysis, crash-recoverable flas
 
 ## Background
 
-- **Architecture spec:** [`../../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md)
-- **Implementation plan:** [`../../docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](../../docs/superpowers/plans/2026-05-06-v0.2-firmware.md)
+- **Architecture spec:** [`../../docs/design/specs/2026-05-06-v0.2-data-architecture.md`](../../docs/design/specs/2026-05-06-v0.2-data-architecture.md)
+- **Implementation plan:** [`../../docs/design/plans/2026-05-06-v0.2-firmware.md`](../../docs/design/plans/2026-05-06-v0.2-firmware.md)
 - **Frontend (v0.2-aware viewer):** [`../../software/frontend/solesense-v2/index.html`](../../software/frontend/solesense-v2/index.html)
 
 ## Sensor layout
@@ -155,7 +155,7 @@ What's protected, what's not, and how the firmware survives the obvious failure 
 
 ## Auth / profile system
 
-Spec: [`../../docs/superpowers/specs/2026-05-09-profile-system.md`](../../docs/superpowers/specs/2026-05-09-profile-system.md).
+Spec: [`../../docs/design/specs/2026-05-09-profile-system.md`](../../docs/design/specs/2026-05-09-profile-system.md).
 
 - Storage: NVS namespace `solesense_auth`, per-user keys `s_<user>` (16-byte salt), `h_<user>` (32-byte SHA-256 hash), `w_<user>` (float body_kg). Plus globals `owner_user` (string) and `uc` (uint16 user count).
 - Hashing: SHA-256(pin || 16-byte random salt) via mbedtls.

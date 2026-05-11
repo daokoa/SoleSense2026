@@ -43,6 +43,7 @@ Everything runs on-device. No external dependencies at runtime.
 | Name | Role |
 |---|---|
 | Dao Doan | Firmware / Software |
+| Andony Velasquez | Software Lead |
 | Jasmine Dhaliwal | Software |
 | Natalie Dai | Software |
 | Norton Hoang | Electrical & Firmware Lead |
@@ -193,7 +194,7 @@ IDLE  --/api/start--  RECORDING  --/api/stop--  IDLE
 
 ## 6. Data Pipeline
 
-> **Current architecture:** all run state lives on the MCU -- FFT coefficients + outlier buffer in RAM, flushed periodically to a multi-slot ring buffer in flash. The browser holds no state. Full design: [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
+> **Current architecture:** all run state lives on the MCU -- FFT coefficients + outlier buffer in RAM, flushed periodically to a multi-slot ring buffer in flash. The browser holds no state. Full design: [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md).
 
 ### CSV Format (50Hz, 13 columns)
 ```
@@ -356,16 +357,25 @@ hlr=100&proneMax=15&proneMin=-8&gct=300&cadenceMin=160
 ## 11. File Structure
 
 ```
-SoleSense/
-|-- SoleSense.ino          # Main firmware -- all C++ Arduino code
-`-- data/
-    `-- index.html         # Full frontend SPA -- uploaded to LittleFS
+firmware/SoleSenseV2/
+|-- SoleSenseV2.ino        # Top-level sketch
+|-- config.h               # Pins, constants, firmware version string
+|-- state.h / .cpp         # Run state machine + pause-on-disconnect
+|-- sensors.h / .cpp       # FSR matrix scan + MPU-6050 reads
+|-- fft.h / .cpp           # Goertzel-based incremental FFT
+|-- outliers.h / .cpp      # Top-N min-heap outlier buffer
+|-- stats.h / .cpp         # Per-channel Welford running stats
+|-- storage.h / .cpp       # Multi-slot ring buffer + CRC
+|-- auth.h / .cpp          # NVS-backed user accounts + PIN hashing
+|-- http_routes.h / .cpp   # All HTTP handlers
+|-- flash-littlefs.sh      # Builds + flashes the frontend partition
+`-- data/index.html        # Frontend SPA (copied from software/frontend/solesense-v2/)
 ```
 
 ### LittleFS (on-device flash)
 ```
 /index.html                # Served at GET /
-/data.csv                  # Created on first recording
+/run_slot_*.bin            # Crash-recoverable run snapshots (10-slot ring)
 ```
 
 ---
@@ -415,8 +425,7 @@ unzip arduino-littlefs-upload-*.vsix -d arduino-littlefs-upload
 ```
 
 ### 6 -- Flash Filesystem
-Place `index.html` in `SoleSense/data/index.html`
-Arduino IDE -> `Cmd+Shift+P` -> **Upload LittleFS** -> Enter
+Place `index.html` in `firmware/SoleSenseV2/data/index.html`, then run `bash firmware/SoleSenseV2/flash-littlefs.sh` (or use Arduino IDE -> `Cmd+Shift+P` -> **Upload LittleFS**).
 
 ### 7 -- Test
 - Open Serial Monitor at 115200 baud

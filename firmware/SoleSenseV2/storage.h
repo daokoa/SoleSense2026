@@ -6,7 +6,7 @@
 //
 // **STATUS: PARTIALLY STUBBED.** Layout structs and the file-init function
 // are real; storage_save_snapshot() and storage_load_latest() are no-ops.
-// See docs/superpowers/plans/2026-05-06-v0.2-firmware.md Task 5.
+// See docs/design/plans/2026-05-06-v0.2-firmware.md Task 5.
 // =============================================================================
 
 #pragma once

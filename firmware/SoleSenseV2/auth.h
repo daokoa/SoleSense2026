@@ -1,6 +1,6 @@
 // On-device auth: one RAM-only session at a time; user profiles persisted
 // in NVS namespace "solesense_auth". Full spec:
-// docs/superpowers/specs/2026-05-09-profile-system.md
+// docs/design/specs/2026-05-09-profile-system.md
 #pragma once
 
 #include <Arduino.h>
