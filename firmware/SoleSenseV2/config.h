@@ -15,15 +15,24 @@ constexpr const char* SS_BOARD_NAME       = "XIAO ESP32-C3";
 constexpr const char* SS_AP_SSID = "SoleSense";
 constexpr const char* SS_AP_PASS = "solesense";
 
-// -- Pin map (matches v0.1; lifted unchanged) ---------------------------------
-constexpr uint8_t PIN_SDA       = 6;    // I2C - MPU-6050
-constexpr uint8_t PIN_SCL       = 7;
-constexpr uint8_t PIN_ADC_A     = 2;    // GPIO2 / A0 - shared analog A (FSR 1A and 2A)
-constexpr uint8_t PIN_ADC_B     = 3;    // GPIO3      - shared analog B (FSR 1B and 2B)
-constexpr uint8_t PIN_ADC_C     = 4;    // GPIO4      - shared analog C (FSR 1C and 2C)
-constexpr uint8_t PIN_PWR_SET1  = 5;    // GPIO5  - digital power for Set 1 (1A, 1B, 1C)
-constexpr uint8_t PIN_PWR_SET2  = 10;   // GPIO10 - digital power for Set 2 (2A, 2B, 2C)
-constexpr uint8_t PIN_WAKE      = 9;    // GPIO9 - on-board BOOT button
+// -- Pin map (per hardware/electricalpins.pdf) --------------------------------
+// XIAO ESP32-C3 Seeed-name -> GPIO mapping for reference:
+//   D0..D2 (A0..A2) = GPIO2/3/4    -- shared FSR ADCs
+//   D4              = GPIO6        -- I2C SDA
+//   D5              = GPIO7        -- I2C SCL
+//   D6              = GPIO21       -- IMU INT
+//   D7              = GPIO20       -- FSR power set 1
+//   D8              = GPIO8        -- FSR power set 2
+//   D9              = GPIO9        -- on-board BOOT button (wake)
+constexpr uint8_t PIN_SDA       = 6;    // D4  - I2C SDA  -> MPU-6050 SDA
+constexpr uint8_t PIN_SCL       = 7;    // D5  - I2C SCL  -> MPU-6050 SCL
+constexpr uint8_t PIN_IMU_INT   = 21;   // D6  - MPU-6050 INT (reserved; unused today)
+constexpr uint8_t PIN_ADC_A     = 2;    // D0  - shared analog A (FSR 1A / 2A)
+constexpr uint8_t PIN_ADC_B     = 3;    // D1  - shared analog B (FSR 1B / 2B)
+constexpr uint8_t PIN_ADC_C     = 4;    // D2  - shared analog C (FSR 1C / 2C)
+constexpr uint8_t PIN_PWR_SET1  = 20;   // D7  - FSR Set 1 power (1A/1B/1C)
+constexpr uint8_t PIN_PWR_SET2  = 8;    // D8  - FSR Set 2 power (2A/2B/2C)
+constexpr uint8_t PIN_WAKE      = 9;    // D9  - on-board BOOT button
 
 // -- MPU-6050 -----------------------------------------------------------------
 constexpr uint8_t MPU6050_ADDR     = 0x68;

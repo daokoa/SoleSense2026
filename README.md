@@ -63,46 +63,49 @@ Thresholds are baked in from research; not user-tunable in the UI.
 
 ## Pin Map
 
+Per [`hardware/electricalpins.pdf`](hardware/electricalpins.pdf). XIAO ESP32-C3 Seeed pin name -> GPIO -> use:
+
 ```
 XIAO ESP32-C3 -> MPU-6050 (I^2C):
-  D4 (GPIO6)  -> SDA
-  D5 (GPIO7)  -> SCL
-  3V3         -> VCC
-  GND         -> GND
-  GND         -> AD0   (sets I^2C address to 0x68)
+  D4  (GPIO6)   -> SDA           (I2C data)
+  D5  (GPIO7)   -> SCL           (I2C clock)
+  D6  (GPIO21)  -> INT           (MPU-6050 INT, reserved; unused today)
+  3V3           -> VCC
+  GND           -> GND
+  GND           -> AD0           (sets I2C address to 0x68)
 
-XIAO -> 6 FSRs (no multiplexer -- 2 sets of 3 with shared analog reads):
+XIAO -> 6 FSRs (no multiplexer; 2 sets of 3 with shared analog reads):
   Power lines (digital, one per set):
-    GPIO5  (D3)  -> Set 1 power (FSRs 1A, 1B, 1C)
-    GPIO10 (D10) -> Set 2 power (FSRs 2A, 2B, 2C)
+    D7  (GPIO20)  -> Set 1 power  (FSRs 1A, 1B, 1C)
+    D8  (GPIO8)   -> Set 2 power  (FSRs 2A, 2B, 2C)
   Analog inputs (shared between sets):
-    GPIO2  (A0)  -> ADC A -- reads FSR 1A or 2A (whichever set is powered)
-    GPIO3  (D1)  -> ADC B -- reads FSR 1B or 2B
-    GPIO4  (D2)  -> ADC C -- reads FSR 1C or 2C
+    D0  (GPIO2)   -> ADC A        (reads FSR 1A or 2A, whichever set is powered)
+    D1  (GPIO3)   -> ADC B        (reads FSR 1B or 2B)
+    D2  (GPIO4)   -> ADC C        (reads FSR 1C or 2C)
 
 Per-FSR wiring (each FSR identical):
-    Pin 1 -> its set's digital power pin (Set 1's GPIO5 or Set 2's GPIO10)
-    Pin 2 -> its set's analog input AND through a 10kOhm pull-down to GND
+    Pin 1 -> its set's digital power pin (Set 1's D7 / Set 2's D8)
+    Pin 2 -> its set's analog input AND through a 10 kOhm pull-down to GND
             (standard FSR voltage divider -- the resistor is required)
 
-FSR-to-zone mapping:
-    FSR 1A (Set 1, ADC A) -> Heel
-    FSR 1B (Set 1, ADC B) -> Lateral Mid
-    FSR 1C (Set 1, ADC C) -> Medial Mid
-    FSR 2A (Set 2, ADC A) -> Ball Lateral
-    FSR 2B (Set 2, ADC B) -> Ball Medial
-    FSR 2C (Set 2, ADC C) -> Toe 1 (hallux)
+FSR-to-zone mapping (3-zone x medial/lateral, Choi 2024 +E-at-heel):
+    FSR 1A (Set 1, ADC A) -> Heel medial         (ch0)
+    FSR 1B (Set 1, ADC B) -> Heel lateral        (ch1)
+    FSR 1C (Set 1, ADC C) -> Midfoot medial      (ch2)
+    FSR 2A (Set 2, ADC A) -> Midfoot lateral     (ch3)
+    FSR 2B (Set 2, ADC B) -> Forefoot medial     (ch4)
+    FSR 2C (Set 2, ADC C) -> Forefoot lateral    (ch5)
 
 Read sequence (firmware does this automatically per sample):
-    1. Drive PIN_PWR_SET1 HIGH (Set 2 high-Z) -> read ADC A/B/C -> gFsr[0..2]
-    2. Drive PIN_PWR_SET2 HIGH (Set 1 high-Z) -> read ADC A/B/C -> gFsr[3..5]
-    3. Both high-Z between samples
+    1. Drive PIN_PWR_SET1 HIGH, PIN_PWR_SET2 LOW -> read ADC A/B/C -> gFsr[0..2]
+    2. Drive PIN_PWR_SET2 HIGH, PIN_PWR_SET1 LOW -> read ADC A/B/C -> gFsr[3..5]
+    3. Both LOW between samples (active ground; not floating, to kill ghost crosstalk)
 
 Wake button:
-  GPIO9 -- uses the on-board BOOT button on the XIAO; no extra hardware
+  D9 (GPIO9) -- uses the on-board BOOT button on the XIAO; no extra hardware
 ```
 
-Pin defines live at the top of [`firmware/SoleSense/SoleSense.ino`](firmware/SoleSense/SoleSense.ino).
+Pin defines live in [`firmware/SoleSenseV2/config.h`](firmware/SoleSenseV2/config.h).
 
 ---
 
