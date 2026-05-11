@@ -1,0 +1,54 @@
+name: Firmware compile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware-compile.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware-compile.yml'
+  workflow_dispatch:
+
+jobs:
+  compile:
+    name: Compile sketches (XIAO ESP32-C3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Enable unsafe lib install
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set library.enable_unsafe_install true
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index \
+            --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32 \
+            --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+      - name: Install libraries from source
+        run: |
+          arduino-cli lib install --git-url https://github.com/ESP32Async/AsyncTCP.git
+          arduino-cli lib install --git-url https://github.com/ESP32Async/ESPAsyncWebServer.git
+
+      - name: Compile firmware/SoleSenseV2
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:XIAO_ESP32C3 \
+            --warnings default \
+            firmware/SoleSenseV2
+
+      - name: Compile firmware/imu-test
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:XIAO_ESP32C3 \
+            --warnings default \
+            firmware/imu-test
