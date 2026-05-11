@@ -1,5 +1,5 @@
 #!/bin/bash
-# flash-littlefs.sh — build and flash the LittleFS data folder to the XIAO ESP32-C3
+# flash-littlefs.sh -- build and flash the LittleFS data folder to the XIAO ESP32-C3
 #
 # Run from anywhere:
 #   bash firmware/SoleSense/flash-littlefs.sh
@@ -12,7 +12,7 @@
 
 set -e
 
-# ── Locate Arduino-supplied tools ──────────────────────────────────────────────
+# -- Locate Arduino-supplied tools ----------------------------------------------
 MKLITTLEFS=$(ls -1 ~/Library/Arduino15/packages/esp32/tools/mklittlefs/*/mklittlefs 2>/dev/null | head -1)
 ESPTOOL=$(ls -1 ~/Library/Arduino15/packages/esp32/tools/esptool_py/*/esptool 2>/dev/null | head -1)
 
@@ -26,7 +26,7 @@ if [ -z "$ESPTOOL" ]; then
   exit 1
 fi
 
-# ── Locate the data folder (sibling of this script) ───────────────────────────
+# -- Locate the data folder (sibling of this script) ---------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="$SCRIPT_DIR/data"
 
@@ -35,10 +35,10 @@ if [ ! -d "$DATA_DIR" ]; then
   exit 1
 fi
 if [ ! -f "$DATA_DIR/index.html" ]; then
-  echo "warning: $DATA_DIR/index.html does not exist — flashing an empty filesystem" >&2
+  echo "warning: $DATA_DIR/index.html does not exist -- flashing an empty filesystem" >&2
 fi
 
-# ── Detect the XIAO's USB port ────────────────────────────────────────────────
+# -- Detect the XIAO's USB port ------------------------------------------------
 if [ -z "$PORT" ]; then
   PORT=$(ls /dev/cu.usbmodem* 2>/dev/null | head -1)
 fi
@@ -49,7 +49,7 @@ if [ -z "$PORT" ]; then
   exit 1
 fi
 
-# ── Partition layout for 'Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)' ─
+# -- Partition layout for 'Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)' -
 OFFSET=0x290000
 SIZE=0x160000        # 1441792 bytes = 1.5 MB
 PAGE=256
@@ -57,14 +57,14 @@ BLOCK=4096
 
 IMG="/tmp/solesense-littlefs-$$.bin"
 
-# ── Build the image ───────────────────────────────────────────────────────────
+# -- Build the image -----------------------------------------------------------
 echo "==> Building LittleFS image"
 echo "    source:   $DATA_DIR"
 echo "    size:     $SIZE ($(printf '%d' $SIZE) bytes)"
 echo "    output:   $IMG"
 "$MKLITTLEFS" -c "$DATA_DIR" -s "$SIZE" -p "$PAGE" -b "$BLOCK" "$IMG"
 
-# ── Flash it ──────────────────────────────────────────────────────────────────
+# -- Flash it ------------------------------------------------------------------
 echo ""
 echo "==> Flashing to XIAO ESP32-C3"
 echo "    port:     $PORT"

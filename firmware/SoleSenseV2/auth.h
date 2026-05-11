@@ -1,10 +1,10 @@
 // =============================================================================
-// SoleSense v0.2 — auth.h
+// SoleSense v0.2 -- auth.h
 // On-device user/profile/auth system. Spec:
 //   docs/superpowers/specs/2026-05-09-profile-system.md
 //
 // One-session, single-slot model. Sessions are RAM-only (no persistence
-// across reboot — re-login required). User profiles (PIN hash + body weight)
+// across reboot -- re-login required). User profiles (PIN hash + body weight)
 // live in NVS under namespace "solesense_auth".
 // =============================================================================
 #pragma once
@@ -16,7 +16,7 @@
 struct Session {
   bool      active        = false;
   char      username[32]  = {0};
-  char      token_hex[65] = {0};   // 32 bytes → 64 hex chars + null
+  char      token_hex[65] = {0};   // 32 bytes -> 64 hex chars + null
   uint32_t  expires_ms    = 0;
   float     body_kg       = 70.0f;
 };
@@ -33,14 +33,14 @@ uint16_t auth_user_count();
 // can display accurate "X of Y accounts used" or reject early.
 static constexpr uint16_t MAX_USERS               = 20;     // total accounts
 static constexpr uint32_t REG_RATE_WINDOW_MS      = 60000;  // 60-second window
-static constexpr uint8_t  REG_RATE_MAX_PER_WINDOW = 3;      // ≤3 signups / window
+static constexpr uint8_t  REG_RATE_MAX_PER_WINDOW = 3;      // <=3 signups / window
 
 // Initialise NVS namespace, load any persisted state. Call from setup().
 void auth_init();
 
 // Register a new user. If no owner exists, creates the owner and grants a
 // session immediately. If an owner exists, the caller must already hold a
-// valid session — enforced by the route handler, not here.
+// valid session -- enforced by the route handler, not here.
 //
 // Returns 0 on success, negative on error:
 //   -1 username taken
@@ -79,7 +79,7 @@ bool auth_in_claim_mode();
 
 // Wipe the entire auth NVS namespace and drop the active session. After
 // this returns the device is back in claim-mode. Triggered by the
-// "factory_reset" USB-serial command — there is no in-app reset path on
+// "factory_reset" USB-serial command -- there is no in-app reset path on
 // purpose, since that would defeat the security model.
 void auth_factory_reset();
 

@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — auth.cpp
+// SoleSense v0.2 -- auth.cpp
 // =============================================================================
 #include "auth.h"
 
@@ -15,7 +15,7 @@ static constexpr const char* NS = "solesense_auth";
 // In-RAM sliding-window rate limiter for /api/auth/register. Stores
 // timestamps (millis) of the last REG_RATE_MAX_PER_WINDOW successful
 // registrations. If the oldest of those is within REG_RATE_WINDOW_MS, the
-// next request is rejected. Per-AP, not per-IP — sharing one AP means one
+// next request is rejected. Per-AP, not per-IP -- sharing one AP means one
 // limiter is enough.
 static uint32_t sRegTimestamps[REG_RATE_MAX_PER_WINDOW] = {0};
 
@@ -35,7 +35,7 @@ static bool reg_rate_check_and_record() {
   return true;
 }
 
-// ── In-memory rate limiter ──────────────────────────────────────────────────
+// -- In-memory rate limiter --------------------------------------------------
 // Per-username, slot-allocated. Plenty for a single-insole device.
 struct FailEntry {
   char     user[32];
@@ -62,7 +62,7 @@ static FailEntry* find_or_alloc_fail(const String& user) {
   return oldest;
 }
 
-// ── SHA-256 helper ───────────────────────────────────────────────────────────
+// -- SHA-256 helper -----------------------------------------------------------
 static void sha256_concat(const uint8_t* a, size_t alen,
                           const uint8_t* b, size_t blen,
                           uint8_t out[32]) {
@@ -105,7 +105,7 @@ static String key_for(const char* user, char prefix) {
   return s;
 }
 
-// Validation helpers. Username 4–13 chars [a-zA-Z0-9_]; PIN 4–16 digits.
+// Validation helpers. Username 4-13 chars [a-zA-Z0-9_]; PIN 4-16 digits.
 static bool valid_username(const String& u) {
   if (u.length() < 4 || u.length() > 13) return false;
   for (size_t i = 0; i < u.length(); i++) {
@@ -127,10 +127,10 @@ static bool valid_pin(const String& p) {
   return true;
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// -- Public API ---------------------------------------------------------------
 void auth_init() {
   sNvs.begin(NS, false);
-  // Nothing else to bootstrap — owner detection happens lazily.
+  // Nothing else to bootstrap -- owner detection happens lazily.
   Serial.printf("[Auth] init; ownerExists=%s\n",
                 auth_owner_exists() ? "yes" : "no");
 }
@@ -179,22 +179,22 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   uint8_t hash[32];
   sha256_concat((const uint8_t*)pin.c_str(), pin.length(), salt, sizeof(salt), hash);
 
-  // ── Atomic write with rollback on partial failure ──────────────────────
+  // -- Atomic write with rollback on partial failure ----------------------
   // NVS is per-key transactional but our profile = three keys. If any one
   // fails (out of space, hardware glitch), the partial state would lock
-  // the username slot — isKey(saltKey) would return true but the hash
+  // the username slot -- isKey(saltKey) would return true but the hash
   // would be missing, so login can never succeed. We roll back to a clean
   // state on any failure so the user can retry with the same username.
   size_t w1 = sNvs.putBytes(saltKey.c_str(), salt, sizeof(salt));
   if (w1 != sizeof(salt)) {
-    Serial.printf("[Auth] register NVS w1=%u FAIL — aborting cleanly\n",
+    Serial.printf("[Auth] register NVS w1=%u FAIL -- aborting cleanly\n",
                   (unsigned)w1);
     sNvs.remove(saltKey.c_str());   // no-op if not present
     return -2;
   }
   size_t w2 = sNvs.putBytes(hashKey.c_str(), hash, sizeof(hash));
   if (w2 != sizeof(hash)) {
-    Serial.printf("[Auth] register NVS w2=%u FAIL — rolling back\n",
+    Serial.printf("[Auth] register NVS w2=%u FAIL -- rolling back\n",
                   (unsigned)w2);
     sNvs.remove(saltKey.c_str());
     sNvs.remove(hashKey.c_str());
@@ -202,7 +202,7 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   }
   size_t w3 = sNvs.putFloat(bodyKey.c_str(), body_kg);
   if (w3 == 0) {
-    Serial.printf("[Auth] register NVS w3=0 FAIL — rolling back\n");
+    Serial.printf("[Auth] register NVS w3=0 FAIL -- rolling back\n");
     sNvs.remove(saltKey.c_str());
     sNvs.remove(hashKey.c_str());
     sNvs.remove(bodyKey.c_str());
@@ -210,7 +210,7 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   }
 
   // Bump user-count after all writes succeed. If this write fails, log it
-  // but proceed — the counter drift is recoverable on factory_reset and
+  // but proceed -- the counter drift is recoverable on factory_reset and
   // doesn't affect login/list functionality.
   const uint16_t newCount = auth_user_count() + 1;
   if (sNvs.putUShort("uc", newCount) == 0) {
@@ -309,7 +309,7 @@ String auth_extract_bearer(const String& header) {
 }
 
 void auth_factory_reset() {
-  Serial.println("[Auth] FACTORY RESET — wiping all profiles");
+  Serial.println("[Auth] FACTORY RESET -- wiping all profiles");
   sNvs.clear();
   memset(&gSession, 0, sizeof(gSession));
   memset(sFails, 0, sizeof(sFails));

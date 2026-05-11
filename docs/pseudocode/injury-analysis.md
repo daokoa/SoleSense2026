@@ -5,19 +5,19 @@ on_power_on():
     for each FSR in [GPIO1..GPIO8]:
       set_pin_mode(pin, INPUT)
       verify_pin_reads_nonzero()
-      if fail → log_error("FSR {pin} not detected")
+      if fail -> log_error("FSR {pin} not detected")
 
   init_IMU():
     begin_I2C(SDA, SCL)
     if MPU6050.begin() fails:
       log_error("IMU not found, check wiring")
       halt()
-    set_accel_range(±4g)
-    # ±4g chosen because running peaks at 2-3g,
+    set_accel_range(+/-4g)
+    # +/-4g chosen because running peaks at 2-3g,
     # gives headroom without losing resolution
-    set_gyro_range(±500°/s)
-    # foot rotates 200-400°/s during running,
-    # ±500 covers this with headroom
+    set_gyro_range(+/-500 deg/s)
+    # foot rotates 200-400 deg/s during running,
+    # +/-500 covers this with headroom
 
   init_flash_storage():
     mount_SPIFFS()
@@ -58,16 +58,16 @@ on_power_on():
   show_sensor_status():           # green/red per FSR + IMU
   show_stored_data():             # list of past run files + sizes
 
-  start_run()     → POST /start  → triggers pre-run sequence
-  view_last_run() → GET  /data   → loads most recent CSV
-  delete_data()   → DELETE /data → wipes /runs/ directory
-  export_report() → GET  /export → sends CSV file download
+  start_run()     -> POST /start  -> triggers pre-run sequence
+  view_last_run() -> GET  /data   -> loads most recent CSV
+  delete_data()   -> DELETE /data -> wipes /runs/ directory
+  export_report() -> GET  /export -> sends CSV file download
 
 on_start_click():
   send_start_cmd(device):
     HTTP POST to ESP32 /start endpoint
     wait for 200 OK response
-    if timeout → show_error("Device not responding")
+    if timeout -> show_error("Device not responding")
 
   check_sensors():
     for each FSR:
@@ -77,7 +77,7 @@ on_start_click():
         # 0 = disconnected, 4095 = shorted
     if IMU.testConnection() == false:
       flag_IMU_error()
-    if any errors → abort_run(), notify_user()
+    if any errors -> abort_run(), notify_user()
 
   calibrate_sensors():
     notify_user("Stand still for 3 seconds...")
@@ -113,7 +113,7 @@ while run_active == True:
     [ax, ay, az] = IMU.getAcceleration()   # in g's
 
   read_gyro_xyz():
-    [gx, gy, gz] = IMU.getRotation()       # in °/s
+    [gx, gy, gz] = IMU.getRotation()       # in  deg/s
 
   data = subtract_baseline(data):
     for each sensor:
@@ -127,7 +127,7 @@ while run_active == True:
 
   write_to_flash(run_id, row):
     append row to open CSV file
-    if write fails → log_error, set run_active = False
+    if write fails -> log_error, set run_active = False
 
   sleep(10ms)                     # maintains 100 Hz
   # 100 Hz chosen: captures 20-30 points per stride,
@@ -138,29 +138,29 @@ while run_active == True:
   storage_limit_reached()   # SPIFFS < 10KB remaining
   time_limit_reached()      # 60 min max
 
-  → run_active = False
-  → flush_buffer()
-  → close_csv_file()
-  → notify_frontend("run_complete")
-  → show_download_link(run_id)
+  -> run_active = False
+  -> flush_buffer()
+  -> close_csv_file()
+  -> notify_frontend("run_complete")
+  -> show_download_link(run_id)
 
 data = fetch_csv(run_id):
   open "/runs/run_{id}.csv" from SPIFFS
   read all bytes into buffer
 
 data = parse_csv(data):
-  split by newline → rows[]
-  split each row by comma → fields[]
+  split by newline -> rows[]
+  split each row by comma -> fields[]
   cast each field to float
 
 remove_incomplete_rows(data):
-  if row has fewer than 15 columns → discard row
+  if row has fewer than 15 columns -> discard row
 
 remove_outliers(data):
   for each sensor column:
     mean = average(column)
     std  = stdev(column)
-    if value > mean + 3*std → replace with mean
+    if value > mean + 3*std -> replace with mean
     # 3-sigma: only 0.3% chance of being real data
     # anything beyond this is electrical noise
 
@@ -171,12 +171,12 @@ smooth_noise(data):
 detect_heel_strikes(data):
   look for spike in FSR7 AND FSR8 simultaneously
   threshold: force > 1.5x running average of heel FSRs
-  record timestamp → heel_strike_times[]
+  record timestamp -> heel_strike_times[]
   # 1.5x is relative so it self-adjusts per runner weight
 
 detect_toe_offs(data):
   look for drop in FSR1 AND FSR2
-  force drops below 10% of their peak → toe_off_times[]
+  force drops below 10% of their peak -> toe_off_times[]
 
 steps = split_into_steps(data):
   pair each heel_strike with next toe_off
@@ -243,18 +243,18 @@ calc_toe_strike(steps):
   # Risk: Achilles tendinopathy, calf strain
 
 
-LEFT vs RIGHT HEEL — PRONATION:
+LEFT vs RIGHT HEEL -- PRONATION:
 calc_heel_pronation(steps):
   for each step:
     inside_heel  = FSR7    # medial / arch side
     outside_heel = FSR8    # lateral / pinky side
 
     difference = outside_heel - inside_heel
-    # positive = more load on outside → supination
-    # negative = more load on inside  → overpronation
+    # positive = more load on outside -> supination
+    # negative = more load on inside  -> overpronation
 
     NEUTRAL_RANGE = (-15, +15)
-    # ±15 raw units ≈ 5-8% force difference
+    # +/-15 raw units ~= 5-8% force difference
     # within this = normal healthy distribution
     # calibrate after real user trials
 
@@ -283,7 +283,7 @@ calc_heel_pronation(steps):
                  hip abductor strengthening.")
 
     else:
-      log("Neutral pronation ✓  Difference: {difference}")
+      log("Neutral pronation [x]  Difference: {difference}")
 
   # Formula summary:
   # [outside_data - inside_data] = difference
@@ -303,9 +303,9 @@ calc_left_right_forefoot(steps):
   # negative = more load on right side
 
   NEUTRAL_RANGE = (-20, +20)
-  # ±20 slightly wider than heel range
+  # +/-20 slightly wider than heel range
   # forefoot has more natural step-to-step variation
-  # ±20 ≈ 8-10% side difference = still acceptable
+  # +/-20 ~= 8-10% side difference = still acceptable
 
   if abs(difference) > 20:
     dominant_side = "left" if difference > 0 else "right"
@@ -385,7 +385,7 @@ compare_left_right(steps):
     flag("Left-Right Imbalance", MEDIUM)
     # Clinical concern threshold: 10-15%
 
-  sort flags by severity (HIGH → MEDIUM → LOW)
+  sort flags by severity (HIGH -> MEDIUM -> LOW)
 
   render_summary(metrics):
     total steps, distance estimate,
@@ -412,7 +412,7 @@ compare_left_right(steps):
       left total vs right total
 
   render_flags(flags):
-    for each flag → show:
+    for each flag -> show:
       - Flag name + severity badge (HIGH/MEDIUM/LOW)
       - Sensor values that triggered it
       - Actual difference number
@@ -420,7 +420,7 @@ compare_left_right(steps):
       - Evidence-based recommendation
 
   show_recommendations(flags):
-    for each flag → evidence-based fix with source
+    for each flag -> evidence-based fix with source
 
   export_report(metrics, flags):
     generate PDF using jsPDF
@@ -428,10 +428,10 @@ compare_left_right(steps):
     trigger browser download
 
 accelerometer range: (+-4g) its because running creates ground reaction that is like 2-3x ur body weight per step taken so it to efficiently measure it captures it at +- 4g which is ceiling just above expected peak so we dont clip the sensors by maxing it out or under measuring
-Gyroscope range: (±500°/s) from biomechanics research measures goot angular velocity to be roughly around 200-400°/s while running.decided on 500°/s to risk clipping the measurements on fast foot turnover but also not wast angular resolution and to maximize efficiency
+Gyroscope range: (+/-500 deg/s) from biomechanics research measures goot angular velocity to be roughly around 200-400 deg/s while running.decided on 500 deg/s to risk clipping the measurements on fast foot turnover but also not wast angular resolution and to maximize efficiency
 3 sec calibration: 3 secs @ 100 hz gives 300 samples to average which is long enough to smooth out any electrical noise and minor body sway but also short enough that it does not annoy users before run
 1.5x running average (heel strike detection): when heel hits ground it creates sharp spike relative to the baseline of just walking. Usiing 1.5x means walking/stepping around wont falsely trigger the detection. 
 60% heel load threshold (heel striking flag): neutral midfoot runners distribute roughly 40-50% of total foot load through heel zone per step, which means above 60% means runner is heel dominant (Liberman et al. 2010 published in Nature)
-65% forefoot ratio (forefoot strike detection): neautral runner puts roughly 10-20% through to zone and 20-30% through ball zone → totals to around 30-50% forefoot load, so above 65% forefoot load means the runner is landing on the front of the foot first and consistently loading it more than normal
-Neutral range (±15) FSR units for heel pronation: approx 5-8% difference in force between inside heel sensors (FSR7) and outside heel sensor (FSR8), and ±15 window accounts for natural variation in neutral gait
+65% forefoot ratio (forefoot strike detection): neautral runner puts roughly 10-20% through to zone and 20-30% through ball zone -> totals to around 30-50% forefoot load, so above 65% forefoot load means the runner is landing on the front of the foot first and consistently loading it more than normal
+Neutral range (+/-15) FSR units for heel pronation: approx 5-8% difference in force between inside heel sensors (FSR7) and outside heel sensor (FSR8), and +/-15 window accounts for natural variation in neutral gait
 15% left-right asymmetry threshold: sports science uses 10-15% side-to-side difference as the threshold of clinical concern for sunning asymmetry. Below 10% is normal, but between 10-15% is borderline, and above 15% suggests an imbalance that could result in injury on the weaker side

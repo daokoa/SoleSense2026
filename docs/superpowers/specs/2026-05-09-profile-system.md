@@ -1,4 +1,4 @@
-# Profile / Auth System — Design Spec
+# Profile / Auth System -- Design Spec
 
 > Status: implementation in progress (2026-05-09).
 
@@ -7,7 +7,7 @@
 Today, anyone connected to the `SoleSense` WiFi AP can hit `POST /api/start` and record a run. There is no notion of "who" recorded it. Two practical problems:
 
 1. **Privacy / fairness.** A stranger walking near the device can join the AP and overwrite an in-progress run.
-2. **Body-weight calibration.** The FSR-jerk → BW/s loading-rate conversion currently assumes 70 kg. Real BW/s scales by `70 / actual_kg`. Without per-user body weight the number is a placeholder.
+2. **Body-weight calibration.** The FSR-jerk -> BW/s loading-rate conversion currently assumes 70 kg. Real BW/s scales by `70 / actual_kg`. Without per-user body weight the number is a placeholder.
 
 Both close with a per-user profile system stored on-device in NVS.
 
@@ -15,16 +15,16 @@ Both close with a per-user profile system stored on-device in NVS.
 
 **In scope (this iteration):**
 - On-device user accounts: username + PIN, hashed and stored in NVS.
-- Login → session token. Token in `Authorization: Bearer …` header for protected endpoints.
+- Login -> session token. Token in `Authorization: Bearer ...` header for protected endpoints.
 - Per-user `body_kg` field used in loading-rate calc.
 - Frontend login screen, blocks the rest of the UI until logged in.
 - "Owner" model: first registration is unrestricted; subsequent registrations require the existing owner's token (no walk-up account creation).
 
 **Out of scope:**
-- Multi-device sync — there's no internet, no cloud.
-- Email / password reset — PIN reset is via USB-serial `factory_reset` command only.
-- Multi-session — exactly one session-token slot in RAM at a time.
-- Per-run history per user — added in a later iteration.
+- Multi-device sync -- there's no internet, no cloud.
+- Email / password reset -- PIN reset is via USB-serial `factory_reset` command only.
+- Multi-session -- exactly one session-token slot in RAM at a time.
+- Per-run history per user -- added in a later iteration.
 
 ## Threat model
 
@@ -34,7 +34,7 @@ We are protecting against:
 
 We are NOT protecting against:
 - Someone with USB access (they can re-flash firmware and bypass everything; physical access wins).
-- Someone with prolonged WiFi access trying to brute-force a 4-digit PIN — we add a simple rate limit (3 wrong → 30 s lockout).
+- Someone with prolonged WiFi access trying to brute-force a 4-digit PIN -- we add a simple rate limit (3 wrong -> 30 s lockout).
 
 ## Storage (NVS)
 
@@ -59,7 +59,7 @@ One slot, RAM only:
 struct Session {
     bool      active;
     char      username[32];
-    uint8_t   token[32];     // hex-encoded → 64 chars in HTTP header
+    uint8_t   token[32];     // hex-encoded -> 64 chars in HTTP header
     uint32_t  expires_ms;    // millis() rollover-aware
     float     body_kg;       // cached at login
 } gSession;
@@ -79,7 +79,7 @@ Logout clears the slot. Re-login replaces the slot.
 | `GET`  | `/api/device`                         | identity, AP discovery |
 | `GET`  | `/api/auth/state`                     | `{ ownerExists, sessionActive }` |
 | `POST` | `/api/auth/register`                  | first call creates owner; subsequent calls require token |
-| `POST` | `/api/auth/login`                     | `{ username, pin }` → `{ token, body_kg }` |
+| `POST` | `/api/auth/login`                     | `{ username, pin }` -> `{ token, body_kg }` |
 
 ### Protected (require valid token)
 
@@ -116,7 +116,7 @@ Loading-rate display reads `r.loadingRate` as before; the firmware now divides b
 
 ## Implementation order
 
-1. `auth.h/cpp` — NVS helpers, SHA-256, session struct, token generation.
+1. `auth.h/cpp` -- NVS helpers, SHA-256, session struct, token generation.
 2. New HTTP routes (`/api/auth/*`).
 3. `require_auth()` middleware applied to protected routes.
 4. Body-weight wiring into the loading-rate calc (replaces hardcoded 70 kg).

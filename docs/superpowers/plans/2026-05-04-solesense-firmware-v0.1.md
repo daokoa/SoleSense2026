@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the v0.1 SoleSense firmware skeleton — WiFi AP, LittleFS, all 10 HTTP endpoints, 50 Hz buffered sampling of 6 FSRs + MPU-6050, NVS-backed thresholds + calibration, and GPIO9 deep-sleep — flashed to the XIAO ESP32-C3, smoke-tested end-to-end with the frontend.
+**Goal:** Build the v0.1 SoleSense firmware skeleton -- WiFi AP, LittleFS, all 10 HTTP endpoints, 50 Hz buffered sampling of 6 FSRs + MPU-6050, NVS-backed thresholds + calibration, and GPIO9 deep-sleep -- flashed to the XIAO ESP32-C3, smoke-tested end-to-end with the frontend.
 
-**Architecture:** Single-file Arduino sketch (`firmware/SoleSense/SoleSense.ino`). Hardware timer ISR sets a flag; `loop()` drains it on the main task. HTTP handlers (running on the AsyncWebServer task) only set request flags — they never touch the file, timer, or sleep API directly. All file/timer/sleep work happens on a single task to avoid mutex bugs.
+**Architecture:** Single-file Arduino sketch (`firmware/SoleSense/SoleSense.ino`). Hardware timer ISR sets a flag; `loop()` drains it on the main task. HTTP handlers (running on the AsyncWebServer task) only set request flags -- they never touch the file, timer, or sleep API directly. All file/timer/sleep work happens on a single task to avoid mutex bugs.
 
 **Tech Stack:**
 - Seeed XIAO ESP32-C3 (ESP32 Arduino core 3.x)
@@ -17,12 +17,12 @@
 
 **Workflow per task:**
 1. Edit code in Arduino IDE (file `firmware/SoleSense/SoleSense.ino`)
-2. Compile + Upload (Arduino IDE → `→` button)
+2. Compile + Upload (Arduino IDE -> `->` button)
 3. Open Serial Monitor (115200 baud) and verify expected output
 4. Run any `curl` smoke test from a laptop on the `SoleSense` AP
 5. `git commit` from the project root
 
-**Board settings reminder** (Arduino IDE → Tools menu, set once before Task 1):
+**Board settings reminder** (Arduino IDE -> Tools menu, set once before Task 1):
 - Board: `XIAO_ESP32C3`
 - USB CDC On Boot: `Enabled`
 - Partition Scheme: `Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)`
@@ -35,18 +35,18 @@
 
 ```
 firmware/
-├── pseudocode                  # already in repo, untouched
-└── SoleSense/                  # new — Arduino sketch root
-    ├── SoleSense.ino           # all firmware code (~700 lines)
-    └── data/
-        └── index.html          # frontend SPA (placeholder until real SPA dropped in)
+|-- pseudocode                  # already in repo, untouched
+`-- SoleSense/                  # new -- Arduino sketch root
+    |-- SoleSense.ino           # all firmware code (~700 lines)
+    `-- data/
+        `-- index.html          # frontend SPA (placeholder until real SPA dropped in)
 ```
 
-`SoleSense.ino` is sectioned with banner comments in this order: includes/pins/globals → NVS → sensors → calibration → sample loop/ring buffer → timer ISR → HTTP routes → deep sleep → `setup()` + `loop()`.
+`SoleSense.ino` is sectioned with banner comments in this order: includes/pins/globals -> NVS -> sensors -> calibration -> sample loop/ring buffer -> timer ISR -> HTTP routes -> deep sleep -> `setup()` + `loop()`.
 
 ---
 
-## Task 1: Project skeleton — empty sketch that compiles
+## Task 1: Project skeleton -- empty sketch that compiles
 
 **Files:**
 - Create: `firmware/SoleSense/SoleSense.ino`
@@ -57,7 +57,7 @@ firmware/
 `firmware/SoleSense/SoleSense.ino`:
 ```cpp
 // =============================================================================
-// SoleSense v0.1 — XIAO ESP32-C3 firmware
+// SoleSense v0.1 -- XIAO ESP32-C3 firmware
 // =============================================================================
 
 void setup() {
@@ -77,13 +77,13 @@ void loop() {
 
 - [ ] **Step 3: Compile in Arduino IDE**
 
-Open `firmware/SoleSense/SoleSense.ino` in Arduino IDE, hit the checkmark (`✓` Verify) button.
+Open `firmware/SoleSense/SoleSense.ino` in Arduino IDE, hit the checkmark (`[x]` Verify) button.
 
-Expected: compiles without errors. If "ESPAsyncWebServer not found" or similar — install per SOLESENSE.md §12.3 (won't actually be needed until Task 2, but verify libraries are present now).
+Expected: compiles without errors. If "ESPAsyncWebServer not found" or similar -- install per SOLESENSE.md 12.3 (won't actually be needed until Task 2, but verify libraries are present now).
 
 - [ ] **Step 4: Flash and verify boot output**
 
-Click `→` (Upload). Open Serial Monitor at 115200 baud. Tap reset on board if needed.
+Click `->` (Upload). Open Serial Monitor at 115200 baud. Tap reset on board if needed.
 
 Expected output:
 ```
@@ -110,7 +110,7 @@ git commit -m "feat(firmware): scaffold SoleSense v0.1 sketch"
 Replace the contents of `firmware/SoleSense/SoleSense.ino`:
 ```cpp
 // =============================================================================
-// SoleSense v0.1 — XIAO ESP32-C3 firmware
+// SoleSense v0.1 -- XIAO ESP32-C3 firmware
 // =============================================================================
 
 #include <WiFi.h>
@@ -166,7 +166,7 @@ git commit -m "feat(firmware): start WiFi AP on boot"
 
 - [ ] **Step 1: Create a minimal placeholder index.html**
 
-`firmware/SoleSense/data/index.html` — a one-page test panel that hits every endpoint via `fetch`. This is your fallback demo UI; swap in the real SPA in Task 13.
+`firmware/SoleSense/data/index.html` -- a one-page test panel that hits every endpoint via `fetch`. This is your fallback demo UI; swap in the real SPA in Task 13.
 
 ```html
 <!DOCTYPE html>
@@ -189,7 +189,7 @@ git commit -m "feat(firmware): start WiFi AP on boot"
 </head>
 <body>
   <h1>SoleSense Test Panel</h1>
-  <div class="sub">v0.1 placeholder — drop in real SPA later</div>
+  <div class="sub">v0.1 placeholder -- drop in real SPA later</div>
 
   <section>
     <h2>Recording</h2>
@@ -240,7 +240,7 @@ api('GET','/api/device');
 Replace `firmware/SoleSense/SoleSense.ino`:
 ```cpp
 // =============================================================================
-// SoleSense v0.1 — XIAO ESP32-C3 firmware
+// SoleSense v0.1 -- XIAO ESP32-C3 firmware
 // =============================================================================
 
 #include <WiFi.h>
@@ -284,9 +284,9 @@ Upload via Arduino IDE.
 
 - [ ] **Step 4: Upload LittleFS data**
 
-Arduino IDE → `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter. Wait for "LittleFS Image Uploaded" in console.
+Arduino IDE -> `Cmd+Shift+P` -> `Upload LittleFS to Pico/ESP8266/ESP32` -> Enter. Wait for "LittleFS Image Uploaded" in console.
 
-If the plugin command isn't there, install per SOLESENSE.md §12.5.
+If the plugin command isn't there, install per SOLESENSE.md 12.5.
 
 **Important:** before each LittleFS upload, **close Serial Monitor** (it holds the port).
 
@@ -302,9 +302,9 @@ Reset board. Expected:
 
 - [ ] **Step 6: Verify from phone browser**
 
-Phone → connect to `SoleSense` WiFi → open `http://192.168.4.1/` in Safari/Chrome. Expected: the test panel loads, "Waiting for action..." text visible, all buttons render.
+Phone -> connect to `SoleSense` WiFi -> open `http://192.168.4.1/` in Safari/Chrome. Expected: the test panel loads, "Waiting for action..." text visible, all buttons render.
 
-(Buttons will fail with 404 — endpoints don't exist yet. That's fine.)
+(Buttons will fail with 404 -- endpoints don't exist yet. That's fine.)
 
 - [ ] **Step 7: Commit**
 
@@ -533,7 +533,7 @@ git commit -m "feat(firmware): persist thresholds to NVS via /api/settings"
 
 ---
 
-## Task 6: Sensor init (mux, ADC, I²C, MPU-6050) + read primitives
+## Task 6: Sensor init (mux, ADC, I^2C, MPU-6050) + read primitives
 
 **Files:**
 - Modify: `firmware/SoleSense/SoleSense.ino`
@@ -573,7 +573,7 @@ Add these globals just below the `Thresholds gThresholds;` line:
 int     gFsrZero[6]   = {0,0,0,0,0,0};
 int16_t gFsr[6]       = {0,0,0,0,0,0};
 
-// IMU state — offsets in physical units (m/s2 and deg/s)
+// IMU state -- offsets in physical units (m/s2 and deg/s)
 float gImuOffset[6]   = {0,0,0,0,0,0};   // ax, ay, az, gx, gy, gz
 float gAccel[3]       = {0,0,0};
 float gGyro[3]        = {0,0,0};
@@ -705,11 +705,11 @@ Expected once per second:
 [FSR] 0 0 0 0 0 0  [Acc] 0.05 -0.12 9.78  [Gyr] 0.10 -0.05 0.02
 ```
 
-- If FSRs are unwired they'll read whatever the floating ADC gives — that's fine for now.
+- If FSRs are unwired they'll read whatever the floating ADC gives -- that's fine for now.
 - Acc Z should be ~9.8 (gravity, board flat) once IMU is wired.
 - If Acc/Gyr are all zero or `nan`: I2C isn't talking. Check SDA/SCL wiring; confirm I2C address with an I2C scanner sketch.
 
-**This is a screenshot opportunity** — Serial Monitor showing live FSR + IMU data is a great slide.
+**This is a screenshot opportunity** -- Serial Monitor showing live FSR + IMU data is a great slide.
 
 - [ ] **Step 7: Revert the demo `loop()` to a stub**
 
@@ -1114,7 +1114,7 @@ void loop() {
 
 - [ ] **Step 6: Compile + flash**
 
-- [ ] **Step 7: Smoke test — 5-second recording**
+- [ ] **Step 7: Smoke test -- 5-second recording**
 
 ```bash
 curl -s -X POST http://192.168.4.1/api/start
@@ -1126,8 +1126,8 @@ curl -s http://192.168.4.1/data.csv | wc -l
 
 Expected:
 - First 5 lines: `<timestamp_ms>,<6 ints>,<6 floats>` rows, ~20 ms apart
-- Total line count: ~250 (5 seconds × 50 Hz). Tolerable range: 240–260.
-- `/api/device` → `usedBytes` grew by ~24 KB.
+- Total line count: ~250 (5 seconds x 50 Hz). Tolerable range: 240-260.
+- `/api/device` -> `usedBytes` grew by ~24 KB.
 
 **Screenshot opportunity:** terminal output showing live CSV rows.
 
@@ -1301,9 +1301,9 @@ curl -s -X POST http://192.168.4.1/api/sleep
 Expected:
 - Phone WiFi shows `SoleSense` disappear within ~1 s
 - Serial Monitor (if attached): `[Sleep] entering deep sleep, wake on GPIO9 LOW`, then silence
-- Press the on-board BOOT button → board reboots, SSID returns in ~1 s
+- Press the on-board BOOT button -> board reboots, SSID returns in ~1 s
 
-**Note for the demo:** the BOOT button is the small push button on the XIAO board itself — don't unplug USB to "wake". On battery you'd press it; on USB the board re-enumerates anyway.
+**Note for the demo:** the BOOT button is the small push button on the XIAO board itself -- don't unplug USB to "wake". On battery you'd press it; on USB the board re-enumerates anyway.
 
 - [ ] **Step 7: Commit**
 
@@ -1316,7 +1316,7 @@ git commit -m "feat(firmware): deep sleep with GPIO9 wake"
 
 ## Task 12: End-to-end smoke test against the test panel
 
-**Files:** none — verification only.
+**Files:** none -- verification only.
 
 - [ ] **Step 1: Confirm all 10 routes are registered**
 
@@ -1358,17 +1358,17 @@ All should respond cleanly.
 
 - [ ] **Step 3: Browser-based test from phone**
 
-Phone → connect to `SoleSense` → open `http://192.168.4.1/`.
+Phone -> connect to `SoleSense` -> open `http://192.168.4.1/`.
 
 Run through the test panel buttons:
-1. Tap `/api/device` → JSON in the pre block
-2. Tap `FSR zero` (with insole unloaded) → success JSON
-3. Tap `IMU zero` (with insole flat) → success JSON
-4. Tap `Start Run` → success JSON
-5. Wait 5–10 s
-6. Tap `Stop Run` → success JSON
-7. Tap `Download CSV` → CSV opens or downloads in browser
-8. Tap `Clear data` → success JSON
+1. Tap `/api/device` -> JSON in the pre block
+2. Tap `FSR zero` (with insole unloaded) -> success JSON
+3. Tap `IMU zero` (with insole flat) -> success JSON
+4. Tap `Start Run` -> success JSON
+5. Wait 5-10 s
+6. Tap `Stop Run` -> success JSON
+7. Tap `Download CSV` -> CSV opens or downloads in browser
+8. Tap `Clear data` -> success JSON
 
 **Screenshots for slides:**
 - Phone WiFi list with `SoleSense`
@@ -1376,11 +1376,11 @@ Run through the test panel buttons:
 - A snippet of the CSV
 - Serial Monitor showing `[REC] started` / `[REC] stopped`
 
-- [ ] **Step 4: Commit (touch only — no code change)**
+- [ ] **Step 4: Commit (touch only -- no code change)**
 
 Create a tag for the demo build:
 ```bash
-git tag v0.1-demo -m "v0.1 firmware skeleton — full backend API working"
+git tag v0.1-demo -m "v0.1 firmware skeleton -- full backend API working"
 ```
 (Push the tag later if you want it on GitHub: `git push origin v0.1-demo`.)
 
@@ -1393,7 +1393,7 @@ git tag v0.1-demo -m "v0.1 firmware skeleton — full backend API working"
 
 - [ ] **Step 1: Place the real index.html in the data folder**
 
-Copy your real frontend file to `firmware/SoleSense/data/index.html`, overwriting the placeholder. The file must be self-contained (no CDN, no external assets) per `SOLESENSE.md` §5.
+Copy your real frontend file to `firmware/SoleSense/data/index.html`, overwriting the placeholder. The file must be self-contained (no CDN, no external assets) per `SOLESENSE.md` 5.
 
 If the real SPA expects 7 FSR columns, update the JS analysis pipeline first to expect 6 columns (per the recent hardware change):
 - CSV columns are now `timestamp_ms, fsr1..fsr6, accel_x/y/z, gyro_x/y/z` (13 cols, not 14)
@@ -1402,13 +1402,13 @@ If the real SPA expects 7 FSR columns, update the JS analysis pipeline first to 
 
 - [ ] **Step 2: Re-upload LittleFS**
 
-Close Serial Monitor. Arduino IDE → `Cmd+Shift+P` → `Upload LittleFS to Pico/ESP8266/ESP32` → Enter.
+Close Serial Monitor. Arduino IDE -> `Cmd+Shift+P` -> `Upload LittleFS to Pico/ESP8266/ESP32` -> Enter.
 
 - [ ] **Step 3: Verify the real UI loads**
 
-Phone → connect to `SoleSense` → open `http://192.168.4.1/`. The real SPA should render.
+Phone -> connect to `SoleSense` -> open `http://192.168.4.1/`. The real SPA should render.
 
-- [ ] **Step 4: Run the full Start → Stop → Report flow**
+- [ ] **Step 4: Run the full Start -> Stop -> Report flow**
 
 1. Tap `Start Run`
 2. Walk/run for 30+ seconds (or simulate with hand pressure on FSRs)
@@ -1433,19 +1433,19 @@ Spec coverage check against `2026-05-04-solesense-firmware-design.md`:
 
 | Spec section | Implemented in |
 |---|---|
-| §1 Scope (10 endpoints + sampling + cal + sleep) | Tasks 2–11 |
-| §2 File layout | Task 1 |
-| §3 Concurrency model (request flags, single-task FS) | Tasks 8, 9, 11 |
-| §4 Pin assignments (incl. GPIO9 wake) | Tasks 6, 11 |
-| §5 Sensor reads (mux + IMU) | Task 6 |
-| §6 Calibration (32 × 6 FSR, 64 × IMU) | Task 7 |
-| §7 Ring buffer + CSV writer | Task 9 |
-| §8 All 10 HTTP routes | Tasks 4, 5, 7, 8, 10, 11 |
-| §9 NVS Preferences | Tasks 5, 6 (load), 7 (calibration save) |
-| §10 Deep sleep + wake | Task 11 |
-| §11 Error handling | inline 409 / 400 / 404 / 500 in handlers |
-| §12 Boot sequence + banner | Tasks 1–6 cumulatively |
-| §13 Testing plan | Task 12 |
+| 1 Scope (10 endpoints + sampling + cal + sleep) | Tasks 2-11 |
+| 2 File layout | Task 1 |
+| 3 Concurrency model (request flags, single-task FS) | Tasks 8, 9, 11 |
+| 4 Pin assignments (incl. GPIO9 wake) | Tasks 6, 11 |
+| 5 Sensor reads (mux + IMU) | Task 6 |
+| 6 Calibration (32 x 6 FSR, 64 x IMU) | Task 7 |
+| 7 Ring buffer + CSV writer | Task 9 |
+| 8 All 10 HTTP routes | Tasks 4, 5, 7, 8, 10, 11 |
+| 9 NVS Preferences | Tasks 5, 6 (load), 7 (calibration save) |
+| 10 Deep sleep + wake | Task 11 |
+| 11 Error handling | inline 409 / 400 / 404 / 500 in handlers |
+| 12 Boot sequence + banner | Tasks 1-6 cumulatively |
+| 13 Testing plan | Task 12 |
 
 No placeholders, no TODOs, every code block is complete. Method names consistent across tasks (`enterRecording`, `exitRecording`, `processRequests`, `takeSample`, `flushRowBuffer`, `startSampleTimer`, `stopSampleTimer`, `enterDeepSleep`).
 
@@ -1464,4 +1464,4 @@ Stopping points that still produce a slide-able demo:
 | Task 12 | Full backend smoke test, all 10 endpoints working |
 | Task 13 | Full UI with real report |
 
-Tasks 1–9 give you the headline demo. Tasks 10–11 are polish. Task 13 unlocks the real UI.
+Tasks 1-9 give you the headline demo. Tasks 10-11 are polish. Task 13 unlocks the real UI.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-identify-fsr.py — figure out which FSR channel has a real sensor connected.
+identify-fsr.py -- figure out which FSR channel has a real sensor connected.
 
 Polls the device's /api/sensor endpoint for ~3 seconds while you press your
 FSR a few times. Reports min/max/range per channel and identifies the most
@@ -66,7 +66,7 @@ def main():
             print(f"  read error: {e}")
         time.sleep(period)
 
-    print(f"Done — {n} samples taken.")
+    print(f"Done -- {n} samples taken.")
     print()
 
     ranges = [mx[i] - mn[i] for i in range(6)]
@@ -85,21 +85,21 @@ def main():
 
     # Heuristic verdict.
     if sorted_r[0] < 100:
-        print("⚠️  No channel had a meaningful range. Did you press hard enough?")
+        print("WARNING:  No channel had a meaningful range. Did you press hard enough?")
         print("    Possible causes: FSR not wired, no pull-down resistor, wrong analog pin,")
         print("    or the FSR is dead/shorted. Check the wiring against the README pin map.")
         sys.exit(2)
 
     if sorted_r[0] < 1.5 * runner_up:
-        print(f"⚠️  Channel {best} ({ZONE_NAMES[best]}) is the largest, but other channels")
-        print(f"    are within ~1.5× of it. That's likely floating-pin noise — your FSR")
+        print(f"WARNING:  Channel {best} ({ZONE_NAMES[best]}) is the largest, but other channels")
+        print(f"    are within ~1.5x of it. That's likely floating-pin noise -- your FSR")
         print(f"    might not be wired in, or its pull-down resistor is missing.")
         sys.exit(3)
 
-    print(f"✓  Your FSR is on channel {best} ({ZONE_NAMES[best]}).")
+    print(f"[x]  Your FSR is on channel {best} ({ZONE_NAMES[best]}).")
     print(f"   Wiring: this is " +
-          ("Set 1 ADC " + "ABC"[best]      + f" — power pin GPIO5, analog pin GPIO{2+best}." if best < 3 else
-           "Set 2 ADC " + "ABC"[best - 3]  + f" — power pin GPIO10, analog pin GPIO{2+best-3}."))
+          ("Set 1 ADC " + "ABC"[best]      + f" -- power pin GPIO5, analog pin GPIO{2+best}." if best < 3 else
+           "Set 2 ADC " + "ABC"[best - 3]  + f" -- power pin GPIO10, analog pin GPIO{2+best-3}."))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 /**
- * SoleSense — Cloudflare Worker proxy for LLM-powered run analysis.
+ * SoleSense -- Cloudflare Worker proxy for LLM-powered run analysis.
  *
  * The SoleSense device runs offline behind its own WiFi AP, so the LLM call
  * must happen somewhere with real internet. This worker is that "somewhere":
@@ -28,7 +28,7 @@ const TEMPERATURE = 0.4;
 const SYSTEM_PROMPT = `
 You are SoleSense's running-biomechanics coach. SoleSense is a self-contained
 smart insole built around a Seeed XIAO ESP32-C3, six FSR 402 pressure sensors
-arranged as 3 zones × 2 sensors (heel medial/lateral, midfoot medial/lateral,
+arranged as 3 zones x 2 sensors (heel medial/lateral, midfoot medial/lateral,
 forefoot medial/lateral), and an optional MPU-6050 IMU. Each call you receive
 a JSON object describing one runner's profile and one recorded run. Speak
 directly to that runner.
@@ -42,11 +42,11 @@ directly to that runner.
    in this data.
 
 2. FSR saturation reality. The FSR 402 saturates near 10 kg of force, but real
-   running ground-reaction force is 100–200 kg. The reported loading_rate_bws
+   running ground-reaction force is 100-200 kg. The reported loading_rate_bws
    uses FSR-jerk extrapolation (peak rate-of-rise of the FSR signal during the
    unsaturated portion of the impact transient) and is already scaled by the
    runner's body weight. If fsr_saturated is true, the loading-rate number is
-   a LOWER BOUND — say so. Don't pretend it's a precise reading.
+   a LOWER BOUND -- say so. Don't pretend it's a precise reading.
 
 3. IMU is optional. If imu_validated is false, the IMU is not soldered yet and
    step detection ran on FSR pressure alone. Step count and cadence are still
@@ -56,15 +56,15 @@ directly to that runner.
 4. Reference thresholds when explaining risk. The runner's-facing UI calls
    the loading_rate_bws number "Impact rate" with categories Healthy /
    Elevated / High; mirror that vocabulary in your output. Do NOT use the
-   abbreviation "BW/s" or the phrase "body weights per second" — runners
+   abbreviation "BW/s" or the phrase "body weights per second" -- runners
    without a biomech background find it cryptic. If you cite the number
    itself, append the category in plain English ("an impact rate of 78,
    which is elevated").
-   - Impact rate categories: <60 = Healthy; 60–80 = Elevated; >80 = High,
+   - Impact rate categories: <60 = Healthy; 60-80 = Elevated; >80 = High,
      associated with stress-fracture risk (Milner 2006; Davis 2016).
-   - Cadence (spm): <160 typical of overstriding; 170–180 reduces ground-
+   - Cadence (spm): <160 typical of overstriding; 170-180 reduces ground-
      contact time and is the common coaching target for adult runners.
-   - Pronation (gyro_x mean, deg/s): >15 = overpronation flag; <−8 = supination.
+   - Pronation (gyro_x mean, deg/s): >15 = overpronation flag; <-8 = supination.
    - Ground contact time (ms): <250 well-trained runners; >300 may indicate
      long stride or fatigue.
    - Heel-strike pattern (heel-zone share of total pressure): >65 % = heel-
@@ -85,18 +85,18 @@ directly to that runner.
    balanced) and forefoot push-off engagement.
 
 7. raw_flags is the list of rule-based injury flags the firmware already fired.
-   Treat them as the runner's "headline risk events" — call them out
+   Treat them as the runner's "headline risk events" -- call them out
    specifically and explain each. Do NOT contradict the firmware (if
    raw_flags includes "low_cadence", don't say cadence looks fine).
 
 == Response format ==
 
-Markdown, exactly three sections, each 2–4 bullets, total under 250 words:
+Markdown, exactly three sections, each 2-4 bullets, total under 250 words:
 
-**What went well** — Concrete praise referencing actual numbers.
-**Watch for** — Most consequential 2–3 risks, each with a short *why* citing
+**What went well** -- Concrete praise referencing actual numbers.
+**Watch for** -- Most consequential 2-3 risks, each with a short *why* citing
                  the threshold or research finding.
-**Try next run** — Actionable adjustments. Be specific ("Try landing closer
+**Try next run** -- Actionable adjustments. Be specific ("Try landing closer
                    under your hips" beats "Improve your form"). Include drill
                    suggestions where relevant (e.g., a metronome at 175 spm).
 
@@ -105,7 +105,7 @@ Markdown, exactly three sections, each 2–4 bullets, total under 250 words:
 - Make medical or diagnostic claims. You are a coach, not a clinician.
 - Recommend specific shoe brands or commercial products.
 - Reference data that wasn't provided.
-- Use unexplained jargon — translate terms inline ("loading rate (how
+- Use unexplained jargon -- translate terms inline ("loading rate (how
   fast force builds at ground impact)").
 `.trim();
 
@@ -163,7 +163,7 @@ function jsonResponse(
 }
 
 async function rateLimit(env: Env, ip: string): Promise<boolean> {
-  if (!env.RATE_LIMIT) return true; // no KV bound → no limit
+  if (!env.RATE_LIMIT) return true; // no KV bound -> no limit
   const key = `rl:${ip}`;
   const current = parseInt((await env.RATE_LIMIT.get(key)) || "0", 10);
   if (current >= 30) return false; // 30 calls per hour per IP
@@ -232,7 +232,7 @@ Write the personalized analysis using the format described in the system prompt.
         }),
       });
     } catch (err) {
-      // Don't leak err.message — could contain key fragments in some edge cases.
+      // Don't leak err.message -- could contain key fragments in some edge cases.
       return jsonResponse(
         { ok: false, error: "upstream unreachable" },
         502,

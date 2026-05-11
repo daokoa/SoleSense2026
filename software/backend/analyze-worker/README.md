@@ -4,12 +4,12 @@ Cloudflare Worker that proxies LLM-powered run analysis. The SoleSense device is
 
 ## Why a worker (not direct from the phone)
 
-The OpenAI API key would otherwise sit in the phone's localStorage or in the LittleFS-served HTML — both trivially extractable. With the worker:
+The OpenAI API key would otherwise sit in the phone's localStorage or in the LittleFS-served HTML -- both trivially extractable. With the worker:
 
 ```
-phone (browser)  ──POST run+profile──▶  Cloudflare Worker  ──Bearer KEY──▶  OpenAI
-       ▲                                         │
-       └─────────────analysis markdown───────────┘
+phone (browser)  --POST run+profile--  Cloudflare Worker  --Bearer KEY--  OpenAI
+                                                |
+       `-------------analysis markdown-----------'
 ```
 
 The key lives only as a Wrangler secret. It's never in git, never in client code, never in logs.
@@ -75,7 +75,7 @@ npm run deploy
 #   https://solesense-analyze.<your-account>.workers.dev
 ```
 
-That URL is what the frontend will call. Free-tier Workers give 100k requests/day — plenty for this.
+That URL is what the frontend will call. Free-tier Workers give 100k requests/day -- plenty for this.
 
 ## Tail live logs while testing
 
@@ -83,7 +83,7 @@ That URL is what the frontend will call. Free-tier Workers give 100k requests/da
 npm run tail
 ```
 
-Useful when debugging upstream errors. Logs never include the API key — the code is careful to never echo `env.OPENAI_API_KEY` into log statements or response bodies.
+Useful when debugging upstream errors. Logs never include the API key -- the code is careful to never echo `env.OPENAI_API_KEY` into log statements or response bodies.
 
 ## Optional: per-IP rate limit
 
@@ -147,8 +147,8 @@ Status codes: `400` bad payload, `405` wrong method, `429` rate-limited, `502` u
 
 ## Cost guardrails
 
-- `MAX_TOKENS = 700` and `gpt-4o-mini` keep each call ≪ 1¢.
-- Set a hard monthly cap on the OpenAI dashboard (`Settings → Billing → Usage limits`).
+- `MAX_TOKENS = 700` and `gpt-4o-mini` keep each call  1.
+- Set a hard monthly cap on the OpenAI dashboard (`Settings -> Billing -> Usage limits`).
 - Add the rate-limit KV binding above before exposing the worker URL publicly.
 
 ## Frontend integration
@@ -161,4 +161,4 @@ When the analysis feature lands in `software/frontend/solesense-v2/index.html`, 
 4. Renders the returned markdown.
 5. Falls back to the existing static rule-based summary when offline / worker unreachable.
 
-The worker URL is configured in the frontend at build time — the firmware's LittleFS-served `index.html` uses a constant `ANALYZE_WORKER_URL` that points at your deployed worker.
+The worker URL is configured in the frontend at build time -- the firmware's LittleFS-served `index.html` uses a constant `ANALYZE_WORKER_URL` that points at your deployed worker.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-watch-fsr.py — live watch of all 6 FSR channels with min/max tracking.
+watch-fsr.py -- live watch of all 6 FSR channels with min/max tracking.
 
 Polls the device's /api/sensor endpoint at 5 Hz and updates a fixed-position
 display so you can see live values and the press-vs-rest swing per channel.

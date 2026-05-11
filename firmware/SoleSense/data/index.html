@@ -43,9 +43,9 @@ body{
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
 
-/* ══════════════════════════════════════
+/* 
    HOME
-══════════════════════════════════════ */
+ */
 #screen-home{
   background:#ffffff;
   align-items:center;
@@ -181,9 +181,9 @@ body{
 .home-card-label{font-size:15px;font-weight:600;color:var(--text)}
 .home-card-sub{font-size:12px;color:var(--text3);margin-top:2px}
 
-/* ══════════════════════════════════════
+/* 
    RECORDING
-══════════════════════════════════════ */
+ */
 #screen-recording{
   align-items:center;justify-content:space-between;
   background:var(--surface);
@@ -264,9 +264,9 @@ body{
 .btn-stop svg{width:28px;height:28px;fill:white}
 .btn-stop-label{font-size:14px;color:var(--text3)}
 
-/* ══════════════════════════════════════
+/* 
    REPORT
-══════════════════════════════════════ */
+ */
 #screen-report{flex-direction:column;padding:0 0 80px;background:var(--bg)}
 
 .report-header{
@@ -381,9 +381,9 @@ body{
 .btn-done:hover{opacity:.92;transform:translateY(-1px)}
 .btn-done:active{opacity:.82;transform:translateY(0)}
 
-/* ══════════════════════════════════════
+/* 
    SETTINGS
-══════════════════════════════════════ */
+ */
 #screen-settings{flex-direction:column;padding:0 0 60px;background:var(--bg)}
 
 .settings-header{
@@ -457,7 +457,7 @@ body{
 }
 .btn-danger:hover{background:#fff1f1}
 
-/* ── LOADING ── */
+/* -- LOADING -- */
 #loading-overlay{
   display:none;position:fixed;inset:0;
   background:rgba(240,244,255,.92);z-index:100;
@@ -472,7 +472,7 @@ body{
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── TOAST ── */
+/* -- TOAST -- */
 #toast{
   position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);
   background:var(--text);color:white;
@@ -487,7 +487,7 @@ body{
 </head>
 <body>
 
-<!-- ══════════════════════════════════════ HOME ══════════════════════════════════════ -->
+<!--  HOME  -->
 <div class="screen active" id="screen-home">
 
   <nav class="home-nav">
@@ -547,7 +547,7 @@ body{
 
 </div>
 
-<!-- ══════════════════════════════════════ RECORDING ══════════════════════════════════════ -->
+<!--  RECORDING  -->
 <div class="screen" id="screen-recording">
 
   <div class="rec-top">
@@ -565,15 +565,15 @@ body{
     <div class="rec-steps">Steps: <span id="rec-steps">0</span></div>
     <div class="rec-chips">
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-cadence">—</div>
+        <div class="rec-chip-val" id="chip-cadence">--</div>
         <div class="rec-chip-label">Cadence</div>
       </div>
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-contact">—</div>
+        <div class="rec-chip-val" id="chip-contact">--</div>
         <div class="rec-chip-label">Contact</div>
       </div>
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-rate">—</div>
+        <div class="rec-chip-val" id="chip-rate">--</div>
         <div class="rec-chip-label">Load Rate</div>
       </div>
     </div>
@@ -589,7 +589,7 @@ body{
 
 </div>
 
-<!-- ══════════════════════════════════════ REPORT ══════════════════════════════════════ -->
+<!--  REPORT  -->
 <div class="screen" id="screen-report">
 
   <div class="report-header">
@@ -604,15 +604,15 @@ body{
   <div class="summary">
     <div class="summary-grid">
       <div class="summary-card">
-        <div class="summary-val" id="s-steps">—</div>
+        <div class="summary-val" id="s-steps">--</div>
         <div class="summary-label">Steps</div>
       </div>
       <div class="summary-card">
-        <div class="summary-val"><span id="s-cadence">—</span><span class="summary-unit">spm</span></div>
+        <div class="summary-val"><span id="s-cadence">--</span><span class="summary-unit">spm</span></div>
         <div class="summary-label">Cadence</div>
       </div>
       <div class="summary-card">
-        <div class="summary-val" id="s-duration">—</div>
+        <div class="summary-val" id="s-duration">--</div>
         <div class="summary-label">Duration</div>
       </div>
     </div>
@@ -628,12 +628,12 @@ body{
     <div class="section">
       <div class="section-title">Run Metrics</div>
       <div class="metrics-card">
-        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Loading rate</span><span class="metrics-val"><span id="m-loading">—</span><span class="unit">BW/s</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Pronation angle</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">L / R balance</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">--</span><span class="unit">steps/min</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">--</span><span class="unit">ms</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Loading rate</span><span class="metrics-val"><span id="m-loading">--</span><span class="unit">BW/s</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Pronation angle</span><span class="metrics-val"><span id="m-pronate">--</span><span class="unit"> deg</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">L / R balance</span><span class="metrics-val"><span id="m-balance">--</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">--</span></span></div>
       </div>
     </div>
 
@@ -645,13 +645,13 @@ body{
     <button class="btn-done" onclick="showScreen('home')">Done</button>
 
     <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--text3)">
-      SoleSense · UCI · Spring 2026
+      SoleSense . UCI . Spring 2026
     </div>
 
   </div>
 </div>
 
-<!-- ══════════════════════════════════════ SETTINGS ══════════════════════════════════════ -->
+<!--  SETTINGS  -->
 <div class="screen" id="screen-settings">
 
   <div class="settings-header">
@@ -687,10 +687,10 @@ body{
     <div class="settings-group">
       <div class="settings-group-title">Device Info</div>
       <div class="settings-card">
-        <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">—</div></div>
-        <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">—</div></div>
+        <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">--</div></div>
+        <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">--</div></div>
         <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">50 Hz</div></div>
-        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6× FSR + IMU</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6x FSR + IMU</div></div>
       </div>
     </div>
 
@@ -699,24 +699,24 @@ body{
     </div>
 
     <div style="text-align:center;margin-top:24px;font-size:12px;color:var(--text3);padding-bottom:12px">
-      SoleSense · UCI · Spring 2026
+      SoleSense . UCI . Spring 2026
     </div>
 
   </div>
 </div>
 
-<div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run…</span></div>
+<div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run...</span></div>
 <div id="toast"></div>
 
 <script>
-/* ── NAV ── */
+/* -- NAV -- */
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
   window.scrollTo(0,0);
 }
 
-/* ── RECORDING ── */
+/* -- RECORDING -- */
 let recInterval=null,barInterval=null,recSeconds=0,recSteps=0;
 
 function startRun(){
@@ -735,7 +735,7 @@ function startRun(){
 function stopRun(){
   clearInterval(recInterval); clearInterval(barInterval);
   fetch('/api/stop',{method:'POST'}).catch(()=>{});
-  showLoading('Processing your run…');
+  showLoading('Processing your run...');
   setTimeout(()=>loadReport(), 1200);
 }
 
@@ -773,11 +773,11 @@ async function animateBars(){
       const v=Math.max(0,Math.min(ADC_MAX,Number(d.fsr[i])||0));
       bar.style.height=(8 + (v/ADC_MAX)*78)+'px';
     }
-  }catch(e){/* network blip — keep last bar heights, no fake data */}
+  }catch(e){/* network blip -- keep last bar heights, no fake data */}
   finally{ barFetchInFlight=false; }
 }
 
-/* ── REPORT LOAD ── */
+/* -- REPORT LOAD -- */
 async function loadReport(){
   try{
     const res=await fetch('/data.csv');
@@ -794,11 +794,11 @@ async function loadReport(){
 }
 
 function viewLastReport(){
-  showLoading('Loading last run…');
+  showLoading('Loading last run...');
   setTimeout(()=>loadReport(), 300);
 }
 
-/* ── CSV ── */
+/* -- CSV -- */
 function parseCSV(text){
   const lines=text.trim().split('\n').filter(l=>l.trim()&&!l.startsWith('#'));
   if(lines.length<2)return[];
@@ -809,7 +809,7 @@ function parseCSV(text){
   }).filter(r=>r.fsr&&!r.fsr.some(isNaN));
 }
 
-/* ── ANALYSIS ── */
+/* -- ANALYSIS -- */
 const THRESH={cadence_low:160,contact_high:300,loading_high:60,pronate_high:15,supinate_low:-8,asym_high:10};
 
 function analyse(rows){
@@ -835,8 +835,8 @@ function analyse(rows){
   if(heelPct>65&&zoneAvg.heel>zoneAvg.ball+10) flags.push({key:'heel_strike',val:heelPct.toFixed(0)+'% heel load'});
   if(loadingRate>THRESH.loading_high) flags.push({key:'high_loading',val:loadingRate.toFixed(1)+' BW/s'});
   if(cadence>0&&cadence<THRESH.cadence_low) flags.push({key:'low_cadence',val:cadence+' steps/min'});
-  if(pronate>THRESH.pronate_high) flags.push({key:'overpronation',val:pronate.toFixed(1)+'°'});
-  else if(pronate<THRESH.supinate_low) flags.push({key:'supination',val:Math.abs(pronate).toFixed(1)+'° outward'});
+  if(pronate>THRESH.pronate_high) flags.push({key:'overpronation',val:pronate.toFixed(1)+' deg'});
+  else if(pronate<THRESH.supinate_low) flags.push({key:'supination',val:Math.abs(pronate).toFixed(1)+' deg outward'});
   if(asymPct>THRESH.asym_high) flags.push({key:'bilateral_asym',val:lPct.toFixed(0)+'% L / '+rPct.toFixed(0)+'% R'});
   if(contactMs>THRESH.contact_high) flags.push({key:'contact_long',val:contactMs.toFixed(0)+' ms'});
   return{steps:stepCount,durSec,cadence,contactMs,loadingRate,pronate,lPct,rPct,zoneAvg,flags};
@@ -847,20 +847,20 @@ function estimateContactTime(sig,steps,dt){if(!steps.length)return 0;let total=0
 function estimateLoadingRate(sig,steps,dt){let max=0;steps.forEach(p=>{for(let i=Math.max(0,p-12);i<p;i++){const s=(sig[i+1]-sig[i])/4095/dt;if(s>max)max=s;}});return max;}
 function estimatePronation(gyroX,steps,dt){if(!steps.length)return 0;let total=0;steps.forEach(p=>{let a=0;for(let i=Math.max(0,p-10);i<Math.min(gyroX.length,p+10);i++)a+=gyroX[i]*dt;total+=a;});return total/steps.length;}
 
-/* ── FLAG DEFS ── */
+/* -- FLAG DEFS -- */
 const FLAG_DEFS={
   heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot. This creates a braking force with every step that sends a shock wave up through your knee and hip.',fix:'Try landing with your foot closer under your hips. A slight forward lean from the ankles naturally encourages a midfoot landing. Shorter, quicker steps help more than consciously changing foot placement.'},
-  high_loading:{name:'High Loading Rate',severity:'high',what:"Force is building through your foot very quickly on impact. High loading rate is one of the strongest predictors of stress fractures and shin splints — your muscles aren't absorbing impact gradually enough.",fix:'Focus on landing softly — imagine running quietly. Increasing your cadence by 5–10% is the most reliable way to reduce loading rate. Slightly more knee bend at landing also helps.'},
-  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5–10% — don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
-  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy — it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
+  high_loading:{name:'High Loading Rate',severity:'high',what:"Force is building through your foot very quickly on impact. High loading rate is one of the strongest predictors of stress fractures and shin splints -- your muscles aren't absorbing impact gradually enough.",fix:'Focus on landing softly -- imagine running quietly. Increasing your cadence by 5-10% is the most reliable way to reduce loading rate. Slightly more knee bend at landing also helps.'},
+  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5-10% -- don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
+  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy -- it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
   supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
-  bilateral_asym:{name:'L/R Asymmetry',severity:'low',what:'One foot is consistently carrying more load than the other. Large differences suggest a strength or mobility imbalance that can cause overuse injuries on the overloaded side.',fix:'Single-leg exercises — deadlifts, step-ups, calf raises — help even out strength differences.'},
+  bilateral_asym:{name:'L/R Asymmetry',severity:'low',what:'One foot is consistently carrying more load than the other. Large differences suggest a strength or mobility imbalance that can cause overuse injuries on the overloaded side.',fix:'Single-leg exercises -- deadlifts, step-ups, calf raises -- help even out strength differences.'},
   contact_long:{name:'Long Contact Time',severity:'low',what:"Your foot spends more time on the ground than is typical for efficient running. This usually means you're pushing down into the ground rather than springing off it.",fix:'Think about lifting your feet rather than pushing down. Jump rope and bounding drills train leg reactivity for quicker ground contact.'},
 };
 
-/* ── RENDER ── */
+/* -- RENDER -- */
 function render(r){
-  const fmt=(v,d=0)=>isNaN(v)?'—':Number(v).toFixed(d);
+  const fmt=(v,d=0)=>isNaN(v)?'--':Number(v).toFixed(d);
   set('s-steps',r.steps);
   set('s-cadence',fmt(r.cadence));
   const m=Math.floor(r.durSec/60),s=Math.round(r.durSec%60);
@@ -872,13 +872,13 @@ function render(r){
   set('m-balance',fmt(r.lPct,0)+'% L / '+fmt(r.rPct,0)+'% R');
   set('m-steps',r.steps);
   // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
-  // This is more meaningful than % of ADC max — it shows how the runner distributed load.
+  // This is more meaningful than % of ADC max -- it shows how the runner distributed load.
   const zoneRaw=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Ball',val:r.zoneAvg.ball},{label:'Toe',val:r.zoneAvg.toe}];
   const zoneSum=zoneRaw.reduce((s,z)=>s+z.val,0)||1;
   const zones=zoneRaw.map(z=>({label:z.label,pct:z.val/zoneSum*100}));
   document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${z.pct.toFixed(1)}%"></div></div><span class="zone-pct">${z.pct.toFixed(0)}%</span></div>`).join('');
   const container=document.getElementById('flags-container');
-  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">✓</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
+  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">[x]</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
   const order={high:0,medium:1,low:2};
   const sorted=[...r.flags].sort((a,b)=>order[FLAG_DEFS[a.key]?.severity||'low']-order[FLAG_DEFS[b.key]?.severity||'low']);
   container.innerHTML=sorted.map(f=>{
@@ -888,7 +888,7 @@ function render(r){
         <span class="flag-pill pill-${sev}">${sev}</span>
         <div class="flag-name">${def.name}</div>
         <div class="flag-val">${f.val}</div>
-        <div class="flag-chevron">▼</div>
+        <div class="flag-chevron"></div>
       </div>
       <div class="flag-body">
         <p class="flag-what">${def.what}</p>
@@ -898,20 +898,20 @@ function render(r){
   }).join('');
 }
 
-/* ── SETTINGS ── */
-async function zeroSensors(){try{await fetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
-async function zeroIMU(){try{await fetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
+/* -- SETTINGS -- */
+async function zeroSensors(){try{await fetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed [x]');}catch{toast('Error');}}
+async function zeroIMU(){try{await fetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed [x]');}catch{toast('Error');}}
 async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await fetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 
-/* ── HELPERS ── */
+/* -- HELPERS -- */
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
-function showLoading(msg){document.getElementById('loading-msg').textContent=msg||'Loading…';document.getElementById('loading-overlay').classList.add('active');}
+function showLoading(msg){document.getElementById('loading-msg').textContent=msg||'Loading...';document.getElementById('loading-overlay').classList.add('active');}
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
 
-/* ── INIT ── */
+/* -- INIT -- */
 fetchDeviceInfo();
 fetch('/api/device')
   .then(()=>{document.getElementById('conn-dot').className='status-dot';set('conn-text','Connected');})

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-diag-fsr.py — full diagnostic of all 6 FSR analog inputs.
+diag-fsr.py -- full diagnostic of all 6 FSR analog inputs.
 
 Three phases:
   1. baseline (2s, don't touch anything)
@@ -10,10 +10,10 @@ Three phases:
 Reports per-channel: baseline mean, baseline stddev, active range, verdict.
 
 Verdicts:
-  GROUNDED     baseline near 0 with low noise — pulldown is working, no FSR pressed
-  FLOATING     baseline 200-800 with high noise — no pulldown, ADC pin floating
-  RESPONSIVE   went from grounded to high during press phase — FSR is wired & working
-  STUCK-HIGH   reads near 4095 — likely shorted to 3.3V
+  GROUNDED     baseline near 0 with low noise -- pulldown is working, no FSR pressed
+  FLOATING     baseline 200-800 with high noise -- no pulldown, ADC pin floating
+  RESPONSIVE   went from grounded to high during press phase -- FSR is wired & working
+  STUCK-HIGH   reads near 4095 -- likely shorted to 3.3V
 
 Pairs that share an analog pin should mirror each other in pressed:
   ch0 + ch3 share A0
@@ -80,10 +80,10 @@ def classify_full(b_mean, b_std, a_min, a_max):
     """Verdict from baseline + active passes."""
     base = classify_baseline(b_mean, b_std).strip()
     active_range = a_max - a_min
-    # If grounded and pressed swing > 5× baseline noise → RESPONSIVE
+    # If grounded and pressed swing > 5x baseline noise -> RESPONSIVE
     if base == "GROUNDED" and active_range > max(150, 5 * b_std):
         return "RESPONSIVE"
-    # If floating, can't really detect a press over the noise — keep it as FLOATING
+    # If floating, can't really detect a press over the noise -- keep it as FLOATING
     return base + " " * (10 - len(base))
 
 
@@ -91,10 +91,10 @@ def pretty_print(baselines, actives=None):
     print()
     if actives is None:
         print(f"  {'ch':>2}  {'zone':<10}  {'pin':<3}  {'set':<3}  "
-              f"{'base μ':>7}  {'base σ':>7}  verdict")
+              f"{'base u':>7}  {'base sigma':>7}  verdict")
     else:
         print(f"  {'ch':>2}  {'zone':<10}  {'pin':<3}  {'set':<3}  "
-              f"{'base μ':>7}  {'base σ':>7}  {'press min':>9}  {'press max':>9}  {'press Δ':>8}  verdict")
+              f"{'base u':>7}  {'base sigma':>7}  {'press min':>9}  {'press max':>9}  {'press ':>8}  verdict")
     print("  " + "-" * (60 if actives is None else 96))
     for i in range(6):
         b_mean, b_std, b_min, b_max = stats(baselines[i])
@@ -121,10 +121,10 @@ def pair_check(actives):
         if max(a_max, b_max) < 100:
             note = "no press detected on this pin"
         elif abs(a_max - b_max) < 100:
-            note = f"OK — both peaked at ~{(a_max + b_max) // 2}"
+            note = f"OK -- both peaked at ~{(a_max + b_max) // 2}"
         else:
-            note = f"MISMATCH — ch{a} peaked at {a_max}, ch{b} peaked at {b_max}"
-        print(f"    ch{a} ↔ ch{b}  ({pin}): {note}")
+            note = f"MISMATCH -- ch{a} peaked at {a_max}, ch{b} peaked at {b_max}"
+        print(f"    ch{a} <-> ch{b}  ({pin}): {note}")
     print()
 
 
@@ -149,7 +149,7 @@ def main():
     print("=" * 60)
 
     print()
-    print("PHASE 1 — baseline (2 sec). Don't touch any sensors.")
+    print("PHASE 1 -- baseline (2 sec). Don't touch any sensors.")
     time.sleep(0.3)
     baselines = collect_for(args.url, 2.0, args.rate)
 
@@ -159,7 +159,7 @@ def main():
 
     pretty_print(baselines)
 
-    print("PHASE 2 — active (3 sec). Press your FSR(s) firmly several times now!")
+    print("PHASE 2 -- active (3 sec). Press your FSR(s) firmly several times now!")
     for i in range(3, 0, -1):
         print(f"  starting in {i}...", end="\r")
         time.sleep(1)
@@ -167,7 +167,7 @@ def main():
     actives = collect_for(args.url, 3.0, args.rate)
 
     print()
-    print("PHASE 3 — release. Don't touch anything.")
+    print("PHASE 3 -- release. Don't touch anything.")
     time.sleep(1.0)
 
     pretty_print(baselines, actives)
@@ -179,19 +179,19 @@ def main():
     grounded   = [i for i in range(6) if classify_baseline(*stats(baselines[i])[:2]).strip() == "GROUNDED" and i not in responsive]
     floating   = [i for i in range(6) if classify_baseline(*stats(baselines[i])[:2]).strip() == "FLOATING"]
     if responsive:
-        print(f"    ✓  {len(responsive)} channel(s) responded to press: {responsive}")
+        print(f"    [x]  {len(responsive)} channel(s) responded to press: {responsive}")
         if 0 in responsive and 3 in responsive:
-            print("       ch0 and ch3 are both A0 — your FSR(s) are on A0 (likely 3.3V-powered).")
+            print("       ch0 and ch3 are both A0 -- your FSR(s) are on A0 (likely 3.3V-powered).")
         if 1 in responsive and 4 in responsive:
             print("       ch1 and ch4 are both A1.")
         if 2 in responsive and 5 in responsive:
             print("       ch2 and ch5 are both A2.")
     else:
-        print("    ✗  no channel responded to press. Check FSR wiring and pull-down resistor.")
+        print("    [ ]  no channel responded to press. Check FSR wiring and pull-down resistor.")
     if grounded:
-        print(f"    ◦  {len(grounded)} channel(s) wired but quiet (pulldown OK, no FSR or no press): {grounded}")
+        print(f"      {len(grounded)} channel(s) wired but quiet (pulldown OK, no FSR or no press): {grounded}")
     if floating:
-        print(f"    ◦  {len(floating)} channel(s) floating (pin not pulled to GND, no resistor): {floating}")
+        print(f"      {len(floating)} channel(s) floating (pin not pulled to GND, no resistor): {floating}")
     print()
 
 

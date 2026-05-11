@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — fft.h
+// SoleSense v0.2 -- fft.h
 // Goertzel-based incremental FFT with windowed reset.
 //
 // Strategy: for each (channel, bin) we run the Goertzel two-tap recurrence
@@ -17,16 +17,16 @@
 #include <Arduino.h>
 #include "config.h"
 
-// Window length in samples. Must be ≥ ~Fs/lowest_bin to resolve the lowest
+// Window length in samples. Must be >= ~Fs/lowest_bin to resolve the lowest
 // frequency in the bin table. At Fs=500 Hz with 0.5 Hz lowest bin, need
-// ≥ 1000; 1024 gives a 2.05 s window with ~0.49 Hz bin width — sufficient to
-// distinguish cadences (1.5–3 Hz) cleanly. RAM cost per channel is independent
+// >= 1000; 1024 gives a 2.05 s window with ~0.49 Hz bin width -- sufficient to
+// distinguish cadences (1.5-3 Hz) cleanly. RAM cost per channel is independent
 // of WIN_SIZE (Goertzel only stores 2 floats per bin), so window length is
 // purely a frequency-resolution-vs-latency knob.
 constexpr uint16_t FFT_WIN_SIZE = 1024;
 
 // Frequencies (Hz) tracked per channel. Same set used for every channel for
-// simplicity — tune per-channel later if needed.
+// simplicity -- tune per-channel later if needed.
 extern const float FFT_BIN_FREQS_HZ[FFT_BINS_PER_CHAN];
 
 // One-time setup: precompute Goertzel coefficients from FFT_BIN_FREQS_HZ +
@@ -40,14 +40,14 @@ void fft_reset();
 //   channel:      0..N_FSR-1 = FSR; N_FSR..N_FSR+5 = IMU axes
 //   sample:       raw sample value
 //   running_mean: current channel mean (subtracted before processing for DC
-//                 removal — Welford-style running mean is fine)
+//                 removal -- Welford-style running mean is fine)
 void fft_process_sample(uint8_t channel, float sample, float running_mean);
 
 // Magnitude of one bin (latest finalized window). Returns 0 if no window has
 // completed yet for that channel. Units: same as the input signal's amplitude.
 float fft_get_magnitude(uint8_t channel, uint8_t bin);
 
-// Convenience: dominant (peak) bin for a channel — useful for cadence.
+// Convenience: dominant (peak) bin for a channel -- useful for cadence.
 //   Returns the bin index; outMagnitude (optional) gets the peak value.
 uint8_t fft_peak_bin(uint8_t channel, float* outMagnitude = nullptr);
 

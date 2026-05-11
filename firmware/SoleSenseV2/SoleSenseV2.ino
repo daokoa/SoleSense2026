@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — main sketch
+// SoleSense v0.2 -- main sketch
 //
 // This is the v0.2 firmware. v0.1 still lives at firmware/SoleSense/ and is
 // what's flashed for the Spring 2026 demo.
@@ -27,7 +27,7 @@
 
 AsyncWebServer server(HTTP_PORT);
 
-// ── 50 Hz hardware-timer ISR ─────────────────────────────────────────────────
+// -- 50 Hz hardware-timer ISR -------------------------------------------------
 hw_timer_t* gTimer = nullptr;
 
 void IRAM_ATTR onSampleTick() {
@@ -41,7 +41,7 @@ static void start_sample_timer() {
   timerAlarm(gTimer, SAMPLE_PERIOD_US, true, 0);
 }
 
-// ── Deep sleep ───────────────────────────────────────────────────────────────
+// -- Deep sleep ---------------------------------------------------------------
 static void enter_deep_sleep() {
   Serial.println("[Sleep] entering deep sleep, wake on GPIO9 LOW");
   Serial.flush();
@@ -60,10 +60,10 @@ static void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-// ── Per-sample processing ────────────────────────────────────────────────────
+// -- Per-sample processing ----------------------------------------------------
 // Jerk-tracking state. We use vertical jerk (d(accel_z)/dt) as the impact-rate
-// indicator because the FSR 402 saturates at ~10 kg — far below running peak
-// ground-reaction force (100–200 kg). The IMU gives clean vertical
+// indicator because the FSR 402 saturates at ~10 kg -- far below running peak
+// ground-reaction force (100-200 kg). The IMU gives clean vertical
 // acceleration regardless of how saturated the FSRs are, and its derivative
 // is the standard biomechanics loading-rate signal.
 static float sPrevAccelZ  = 0.0f;
@@ -73,7 +73,7 @@ static void process_sample() {
   sensors_read_all();
   gSampleCount++;
 
-  // Vertical jerk: |Δaccel_z| / Δt over the last sample interval.
+  // Vertical jerk: |accel_z| / t over the last sample interval.
   if (sJerkHasPrev) {
     constexpr float DT_S = 1.0f / (float)SAMPLE_RATE_HZ;
     float jerk = fabsf(gAccel[2] - sPrevAccelZ) / DT_S;
@@ -104,7 +104,7 @@ static void process_sample() {
     }
   }
 
-  // ── IMU sensor-fusion bookkeeping (used by step_detector_update below).
+  // -- IMU sensor-fusion bookkeeping (used by step_detector_update below).
   // Mark the IMU as "connected" once its vertical-axis stddev has grown above
   // a tiny floor (real samples have noise; disconnected IMU stays at exactly
   // zero stddev because gAccel never changes). Then detect any-axis impacts
@@ -114,25 +114,25 @@ static void process_sample() {
   float az_stddev = stats_get_stddev(N_FSR + 2);
   if (az_stddev > 0.05f) gImuConnected = true;
   if (gImuConnected) {
-    constexpr float IMU_IMPACT_DELTA = 8.0f;   // m/s² above background
+    constexpr float IMU_IMPACT_DELTA = 8.0f;   // m/s^2 above background
     if (fabsf(az - az_mean) > IMU_IMPACT_DELTA) {
       gLastImuImpactMs = gRunElapsedMs;
       gImuImpactCount++;
     }
   }
 
-  // ── Total foot pressure (sum of all 6 FSR zones). Smoother signal than
-  // single-channel max — useful for cross-checking the strike count and as
+  // -- Total foot pressure (sum of all 6 FSR zones). Smoother signal than
+  // single-channel max -- useful for cross-checking the strike count and as
   // an alternative trigger if max-based detection ever proves too noisy.
   float totalPressure = 0.0f;
   for (uint8_t i = 0; i < N_FSR; i++) totalPressure += channelVal[i];
   if (totalPressure > gMaxTotalPressure) gMaxTotalPressure = totalPressure;
 
-  // ── Time-domain step detection: OR-gate across ALL FSR zones. A real step
+  // -- Time-domain step detection: OR-gate across ALL FSR zones. A real step
   // can be heel-strike, midfoot-strike, or forefoot-strike depending on the
   // runner; whichever zone makes contact first counts. The detector's own
   // refractory window (250 ms in state.cpp) prevents double-counting the
-  // heel→midfoot→forefoot pressure progression within a single stride.
+  // heel->midfoot->forefoot pressure progression within a single stride.
   // When the IMU is connected, the detector additionally requires a recent
   // IMU impact for the strike to count.
   float anyZoneMax = channelVal[0];
@@ -156,7 +156,7 @@ static void process_sample() {
   sAnyHasPrev = true;
 }
 
-// ── setup() ──────────────────────────────────────────────────────────────────
+// -- setup() ------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -183,7 +183,7 @@ void setup() {
   Serial.printf("[WiFi] AP '%s' up at %s\n", SS_AP_SSID, ip.toString().c_str());
 
   // mDNS: lets users on iOS/macOS visit http://solesense.local/ instead
-  // of typing the IP. Doesn't trigger any captive-portal auto-popup —
+  // of typing the IP. Doesn't trigger any captive-portal auto-popup --
   // it's a passive hostname resolver. Android Chrome historically doesn't
   // support .local; those users type 192.168.4.1 directly.
   if (MDNS.begin("solesense")) {
@@ -201,7 +201,7 @@ void setup() {
   Serial.printf("[Timer] %u Hz sampling armed\n", (unsigned)SAMPLE_RATE_HZ);
 }
 
-// ── loop() ───────────────────────────────────────────────────────────────────
+// -- loop() -------------------------------------------------------------------
 void loop() {
   state_tick();
   auth_serial_console_tick();   // listen for "factory_reset" from USB serial

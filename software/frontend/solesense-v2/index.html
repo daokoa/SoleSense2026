@@ -43,9 +43,9 @@ body{
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
 
-/* ══════════════════════════════════════
+/* 
    HOME
-══════════════════════════════════════ */
+ */
 #screen-home{
   background:#ffffff;
   align-items:center;
@@ -140,7 +140,7 @@ body{
 .btn-start:active{transform:scale(.97)}
 .btn-start svg{width:20px;height:20px;fill:white;margin-left:-2px}
 
-/* Modal — used by the "Add user" flow in Settings. */
+/* Modal -- used by the "Add user" flow in Settings. */
 .modal{
   position:fixed; inset:0; z-index:1000;
   display:flex; align-items:center; justify-content:center;
@@ -220,7 +220,7 @@ body{
 }
 .ai-error a{ color:#991b1b; text-decoration:underline; }
 
-/* Auth screen — same visual language as the home hero. */
+/* Auth screen -- same visual language as the home hero. */
 .auth-hero{
   display:flex; flex-direction:column; align-items:center; text-align:center;
   padding:32px 24px 48px; flex:1; justify-content:flex-start; gap:0;
@@ -310,9 +310,9 @@ body{
 .home-card-label{font-size:15px;font-weight:600;color:var(--text)}
 .home-card-sub{font-size:12px;color:var(--text3);margin-top:2px}
 
-/* ══════════════════════════════════════
+/* 
    RECORDING
-══════════════════════════════════════ */
+ */
 #screen-recording{
   align-items:center;justify-content:space-between;
   background:var(--surface);
@@ -375,7 +375,7 @@ body{
 .rec-chip-val{font-size:20px;font-weight:700;color:var(--blue);line-height:1}
 .rec-chip-label{font-size:11px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
 
-/* ── Foot diagrams (recording screen) ── */
+/* -- Foot diagrams (recording screen) -- */
 .feet-wrap{
   display:flex; gap:16px; justify-content:center; align-items:flex-start;
   margin-top:14px;
@@ -442,9 +442,9 @@ body{
 .btn-stop svg{width:28px;height:28px;fill:white}
 .btn-stop-label{font-size:14px;color:var(--text3)}
 
-/* ══════════════════════════════════════
+/* 
    REPORT
-══════════════════════════════════════ */
+ */
 #screen-report{flex-direction:column;padding:0 0 80px;background:var(--bg)}
 
 .report-header{
@@ -559,9 +559,9 @@ body{
 .btn-done:hover{opacity:.92;transform:translateY(-1px)}
 .btn-done:active{opacity:.82;transform:translateY(0)}
 
-/* ══════════════════════════════════════
+/* 
    SETTINGS
-══════════════════════════════════════ */
+ */
 #screen-settings{flex-direction:column;padding:0 0 60px;background:var(--bg)}
 
 .settings-header{
@@ -635,7 +635,7 @@ body{
 }
 .btn-danger:hover{background:#fff1f1}
 
-/* ── LOADING ── */
+/* -- LOADING -- */
 #loading-overlay{
   display:none;position:fixed;inset:0;
   background:rgba(240,244,255,.92);z-index:100;
@@ -650,7 +650,7 @@ body{
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── TOAST ── */
+/* -- TOAST -- */
 #toast{
   position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);
   background:var(--text);color:white;
@@ -665,8 +665,8 @@ body{
 </head>
 <body>
 
-<!-- ══════════════════════════════════════ HOME ══════════════════════════════════════ -->
-<!-- Auth screen: shown first if no token in localStorage. Two modes — login
+<!--  HOME  -->
+<!-- Auth screen: shown first if no token in localStorage. Two modes -- login
      (when an owner already exists) and claim (first-ever registration).
      Visual language matches the home hero (eyebrow + headline + form). -->
 <div class="screen active" id="screen-auth">
@@ -682,18 +682,18 @@ body{
 
     <div class="home-headline" id="auth-headline">Sign in.</div>
 
-    <div class="home-desc" id="auth-subtitle">Loading…</div>
+    <div class="home-desc" id="auth-subtitle">Loading...</div>
 
     <form class="auth-form" autocomplete="off" onsubmit="event.preventDefault();submitAuth();">
       <label class="auth-field">
         <span class="auth-label">Username</span>
         <input id="auth-username" type="text" autocomplete="off"
-               name="ssu" maxlength="13" placeholder="4–13 letters, digits, or _">
+               name="ssu" maxlength="13" placeholder="4-13 letters, digits, or _">
       </label>
       <label class="auth-field">
         <span class="auth-label">PIN</span>
         <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
-               autocomplete="new-password" name="sspin" placeholder="4–16 digits">
+               autocomplete="new-password" name="sspin" placeholder="4-16 digits">
       </label>
       <label class="auth-field" id="auth-bodykg-field" style="display:none;">
         <span class="auth-label">Body weight (kg)</span>
@@ -768,7 +768,7 @@ body{
 
 </div>
 
-<!-- ══════════════════════════════════════ RECORDING ══════════════════════════════════════ -->
+<!--  RECORDING  -->
 <div class="screen" id="screen-recording">
 
   <div class="rec-top">
@@ -782,26 +782,26 @@ body{
 
   <div class="rec-mid">
     <div class="rec-badge"><div class="rec-dot"></div>Live</div>
-    <div id="rec-paused" class="rec-paused-badge" style="display:none">⏸ Paused — phone disconnected</div>
+    <div id="rec-paused" class="rec-paused-badge" style="display:none"> Paused -- phone disconnected</div>
     <div class="rec-timer" id="rec-timer">0:00</div>
     <div class="rec-steps">Steps: <span id="rec-steps">0</span></div>
     <div class="rec-chips">
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-cadence">—</div>
+        <div class="rec-chip-val" id="chip-cadence">--</div>
         <div class="rec-chip-label">Cadence</div>
       </div>
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-contact">—</div>
+        <div class="rec-chip-val" id="chip-contact">--</div>
         <div class="rec-chip-label">Contact</div>
       </div>
       <div class="rec-chip">
-        <div class="rec-chip-val" id="chip-rate">—</div>
+        <div class="rec-chip-val" id="chip-rate">--</div>
         <div class="rec-chip-label">Impact</div>
       </div>
     </div>
 
     <div class="feet-wrap" id="feet-wrap">
-      <!-- Left foot — the source PNG is anatomically a RIGHT foot, so the
+      <!-- Left foot -- the source PNG is anatomically a RIGHT foot, so the
            Left-foot card mirrors it horizontally via SVG transform so it
            reads as a left foot on screen. Sensor circles inside the
            transformed group are mirrored along with the image; channel
@@ -821,13 +821,13 @@ body{
             <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="40"  cy="135" r="18"/>
             <!-- ch1 heel lateral (heel-left displayed; aligned with ch3 left-most) -->
             <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="140" cy="450" r="20"/>
-            <!-- ch0 heel medial (heel-right displayed) — pinned, perfect -->
+            <!-- ch0 heel medial (heel-right displayed) -- pinned, perfect -->
             <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="65"  cy="455" r="20"/>
           </g>
         </svg>
       </div>
 
-      <!-- Right foot — original PNG orientation (anatomically a right foot),
+      <!-- Right foot -- original PNG orientation (anatomically a right foot),
            no mirror, greyed out via .disabled. -->
       <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
         <div class="foot-card-label">Right (offline)</div>
@@ -859,7 +859,7 @@ body{
 
 </div>
 
-<!-- ══════════════════════════════════════ REPORT ══════════════════════════════════════ -->
+<!--  REPORT  -->
 <div class="screen" id="screen-report">
 
   <div class="report-header">
@@ -874,15 +874,15 @@ body{
   <div class="summary">
     <div class="summary-grid">
       <div class="summary-card">
-        <div class="summary-val" id="s-steps">—</div>
+        <div class="summary-val" id="s-steps">--</div>
         <div class="summary-label">Steps</div>
       </div>
       <div class="summary-card">
-        <div class="summary-val"><span id="s-cadence">—</span><span class="summary-unit">spm</span></div>
+        <div class="summary-val"><span id="s-cadence">--</span><span class="summary-unit">spm</span></div>
         <div class="summary-label">Cadence</div>
       </div>
       <div class="summary-card">
-        <div class="summary-val" id="s-duration">—</div>
+        <div class="summary-val" id="s-duration">--</div>
         <div class="summary-label">Duration</div>
       </div>
     </div>
@@ -913,7 +913,7 @@ body{
         </div>
         <div id="ai-loading" class="ai-loading" style="display:none;">
           <div class="spinner-sm"></div>
-          <span>Analyzing your run…</span>
+          <span>Analyzing your run...</span>
         </div>
         <div id="ai-result" class="ai-result"></div>
         <div id="ai-error" class="ai-error" style="display:none;"></div>
@@ -923,12 +923,12 @@ body{
     <div class="section">
       <div class="section-title">Run Metrics</div>
       <div class="metrics-card">
-        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key" title="How quickly force builds when your foot hits the ground. Healthy / Elevated / High.">Impact rate</span><span class="metrics-val"><span id="m-loading">—</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°/s</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">--</span><span class="unit">steps/min</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">--</span><span class="unit">ms</span></span></div>
+        <div class="metrics-row"><span class="metrics-key" title="How quickly force builds when your foot hits the ground. Healthy / Elevated / High.">Impact rate</span><span class="metrics-val"><span id="m-loading">--</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">--</span><span class="unit"> deg/s</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">--</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">--</span></span></div>
       </div>
     </div>
 
@@ -940,13 +940,13 @@ body{
     <button class="btn-done" onclick="showScreen('home')">Done</button>
 
     <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--text3)">
-      SoleSense · UCI · Spring 2026
+      SoleSense . UCI . Spring 2026
     </div>
 
   </div>
 </div>
 
-<!-- ══════════════════════════════════════ SETTINGS ══════════════════════════════════════ -->
+<!--  SETTINGS  -->
 <div class="screen" id="screen-settings">
 
   <div class="settings-header">
@@ -985,7 +985,7 @@ body{
         <div class="settings-row">
           <div>
             <div class="settings-label">Signed in as</div>
-            <div class="settings-desc" id="settings-username">—</div>
+            <div class="settings-desc" id="settings-username">--</div>
           </div>
           <button class="btn-cal" onclick="confirmLogout()">Log out</button>
         </div>
@@ -995,10 +995,10 @@ body{
     <div class="settings-group">
       <div class="settings-group-title">Device Info</div>
       <div class="settings-card">
-        <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">—</div></div>
-        <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">—</div></div>
+        <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">--</div></div>
+        <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">--</div></div>
         <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">500 Hz</div></div>
-        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6× FSR + IMU</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6x FSR + IMU</div></div>
       </div>
     </div>
 
@@ -1007,17 +1007,17 @@ body{
     </div>
 
     <div style="text-align:center;margin-top:24px;font-size:12px;color:var(--text3);padding-bottom:12px">
-      SoleSense · UCI · Spring 2026
+      SoleSense . UCI . Spring 2026
     </div>
 
   </div>
 </div>
 
-<div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run…</span></div>
+<div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run...</span></div>
 <div id="toast"></div>
 
 <script>
-/* ── AUTH ───────────────────────────────────────────────────────────────────
+/* -- AUTH -------------------------------------------------------------------
  * Single-session model. Token + body_kg cached in localStorage so a reload
  * doesn't bounce the user back to login. Any 401 from a protected endpoint
  * wipes the cache and returns to login. */
@@ -1043,8 +1043,8 @@ async function authFetch(url, opts = {}){
   return r;
 }
 
-// authMode ∈ { 'login', 'signup' }. When ownerExists is false the user has
-// no choice — signup is forced and the toggle is hidden.
+// authMode  { 'login', 'signup' }. When ownerExists is false the user has
+// no choice -- signup is forced and the toggle is hidden.
 let authForced = false;
 
 function setText(id, t){ const el = document.getElementById(id); if (el) el.textContent = t; }
@@ -1074,7 +1074,7 @@ function toggleAuthMode(){
 }
 
 async function refreshAuthScreen(){
-  // Always blank the form when entering the auth screen — we don't want
+  // Always blank the form when entering the auth screen -- we don't want
   // the previous user's username pre-populated (or worse, autofilled by
   // the browser's password manager). Username is only meant to be visible
   // on the Settings screen for the currently signed-in user.
@@ -1087,14 +1087,14 @@ async function refreshAuthScreen(){
     const d = await r.json();
     if (!d.ownerExists) {
       authMode = 'signup';
-      authForced = true;     // no owner yet → can only claim
+      authForced = true;     // no owner yet -> can only claim
     } else {
       authMode = 'login';
       authForced = false;
     }
     applyAuthMode();
   } catch (e) {
-    document.getElementById('auth-error').textContent = 'Could not reach device — is the SoleSense WiFi connected?';
+    document.getElementById('auth-error').textContent = 'Could not reach device -- is the SoleSense WiFi connected?';
   }
 }
 
@@ -1109,7 +1109,7 @@ async function submitAuth(){
   // obvious mistakes. The server still has the authoritative validation.
   if (!u) { errEl.textContent = 'Enter a username.'; return; }
   if (u.length < 4 || u.length > 13) {
-    errEl.textContent = 'Username must be 4–13 characters.'; return;
+    errEl.textContent = 'Username must be 4-13 characters.'; return;
   }
   if (!/^[a-zA-Z0-9_]+$/.test(u)) {
     errEl.textContent = 'Username can only have letters, digits, or _.'; return;
@@ -1117,7 +1117,7 @@ async function submitAuth(){
   if (!p) { errEl.textContent = 'Enter your PIN.'; return; }
   if (authMode === 'signup'){
     if (!/^\d{4,16}$/.test(p)) {
-      errEl.textContent = 'PIN must be 4–16 digits.'; return;
+      errEl.textContent = 'PIN must be 4-16 digits.'; return;
     }
     if (!bk || +bk < 25 || +bk > 250) {
       errEl.textContent = 'Body weight must be between 25 and 250 kg.'; return;
@@ -1141,7 +1141,7 @@ async function submitAuth(){
     document.getElementById('auth-pin').value = '';
     showScreen('home');
   } catch (e) {
-    errEl.textContent = 'Network error — check the SoleSense WiFi.';
+    errEl.textContent = 'Network error -- check the SoleSense WiFi.';
   }
 }
 
@@ -1169,13 +1169,13 @@ function confirmLogout(){
 /* Populate the settings screen with the current user's profile + the
  * device-info fields. Called when the settings screen is shown. */
 async function refreshSettings(){
-  document.getElementById('settings-username').textContent = '—';
+  document.getElementById('settings-username').textContent = '--';
   try {
     const r = await authFetch('/api/auth/profile');
     if(r.ok){
       const d = await r.json();
       const el = document.getElementById('settings-username');
-      if(el) el.textContent = d.username + (d.body_kg ? ` · ${d.body_kg} kg` : '');
+      if(el) el.textContent = d.username + (d.body_kg ? ` . ${d.body_kg} kg` : '');
       // Sync the cache so confirmLogout (and anything else that needs the
       // username before a /profile round-trip) always has it available.
       if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
@@ -1185,13 +1185,13 @@ async function refreshSettings(){
     const r = await fetch('/api/device');
     if(r.ok){
       const d = await r.json();
-      const v = document.getElementById('fw-ver');   if(v) v.textContent = d.firmware || '—';
-      const h = document.getElementById('fw-heap');  if(h) h.textContent = d.heap_free ? Math.round(d.heap_free/1024) + ' KB' : '—';
+      const v = document.getElementById('fw-ver');   if(v) v.textContent = d.firmware || '--';
+      const h = document.getElementById('fw-heap');  if(h) h.textContent = d.heap_free ? Math.round(d.heap_free/1024) + ' KB' : '--';
     }
-  } catch {/* device unreachable — leave dashes */}
+  } catch {/* device unreachable -- leave dashes */}
 }
 
-/* ── NAV ── */
+/* -- NAV -- */
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
@@ -1209,8 +1209,8 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ── RECORDING (v0.2: timer + paused state come from /api/run-state;
-       chips and steps come from /api/run-report polled during recording) ── */
+/* -- RECORDING (v0.2: timer + paused state come from /api/run-state;
+       chips and steps come from /api/run-report polled during recording) -- */
 let stateInterval=null,barInterval=null,reportInterval=null;
 let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 
@@ -1223,7 +1223,7 @@ function startRun(){
   setPausedBadge(false);
   // Reset chips so stale values from a prior run don't linger.
   ['rec-steps','chip-cadence','chip-contact','chip-rate'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.textContent='—';
+    const el=document.getElementById(id); if(el) el.textContent='--';
   });
   document.getElementById('rec-steps').textContent='0';
   showScreen('recording');
@@ -1233,7 +1233,7 @@ function startRun(){
   // 5 Hz live FSR snapshot for the bars.
   barInterval=setInterval(animateBars,200);
   // 0.5 Hz report poll for the live cadence/contact/rate chips + step counter.
-  // Don't run this faster than ~2 sec — /api/run-report walks all FFT bins
+  // Don't run this faster than ~2 sec -- /api/run-report walks all FFT bins
   // and the outlier buffer to assemble its JSON, so it's heavier than
   // /api/run-state. Report values only meaningfully refresh once per FFT
   // window anyway (FFT_WIN_SIZE=256 / Fs=50 = ~5 sec).
@@ -1248,7 +1248,7 @@ async function authPostRetry(url, attempts = 4){
     try {
       const r = await authFetch(url, { method: 'POST' });
       if(r.ok) return true;
-      // 409 (already in/out of state) is fine — treat as success.
+      // 409 (already in/out of state) is fine -- treat as success.
       if(r.status === 409) return true;
     } catch (e) { /* network blip; retry */ }
     await new Promise(res => setTimeout(res, 250 * (i + 1)));
@@ -1258,7 +1258,7 @@ async function authPostRetry(url, attempts = 4){
 
 async function stopRun(){
   clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
-  showLoading('Processing your run…');
+  showLoading('Processing your run...');
   await authPostRetry('/api/stop');
   // Either way (success or repeated failure), try to load the report.
   // If the device is unreachable, loadReport()'s own catch will toast.
@@ -1281,12 +1281,12 @@ async function pollLiveReport(){
     const d=await r.json();
     const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
     set('rec-steps', d.steps ?? 0);
-    set('chip-cadence', (d.cadence>0)? d.cadence : '—');
-    // GCT not measured in v0.2 — firmware always returns 0; render '—'.
-    set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
-    // Impact category — plain English instead of BW/s.
+    set('chip-cadence', (d.cadence>0)? d.cadence : '--');
+    // GCT not measured in v0.2 -- firmware always returns 0; render '--'.
+    set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '--');
+    // Impact category -- plain English instead of BW/s.
     set('chip-rate',    impactCategory(d.loadingRate).label);
-  }catch(e){/* network blip — keep last displayed values */}
+  }catch(e){/* network blip -- keep last displayed values */}
   finally{ liveReportInFlight=false; }
 }
 
@@ -1302,7 +1302,7 @@ async function pollRunState(){
     const d=await r.json();
     stateFetchFailures=0;
     setDisconnectBadge(false);
-    // Elapsed_ms is sourced from the latest valid flash slot in v0.2 — pauses on disconnect.
+    // Elapsed_ms is sourced from the latest valid flash slot in v0.2 -- pauses on disconnect.
     const ms=Number(d.elapsed_ms)||0;
     recSeconds=Math.floor(ms/1000);
     const m=Math.floor(recSeconds/60), s=String(recSeconds%60).padStart(2,'0');
@@ -1320,12 +1320,12 @@ async function pollRunState(){
 function setDisconnectBadge(disconnected){
   let el = document.getElementById('rec-disconnected');
   if(!el){
-    // Lazily create — only injected when first needed.
+    // Lazily create -- only injected when first needed.
     const host = document.getElementById('rec-paused')?.parentElement || document.body;
     el = document.createElement('div');
     el.id = 'rec-disconnected';
     el.className = 'rec-disconnect-badge';
-    el.textContent = 'Device unreachable — reconnect to SoleSense WiFi';
+    el.textContent = 'Device unreachable -- reconnect to SoleSense WiFi';
     el.style.display = 'none';
     host.appendChild(el);
   }
@@ -1346,7 +1346,7 @@ function setPausedBadge(paused){
 const ADC_MAX = 4095;
 
 function buildBars(){
-  // No-op now — the foot-diagram SVG is static markup. Keeping the function
+  // No-op now -- the foot-diagram SVG is static markup. Keeping the function
   // name so startRun's call site doesn't have to change.
   // Reset all left-foot sensor circles to baseline colour.
   for(let i=0;i<6;i++){
@@ -1363,33 +1363,38 @@ async function animateBars(){
     const r=await fetch('/api/sensor');
     if(!r.ok) return;
     const d=await r.json();
-    if(!Array.isArray(d.fsr)) return;
+    // Prefer the EMA-smoothed FSR values for the live fill (less jittery
+    // foot-circle animation). Fall back to raw fsr[] for older firmware.
+    const src = Array.isArray(d.fsrEma) ? d.fsrEma
+              : Array.isArray(d.fsr)    ? d.fsr
+              : null;
+    if(!src) return;
     for(let i=0;i<6;i++){
       const dot=document.getElementById('L-ch'+i);
       if(!dot) continue;
-      const v=Math.max(0,Math.min(ADC_MAX,Number(d.fsr[i])||0));
+      const v=Math.max(0,Math.min(ADC_MAX,Number(src[i])||0));
       const intensity = v / ADC_MAX;                     // 0..1
-      const alpha = 0.10 + intensity * 0.90;             // baseline 0.10 → max 1.0
+      const alpha = 0.10 + intensity * 0.90;             // baseline 0.10 -> max 1.0
       dot.style.fill=`rgba(37, 99, 235, ${alpha.toFixed(3)})`;
     }
-  }catch(e){/* network blip — keep last fill colours, no fake data */}
+  }catch(e){/* network blip -- keep last fill colours, no fake data */}
   finally{ barFetchInFlight=false; }
 }
 
 /* Impact Rate is what we used to call "loading rate (BW/s)". The number
- * itself is body-weights-per-second — an honest biomechanics metric, but
+ * itself is body-weights-per-second -- an honest biomechanics metric, but
  * incomprehensible to a runner who hasn't read Milner 2006. We display
  * a plain-English category instead, with the number tucked alongside for
  * runners who care. The firmware payload still uses loading_rate_bws so
  * the LLM coach has the precision it needs. */
 function impactCategory(bws){
-  if (!bws || bws < 1)   return { label: '—',         num: '' };
+  if (!bws || bws < 1)   return { label: '--',         num: '' };
   if (bws < 60)          return { label: 'Healthy',   num: Math.round(bws).toString() };
   if (bws < 80)          return { label: 'Elevated',  num: Math.round(bws).toString() };
   return                       { label: 'High',      num: Math.round(bws).toString() };
 }
 
-/* ── AI COACH (LLM analysis via Cloudflare Worker proxy) ────────────────────
+/* -- AI COACH (LLM analysis via Cloudflare Worker proxy) --------------------
  * The worker URL holds the OpenAI key as an encrypted secret. Hitting it
  * requires real internet, so this is a graceful-fallback feature: if the
  * phone is still on the SoleSense AP (no internet), or the worker is down,
@@ -1398,7 +1403,7 @@ const ANALYZE_WORKER_URL = 'https://solesense-analyze.daodoan.workers.dev';
 
 let lastReport = null;   // cached run-report from /api/run-report
 
-/* Tiny markdown → HTML for the LLM response. The system prompt locks the
+/* Tiny markdown -> HTML for the LLM response. The system prompt locks the
  * shape (block section headers + bulleted lists with optional inline bold),
  * so the renderer only needs three constructs: section headers, bullets,
  * and paragraphs. Block-level headers and inline bold are kept separate
@@ -1419,7 +1424,7 @@ function renderMarkdown(md){
     if(!ln){ flushList(); continue; }
 
     // Section header: a line that's just **text** (with an optional trailing
-    // colon and whitespace). Strip the colon — the visual treatment already
+    // colon and whitespace). Strip the colon -- the visual treatment already
     // separates sections, so the punctuation is redundant and was producing
     // a stray ":" on its own line.
     let m;
@@ -1454,7 +1459,7 @@ async function runAiAnalysis(){
 
   const bodyKg = parseFloat(localStorage.getItem(AUTH_BODYKG_KEY) || '0') || null;
 
-  // Map firmware run-report → worker schema. The worker prompt names these
+  // Map firmware run-report -> worker schema. The worker prompt names these
   // exactly so anything else is ignored. Skip undefined fields rather than
   // sending zeros that the LLM might over-interpret.
   const payload = {
@@ -1518,7 +1523,7 @@ function resetAiPanel(){
   document.getElementById('ai-result').innerHTML = '';
 }
 
-/* ── REPORT LOAD (v0.2: MCU computes the analysis, frontend just renders) ── */
+/* -- REPORT LOAD (v0.2: MCU computes the analysis, frontend just renders) -- */
 async function loadReport(){
   try{
     const res=await fetch('/api/run-report');
@@ -1536,32 +1541,32 @@ async function loadReport(){
 }
 
 function viewLastReport(){
-  showLoading('Loading last run…');
+  showLoading('Loading last run...');
   setTimeout(()=>loadReport(), 300);
 }
 
 /* The v0.1 frontend used to parse the raw CSV and run the analysis pipeline
    (cadence, GCT, pronation, flags) in JS here. In v0.2 the firmware computes
    all of that on the MCU and returns the result via /api/run-report. The
-   browser is a thin viewer — no parseCSV, no detectSteps, no thresholds. */
+   browser is a thin viewer -- no parseCSV, no detectSteps, no thresholds. */
 
-/* ── FLAG DEFS ── */
+/* -- FLAG DEFS -- */
 const FLAG_DEFS={
   heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot. This creates a braking force with every step that sends a shock wave up through your knee and hip.',fix:'Try landing with your foot closer under your hips. A slight forward lean from the ankles naturally encourages a midfoot landing. Shorter, quicker steps help more than consciously changing foot placement.'},
-  high_loading:{name:'High Impact Rate',severity:'high',what:"Force is building through your foot very quickly when you land. A high impact rate is one of the strongest predictors of stress fractures and shin splints — your muscles aren't absorbing the landing gradually enough.",fix:'Focus on landing softly — imagine running quietly. Increasing your cadence by 5–10 % is the most reliable way to reduce impact rate. A slightly more bent knee at landing also helps.'},
-  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5–10% — don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
-  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy — it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
+  high_loading:{name:'High Impact Rate',severity:'high',what:"Force is building through your foot very quickly when you land. A high impact rate is one of the strongest predictors of stress fractures and shin splints -- your muscles aren't absorbing the landing gradually enough.",fix:'Focus on landing softly -- imagine running quietly. Increasing your cadence by 5-10 % is the most reliable way to reduce impact rate. A slightly more bent knee at landing also helps.'},
+  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5-10% -- don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
+  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy -- it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
   supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
-  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other side. On a single insole this is medial vs lateral pressure imbalance — not left foot vs right foot. Persistent asymmetry can lead to overuse injuries on the overloaded side.',fix:'Stretching the underloaded side and strengthening hip stabilisers tends to help. Single-leg exercises — deadlifts, step-ups, calf raises — even out strength differences. (Detecting true left vs right asymmetry needs a second insole.)'},
+  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other side. On a single insole this is medial vs lateral pressure imbalance -- not left foot vs right foot. Persistent asymmetry can lead to overuse injuries on the overloaded side.',fix:'Stretching the underloaded side and strengthening hip stabilisers tends to help. Single-leg exercises -- deadlifts, step-ups, calf raises -- even out strength differences. (Detecting true left vs right asymmetry needs a second insole.)'},
 };
 
-/* ── RENDER ── */
+/* -- RENDER -- */
 function render(r){
-  const fmt=(v,d=0)=>isNaN(v)?'—':Number(v).toFixed(d);
+  const fmt=(v,d=0)=>isNaN(v)?'--':Number(v).toFixed(d);
   set('s-steps',r.steps);
-  // v0.2 keys: loadingSigma (σ, no unit conversion), medialPct/lateralPct.
-  // Cadence and contactMs may be 0 — render '—' instead of '0' to be honest.
-  const dashIfZero=(v,decimals=0)=>(!v||v===0)?'—':fmt(v,decimals);
+  // v0.2 keys: loadingSigma (sigma, no unit conversion), medialPct/lateralPct.
+  // Cadence and contactMs may be 0 -- render '--' instead of '0' to be honest.
+  const dashIfZero=(v,decimals=0)=>(!v||v===0)?'--':fmt(v,decimals);
   set('s-cadence',dashIfZero(r.cadence));
   const m=Math.floor(r.durSec/60),s=Math.round(r.durSec%60);
   set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
@@ -1575,17 +1580,17 @@ function render(r){
   if(r.medialPct>0 || r.lateralPct>0){
     set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');
   } else {
-    set('m-balance','—');
+    set('m-balance','--');
   }
   set('m-steps',r.steps);
   // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
-  // This is more meaningful than % of ADC max — it shows how the runner distributed load.
+  // This is more meaningful than % of ADC max -- it shows how the runner distributed load.
   const zoneRaw=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Forefoot',val:r.zoneAvg.forefoot}];
   const zoneSum=zoneRaw.reduce((s,z)=>s+z.val,0)||1;
   const zones=zoneRaw.map(z=>({label:z.label,pct:z.val/zoneSum*100}));
   document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${z.pct.toFixed(1)}%"></div></div><span class="zone-pct">${z.pct.toFixed(0)}%</span></div>`).join('');
   const container=document.getElementById('flags-container');
-  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">✓</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
+  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">[x]</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
   const order={high:0,medium:1,low:2};
   const sorted=[...r.flags].sort((a,b)=>order[FLAG_DEFS[a.key]?.severity||'low']-order[FLAG_DEFS[b.key]?.severity||'low']);
   container.innerHTML=sorted.map(f=>{
@@ -1595,7 +1600,7 @@ function render(r){
         <span class="flag-pill pill-${sev}">${sev}</span>
         <div class="flag-name">${def.name}</div>
         <div class="flag-val">${f.val}</div>
-        <div class="flag-chevron">▼</div>
+        <div class="flag-chevron"></div>
       </div>
       <div class="flag-body">
         <p class="flag-what">${def.what}</p>
@@ -1605,22 +1610,22 @@ function render(r){
   }).join('');
 }
 
-/* ── SETTINGS ── */
-async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
-async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
+/* -- SETTINGS -- */
+async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed [x]');}catch{toast('Error');}}
+async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed [x]');}catch{toast('Error');}}
 async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await authFetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 
-/* ── HELPERS ── */
+/* -- HELPERS -- */
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
-function showLoading(msg){document.getElementById('loading-msg').textContent=msg||'Loading…';document.getElementById('loading-overlay').classList.add('active');}
+function showLoading(msg){document.getElementById('loading-msg').textContent=msg||'Loading...';document.getElementById('loading-overlay').classList.add('active');}
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
 
-/* ── CONNECTIVITY PING ─────────────────────────────────────────────────────
- * Periodically pokes /api/device. Any HTTP response → connected (green).
- * Network failure (phone left the AP, AP went down, captive portal) → red,
+/* -- CONNECTIVITY PING -----------------------------------------------------
+ * Periodically pokes /api/device. Any HTTP response -> connected (green).
+ * Network failure (phone left the AP, AP went down, captive portal) -> red,
  * pulsing. Polled every 5 seconds with a short 3-second timeout so we
  * don't hang the UI on a slow disconnect. */
 async function pingDevice(){
@@ -1635,7 +1640,7 @@ async function pingDevice(){
     set('conn-text', 'Connected');
   } catch {
     dot.className = 'status-dot danger';
-    set('conn-text', 'Disconnected — rejoin SoleSense WiFi');
+    set('conn-text', 'Disconnected -- rejoin SoleSense WiFi');
   }
 }
 function startConnectivityWatch(){
@@ -1644,7 +1649,7 @@ function startConnectivityWatch(){
   window.__solesense_ping = setInterval(pingDevice, 5000);
 }
 
-/* ── INIT ── */
+/* -- INIT -- */
 fetchDeviceInfo();
 startConnectivityWatch();
 </script>

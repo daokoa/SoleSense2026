@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — storage.cpp
+// SoleSense v0.2 -- storage.cpp
 //
 // Multi-slot ring buffer in LittleFS. One small file per slot
 // (/run_slot_0.bin .. /run_slot_9.bin), each containing
@@ -23,7 +23,7 @@
 #include <LittleFS.h>
 #include <string.h>
 
-// ── Body layout ──────────────────────────────────────────────────────────────
+// -- Body layout --------------------------------------------------------------
 // [ FFT magnitudes ][ outlier_count u32 ][ Outlier[OUTLIER_CAPACITY] ][ 32 bytes reserved ]
 static constexpr size_t SS_FFT_BYTES      = (size_t)N_CHANNELS_TOTAL * FFT_BINS_PER_CHAN * sizeof(float);
 static constexpr size_t SS_OUTLIER_BYTES  = (size_t)OUTLIER_CAPACITY * sizeof(Outlier);
@@ -37,7 +37,7 @@ static uint8_t sBuf[SS_TOTAL_BYTES];
 static uint8_t  sNextSlot = 0;
 static uint32_t sSlotSeq  = 1;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 static String slot_path(uint8_t i) {
   return String("/run_slot_") + i + ".bin";
@@ -60,7 +60,7 @@ static uint32_t crc32_compute(const uint8_t* data, size_t len) {
 static void serialise_body(uint8_t* dst) {
   size_t off = 0;
 
-  // 1. FFT magnitudes (N_CHANNELS_TOTAL × FFT_BINS_PER_CHAN floats)
+  // 1. FFT magnitudes (N_CHANNELS_TOTAL x FFT_BINS_PER_CHAN floats)
   for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
     for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
       float m = fft_get_magnitude(c, b);
@@ -159,7 +159,7 @@ static bool read_and_validate_slot(uint8_t slot, SlotHeader& hdr) {
   return true;
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// -- Public API ---------------------------------------------------------------
 
 void storage_init() {
   uint8_t exist = 0;
@@ -228,7 +228,7 @@ uint8_t storage_valid_slot_count() {
   return count;
 }
 
-// ── Self-test ────────────────────────────────────────────────────────────────
+// -- Self-test ----------------------------------------------------------------
 // Writes 3 known-valid slots, corrupts the newest one's trailer, calls
 // load_latest, asserts the result is slot #2 not slot #3.
 //
@@ -265,7 +265,7 @@ void storage_self_test() {
                   (unsigned long)hdr.slot_n);
     return;
   }
-  Serial.println("[Storage self-test] step 1 PASS — load_latest returns slot 2");
+  Serial.println("[Storage self-test] step 1 PASS -- load_latest returns slot 2");
 
   // Now corrupt slot 2's trailer to simulate a power-cut mid-write.
   String path = slot_path(2);
@@ -291,7 +291,7 @@ void storage_self_test() {
                   (unsigned long)hdr.slot_n);
     return;
   }
-  Serial.println("[Storage self-test] step 2 PASS — corrupted slot rejected, fell back to slot 1");
+  Serial.println("[Storage self-test] step 2 PASS -- corrupted slot rejected, fell back to slot 1");
 
   // Cleanup: blow away the test slots so a real run starts clean.
   for (uint8_t i = 0; i < STORAGE_SLOT_COUNT; i++) {

@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — state.h
+// SoleSense v0.2 -- state.h
 // Run state machine + request flags. The run is a simple state machine with
 // a "paused" sub-state derived from AP client count.
 // =============================================================================
@@ -32,9 +32,9 @@ extern volatile uint32_t gSampleCount;
 
 // Time-domain step detection. Updated by step_detector_update() from
 // process_sample() once per sample. Reset to 0 on /api/start.
-//   gStepCount    — total heel-strikes detected this run
-//   gContactSumMs — sum of valid heel-strike-to-toe-off durations
-//   gContactCount — number of valid contact intervals contributing to the sum
+//   gStepCount    -- total heel-strikes detected this run
+//   gContactSumMs -- sum of valid heel-strike-to-toe-off durations
+//   gContactCount -- number of valid contact intervals contributing to the sum
 // Average contact time = gContactSumMs / gContactCount when count > 0.
 extern volatile uint32_t gStepCount;
 extern volatile uint32_t gContactSumMs;
@@ -49,32 +49,32 @@ extern volatile float gMaxHeelJerk;
 
 // IMU sensor fusion. gLastImuImpactMs is the run-elapsed time of the most
 // recent vertical-acceleration impact (|az - mean(az)| > IMU_IMPACT_THRESH).
-// gImuConnected is set true once Welford stddev on az exceeds a tiny floor —
+// gImuConnected is set true once Welford stddev on az exceeds a tiny floor --
 // proxy for "the IMU is actually producing real samples". When false (IMU
 // disconnected or zero motion), the step detector skips IMU validation.
 extern volatile uint32_t gLastImuImpactMs;
 extern volatile bool     gImuConnected;
 extern volatile uint32_t gImuImpactCount;   // count of IMU impacts during the run
 
-// Total foot pressure metric (sum of all 6 FSR channels) — exposed via
+// Total foot pressure metric (sum of all 6 FSR channels) -- exposed via
 // /api/run-report for diagnostics and for cross-checking against the
 // any-zone-max strike signal.
 extern volatile float gMaxTotalPressure;   // peak SUM(ch0..5) seen this run
 
 // Time-domain step detector. Call once per sample from process_sample(),
 // after the per-channel stats are fresh. Strike fires on a rising edge
-// through STEP_RISE_THRESHOLD; toe-off fires on heel < peak × FALL_FRACTION
+// through STEP_RISE_THRESHOLD; toe-off fires on heel < peak x FALL_FRACTION
 // or after MAX_CONTACT_MS (force-release). When the IMU is connected the
-// strike must also be paired with a recent IMU impact to count — kills
+// strike must also be paired with a recent IMU impact to count -- kills
 // the "lift the insole and squeeze it" false positive. heelMean/heelStddev
 // are kept in the signature for the future EMA-baseline option.
 void step_detector_update(float heelValue, float heelMean, float heelStddev,
                           uint32_t nowMs);
 
-// Peak vertical jerk (|d(accel_z)/dt|) seen during the current run, in m/s³.
+// Peak vertical jerk (|d(accel_z)/dt|) seen during the current run, in m/s^3.
 // FSR 402 saturates at ~10 kg so it can't measure peak running force directly
-// (running impact is 100–200 kg of ground reaction). Vertical jerk from the
-// IMU does measure impact rate cleanly — dividing by g (9.81 m/s²) gives the
+// (running impact is 100-200 kg of ground reaction). Vertical jerk from the
+// IMU does measure impact rate cleanly -- dividing by g (9.81 m/s^2) gives the
 // loading rate in BW/s, the standard biomechanics unit. Reset to 0 on
 // /api/start. Updated per sample by process_sample() in SoleSenseV2.ino.
 extern volatile float gMaxJerkZ;
@@ -82,7 +82,7 @@ extern volatile float gMaxJerkZ;
 // Set true by the 50Hz hardware-timer ISR. loop() drains this flag.
 extern volatile bool gNewSample;
 
-// HTTP-task → loop() request flags. Handlers set these and return immediately;
+// HTTP-task -> loop() request flags. Handlers set these and return immediately;
 // loop() observes them and performs the state transition.
 extern volatile bool gStartRequested;
 extern volatile bool gStopRequested;

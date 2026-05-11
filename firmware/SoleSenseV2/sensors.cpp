@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — sensors.cpp
+// SoleSense v0.2 -- sensors.cpp
 // =============================================================================
 
 #include "sensors.h"
@@ -7,6 +7,7 @@
 #include <Wire.h>
 
 int16_t gFsr[N_FSR]      = {0,0,0,0,0,0};
+int16_t gFsrEma[N_FSR]   = {0,0,0,0,0,0};
 float   gAccel[3]        = {0,0,0};
 float   gGyro[3]         = {0,0,0};
 int     gFsrZero[N_FSR]  = {0,0,0,0,0,0};
@@ -19,10 +20,10 @@ float   gImuOffset[6]    = {0,0,0,0,0,0};
 // onto the other two ADC pins (classic "ghosting"). Driving the inactive
 // pin LOW shorts that ghost path to ground so each set is read cleanly.
 //
-// Settling time bumped to 150 µs because the LOW-driving means a real
+// Settling time bumped to 150 us because the LOW-driving means a real
 // transition to settle each scan, where the previous floating-pin scheme
 // settled almost instantly. Total per-sample budget at 500 Hz is 2 ms;
-// 6 reads × ~170 µs = ~1 ms, comfortably within budget.
+// 6 reads x ~170 us = ~1 ms, comfortably within budget.
 static void read_set_a() {
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, LOW);
@@ -87,7 +88,7 @@ void sensors_init() {
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(400000);
 
-  // MPU-6050 wake + default ranges (±2g, ±250°/s).
+  // MPU-6050 wake + default ranges (+/-2g, +/-250 deg/s).
   Wire.beginTransmission(MPU6050_ADDR);
   Wire.write(0x6B); Wire.write(0x00);
   Wire.endTransmission();
@@ -106,6 +107,16 @@ void sensors_read_all() {
   read_set_b();
   park_sets_high_z();
   read_imu();
+
+  // EMA on the FSR readings for the live UI. gFsr stays raw so the step
+  // detector / Kalman / FFT / stats all see unfiltered samples; gFsrEma is
+  // strictly for the visual fill of the foot-diagram circles, which were
+  // noticeably jittery on the raw signal.
+  for (uint8_t i = 0; i < N_FSR; i++) {
+    float prev = (float)gFsrEma[i];
+    float next = FSR_EMA_ALPHA * (float)gFsr[i] + (1.0f - FSR_EMA_ALPHA) * prev;
+    gFsrEma[i] = (int16_t)next;
+  }
 }
 
 void sensors_calibrate_fsr() {

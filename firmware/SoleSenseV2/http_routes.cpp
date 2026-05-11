@@ -1,10 +1,10 @@
 // =============================================================================
-// SoleSense v0.2 — http_routes.cpp
+// SoleSense v0.2 -- http_routes.cpp
 //
 // Simple state-changing routes (start, stop, calibrate, sleep, device, sensor)
 // are fully working. The new v0.2 endpoints (run-state, run-spectrum,
 // run-outliers, run-report) return shape-correct JSON populated from the FFT
-// and outlier modules. /api/run-report is the heaviest — it computes the
+// and outlier modules. /api/run-report is the heaviest -- it computes the
 // final injury-flag analysis from the FFT bins and outliers.
 //
 // **STATUS: simple routes done; analysis logic in /api/run-report is a stub.**
@@ -24,7 +24,7 @@
 #include <WiFi.h>
 #include <math.h>
 
-// ── Auth middleware ──────────────────────────────────────────────────────────
+// -- Auth middleware ----------------------------------------------------------
 // Returns true if the request carries a valid Bearer token. On false, sends
 // a 401 response and the caller MUST return immediately.
 static bool require_auth(AsyncWebServerRequest* req) {
@@ -80,7 +80,7 @@ static bool json_get_number(const String& body, const char* field, float* out) {
   return true;
 }
 
-// ── /api/device ──────────────────────────────────────────────────────────────
+// -- /api/device --------------------------------------------------------------
 static void handle_device(AsyncWebServerRequest* req) {
   String j = "{";
   j += "\"firmware\":\"SoleSense ";  j += SS_FIRMWARE_VERSION; j += "\",";
@@ -96,23 +96,25 @@ static void handle_device(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── /api/sensor ──────────────────────────────────────────────────────────────
+// -- /api/sensor --------------------------------------------------------------
 static void handle_sensor(AsyncWebServerRequest* req) {
   // Only re-read when idle (during a recording, the sample loop keeps
   // gFsr/gAccel/gGyro fresh at SAMPLE_RATE_HZ).
   if (gState == RS_IDLE) sensors_read_all();
-  char body[256];
+  char body[384];
   snprintf(body, sizeof(body),
     "{\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
     "\"gx\":%.3f,\"gy\":%.3f,\"gz\":%.3f,"
-    "\"fsr\":[%d,%d,%d,%d,%d,%d]}",
+    "\"fsr\":[%d,%d,%d,%d,%d,%d],"
+    "\"fsrEma\":[%d,%d,%d,%d,%d,%d]}",
     gAccel[0], gAccel[1], gAccel[2],
     gGyro[0],  gGyro[1],  gGyro[2],
-    gFsr[0], gFsr[1], gFsr[2], gFsr[3], gFsr[4], gFsr[5]);
+    gFsr[0],    gFsr[1],    gFsr[2],    gFsr[3],    gFsr[4],    gFsr[5],
+    gFsrEma[0], gFsrEma[1], gFsrEma[2], gFsrEma[3], gFsrEma[4], gFsrEma[5]);
   req->send(200, "application/json", body);
 }
 
-// ── /api/start /api/stop /api/sleep ──────────────────────────────────────────
+// -- /api/start /api/stop /api/sleep ------------------------------------------
 static void handle_start(AsyncWebServerRequest* req) {
   if (!require_auth(req)) return;
   if (gState != RS_IDLE) {
@@ -143,7 +145,7 @@ static void handle_sleep(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true}");
 }
 
-// ── /api/calibrate/zero /api/calibrate/imu ───────────────────────────────────
+// -- /api/calibrate/zero /api/calibrate/imu -----------------------------------
 static void handle_cal_zero(AsyncWebServerRequest* req) {
   if (!require_auth(req)) return;
   if (gState != RS_IDLE) {
@@ -172,7 +174,7 @@ static void handle_cal_imu(AsyncWebServerRequest* req) {
   req->send(200, "application/json", body);
 }
 
-// ── /api/run-state ───────────────────────────────────────────────────────────
+// -- /api/run-state -----------------------------------------------------------
 static void handle_run_state(AsyncWebServerRequest* req) {
   String j = "{";
   j += "\"recording\":";          j += (gState == RS_RECORDING ? "true" : "false"); j += ",";
@@ -185,7 +187,7 @@ static void handle_run_state(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── /api/run-spectrum ────────────────────────────────────────────────────────
+// -- /api/run-spectrum --------------------------------------------------------
 static void handle_run_spectrum(AsyncWebServerRequest* req) {
   // Returns the FFT magnitudes per (channel, bin). Compact format:
   //   { "binsHz":[...], "channels":[{"name":"heel","mag":[...]}, ...] }
@@ -211,7 +213,7 @@ static void handle_run_spectrum(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── /api/run-outliers ────────────────────────────────────────────────────────
+// -- /api/run-outliers --------------------------------------------------------
 static void handle_run_outliers(AsyncWebServerRequest* req) {
   String j = "[";
   for (uint8_t i = 0; i < outliers_count(); i++) {
@@ -227,12 +229,12 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── /api/run-report ──────────────────────────────────────────────────────────
+// -- /api/run-report ----------------------------------------------------------
 // Computes the final metrics from the FFT bins + outlier buffer + running
 // channel stats. Mirrors the v0.1 dao analyse() function but pulls data from
 // the device-side modules instead of parsed CSV rows.
 //
-// Channel index reminder (3-zone × medial/lateral layout, Choi 2024 +E-at-heel):
+// Channel index reminder (3-zone x medial/lateral layout, Choi 2024 +E-at-heel):
 //   0 = heel medial,     1 = heel lateral
 //   2 = midfoot medial,  3 = midfoot lateral
 //   4 = forefoot medial, 5 = forefoot lateral   (sensors at the front, near
@@ -241,18 +243,18 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 //   6..8  = accel x/y/z
 //   9..11 = gyro x/y/z
 static void handle_run_report(AsyncWebServerRequest* req) {
-  // ── Cadence + step count: time-domain heel-strike detector (state.cpp).
-  // Each rising edge through max(floor, 4σ) is a step; cadence is just
-  // steps × 60 / runtime. Wait for ≥2 s of recording before reporting cadence
+  // -- Cadence + step count: time-domain heel-strike detector (state.cpp).
+  // Each rising edge through max(floor, 4sigma) is a step; cadence is just
+  // steps x 60 / runtime. Wait for >=2 s of recording before reporting cadence
   // so very-short-run noise doesn't produce a wild number.
   uint32_t durMs  = gRunElapsedMs;
   uint32_t durSec = durMs / 1000UL;
   int   steps   = (int)gStepCount;
   int   cadence = 0;
-  // Show cadence as soon as we have a meaningful sample. Old gates (≥2 s,
-  // ≥60 spm) were too strict — a 3-second test with 2 presses came out at
-  // 40 spm and got clamped to 0, leaving the user staring at "—" on every
-  // first run. Loosened to: ≥1 s elapsed, ≥1 step detected, result in a
+  // Show cadence as soon as we have a meaningful sample. Old gates (>=2 s,
+  // >=60 spm) were too strict -- a 3-second test with 2 presses came out at
+  // 40 spm and got clamped to 0, leaving the user staring at "--" on every
+  // first run. Loosened to: >=1 s elapsed, >=1 step detected, result in a
   // very generous [20, 300] spm band (running peaks at ~200, finger
   // tapping caps near 300).
   if (durMs >= 1000UL && gStepCount > 0) {
@@ -266,13 +268,13 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   bool anySaturated = false;
   for (uint8_t i = 0; i < N_FSR; i++) {
     // peak FSR per channel isn't tracked separately; use total-pressure
-    // ceiling as a proxy: sum near 6 × 4095 = 24570 means all channels saturated.
+    // ceiling as a proxy: sum near 6 x 4095 = 24570 means all channels saturated.
   }
   // Use maxTotalPressure / N_FSR as average peak; flag if avg approaches saturation.
   bool fsrSaturated = (gMaxTotalPressure / (float)N_FSR) > 3500.0f;
 
-  // ── Zone means (raw FSR units; the frontend percentage-ifies for display).
-  // Three zones × two sensors each. Clamp negatives to 0 — they only happen
+  // -- Zone means (raw FSR units; the frontend percentage-ifies for display).
+  // Three zones x two sensors each. Clamp negatives to 0 -- they only happen
   // when an FSR is unconnected and a stale calibration offset is in effect,
   // and a negative loading value isn't physically meaningful.
   auto clamp_pos = [](float v) { return v > 0.0f ? v : 0.0f; };
@@ -280,10 +282,10 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float zMidfoot  = clamp_pos((stats_get_mean(2) + stats_get_mean(3)) * 0.5f);
   float zForefoot = clamp_pos((stats_get_mean(4) + stats_get_mean(5)) * 0.5f);
 
-  // ── Medial vs lateral on a single insole.
-  // This is NOT left-foot vs right-foot — the system has one insole. The split
+  // -- Medial vs lateral on a single insole.
+  // This is NOT left-foot vs right-foot -- the system has one insole. The split
   // is medial (inside-of-foot) vs lateral (outside-of-foot) loading. With the
-  // 3×2 layout, medial = ch{0,2,4} and lateral = ch{1,3,5}.
+  // 3x2 layout, medial = ch{0,2,4} and lateral = ch{1,3,5}.
   float medial  = (stats_get_mean(0) + stats_get_mean(2) + stats_get_mean(4)) / 3.0f;
   float lateral = (stats_get_mean(1) + stats_get_mean(3) + stats_get_mean(5)) / 3.0f;
   float mlTotal = medial + lateral;
@@ -291,21 +293,21 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   float lateralPct = mlTotal > 0.0f ? lateral / mlTotal * 100.0f : 50.0f;
   float asymPct    = fabsf(medialPct - lateralPct);
 
-  // ── Heel-vs-forefoot strike ratio
+  // -- Heel-vs-forefoot strike ratio
   float hfTotal   = zHeel + zForefoot;
   float heelRatio = hfTotal > 0.0f ? zHeel / hfTotal * 100.0f : 50.0f;
 
-  // ── Loading rate via FSR-jerk extrapolation.
+  // -- Loading rate via FSR-jerk extrapolation.
   // FSR 402 saturates at ~10 kg of force, far below running peak GRF
-  // (100–200 kg). But the *rate of rise* of the FSR signal during the
+  // (100-200 kg). But the *rate of rise* of the FSR signal during the
   // unsaturated portion of the impact transient encodes impact magnitude.
   //
   // Conversion uses:
-  //   force_at_FSR_saturation = 10 kg × g = 98.1 N
+  //   force_at_FSR_saturation = 10 kg x g = 98.1 N
   //   ADC at saturation        = 4095 (12-bit, full scale; assumed)
   //   user body weight         = gSession.body_kg if logged in, else 70 kg
-  //   BW/s = (counts/s) × (98.1 / 4095) / (body_kg × 9.81)
-  // Healthy runners read 30–80 BW/s; >80 raises stress-fracture risk
+  //   BW/s = (counts/s) x (98.1 / 4095) / (body_kg x 9.81)
+  // Healthy runners read 30-80 BW/s; >80 raises stress-fracture risk
   // (Milner 2006).
   float bw_kg = gSession.active ? gSession.body_kg : 70.0f;
   float bw_n  = bw_kg * 9.81f;
@@ -314,23 +316,23 @@ static void handle_run_report(AsyncWebServerRequest* req) {
                        : 0.0f;
   (void)gMaxJerkZ;   // IMU vertical jerk still tracked for future fusion
 
-  // ── Pronation: running mean of gyro_x (degrees/s).
-  // Net mean ≈ 0 for symmetric gait; positive = pronation, negative = supination.
-  // First-order only. Clamp to 0 if below the noise-floor (|x| < 0.5 °/s,
-  // well under the 8-15 °/s flag thresholds) so the UI shows "0.0°" instead
-  // of an ugly "-0.00°" when the IMU is disconnected or perfectly zeroed.
+  // -- Pronation: running mean of gyro_x (degrees/s).
+  // Net mean ~= 0 for symmetric gait; positive = pronation, negative = supination.
+  // First-order only. Clamp to 0 if below the noise-floor (|x| < 0.5  deg/s,
+  // well under the 8-15  deg/s flag thresholds) so the UI shows "0.0 deg" instead
+  // of an ugly "-0.00 deg" when the IMU is disconnected or perfectly zeroed.
   float pronate = stats_get_mean(N_FSR + 3);   // channel 9 = gyro_x
   if (fabsf(pronate) < 0.5f) pronate = 0.0f;
 
-  // ── Ground contact time: average of per-step heel-strike→toe-off intervals
+  // -- Ground contact time: average of per-step heel-strike->toe-off intervals
   // recorded by the time-domain step detector. 0 until at least one valid
-  // contact interval (frontend renders that as "—").
+  // contact interval (frontend renders that as "--").
   float contactMs = gContactCount > 0
                   ? (float)gContactSumMs / (float)gContactCount
                   : 0.0f;
   (void)durSec;
 
-  // ── Injury flags (same thresholds as v0.1 dao THRESH constants)
+  // -- Injury flags (same thresholds as v0.1 dao THRESH constants)
   String flags = "[";
   bool firstFlag = true;
   auto pushFlag = [&](const char* key, const String& val) {
@@ -347,7 +349,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     pushFlag("heel_strike", String((int)heelRatio) + "% heel load");
   }
   // High-loading flag: > 80 BW/s. Threshold from biomechanics literature
-  // (Milner 2006; Davis 2016): runners above this have ~2× the stress-fracture
+  // (Milner 2006; Davis 2016): runners above this have ~2x the stress-fracture
   // risk vs. runners with loading rates < 60 BW/s.
   if (loadingRateBWs > 80.0f) {
     pushFlag("high_loading", String((int)loadingRateBWs) + " BW/s");
@@ -356,25 +358,25 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     pushFlag("low_cadence", String(cadence) + " steps/min");
   }
   if (pronate > 15.0f) {
-    pushFlag("overpronation", String(pronate, 1) + "°/s");
+    pushFlag("overpronation", String(pronate, 1) + " deg/s");
   } else if (pronate < -8.0f) {
-    pushFlag("supination", String(fabsf(pronate), 1) + "°/s outward");
+    pushFlag("supination", String(fabsf(pronate), 1) + " deg/s outward");
   }
   if (asymPct > 10.0f) {
     pushFlag("medial_lateral_asym",
              String((int)medialPct) + "% med / " + String((int)lateralPct) + "% lat");
   }
-  // FSR saturation flag — alerts the user that the loading-rate number
+  // FSR saturation flag -- alerts the user that the loading-rate number
   // is a lower bound (the FSR peaked out before it could measure the real impact).
   if (fsrSaturated) {
     pushFlag("fsr_saturated", "loading rate may be underreported");
   }
   flags += "]";
 
-  // ── Build response.
+  // -- Build response.
   // v0.2 schema: medialPct/lateralPct (not lPct/rPct), loadingSigma (not
   // loadingRate BW/s), contactMs reports 0 when unmeasured. Frontend uses
-  // these new keys and shows "—" for any value at 0.
+  // these new keys and shows "--" for any value at 0.
   String j = "{";
   j += "\"steps\":";        j += steps;                     j += ",";
   j += "\"cadence\":";      j += cadence;                   j += ",";
@@ -401,7 +403,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── Debug: /api/fft-selftest ─────────────────────────────────────────────────
+// -- Debug: /api/fft-selftest -------------------------------------------------
 // Runs the canned 2-Hz-sine validation; expects ~100 mag in the 2 Hz bin.
 // Output goes to Serial Monitor; HTTP response is just an ack. Refuses while
 // recording to avoid trampling live state.
@@ -414,7 +416,7 @@ static void handle_fft_selftest(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true,\"see\":\"Serial Monitor\"}");
 }
 
-// ── Debug: /api/storage-selftest ─────────────────────────────────────────────
+// -- Debug: /api/storage-selftest ---------------------------------------------
 // Writes 3 slots, corrupts the newest, asserts load_latest falls back. Cleans
 // up after itself. Refuses during a recording (would clobber real slots).
 static void handle_storage_selftest(AsyncWebServerRequest* req) {
@@ -426,7 +428,7 @@ static void handle_storage_selftest(AsyncWebServerRequest* req) {
   req->send(200, "application/json", "{\"ok\":true,\"see\":\"Serial Monitor\"}");
 }
 
-// ── /api/storage-state ───────────────────────────────────────────────────────
+// -- /api/storage-state -------------------------------------------------------
 // Diagnostic: how many slots are currently valid, and what's the newest header.
 static void handle_storage_state(AsyncWebServerRequest* req) {
   uint8_t count = storage_valid_slot_count();
@@ -448,7 +450,7 @@ static void handle_storage_state(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── /api/auth/* ──────────────────────────────────────────────────────────────
+// -- /api/auth/* --------------------------------------------------------------
 // Public state endpoint: tells the frontend whether to show login or
 // claim-mode (first-user registration), and current account usage so the
 // signup form can warn if the device is full.
@@ -481,13 +483,13 @@ static void handle_auth_register(AsyncWebServerRequest* req) {
     req->send(200, "application/json", j);
     return;
   }
-  // Granular error → specific human-readable message.
+  // Granular error -> specific human-readable message.
   const char* err =
-    (rc == -1) ? "Username already taken — pick another." :
+    (rc == -1) ? "Username already taken -- pick another." :
     (rc == -2) ? "Could not save (NVS error). Try again." :
-    (rc == -3) ? "Username must be 4–13 letters, digits, or underscore." :
-    (rc == -4) ? "PIN must be 4–16 digits." :
-    (rc == -5) ? "Body weight must be 25–250 kg." :
+    (rc == -3) ? "Username must be 4-13 letters, digits, or underscore." :
+    (rc == -4) ? "PIN must be 4-16 digits." :
+    (rc == -5) ? "Body weight must be 25-250 kg." :
     (rc == -6) ? "This device is full (account limit reached). "
                  "Ask the owner to factory-reset to free up space." :
     (rc == -7) ? "Too many signups too fast. Wait a minute and try again." :
@@ -514,7 +516,7 @@ static void handle_auth_login(AsyncWebServerRequest* req) {
   }
   if (rc == -3) {
     req->send(429, "application/json",
-              "{\"ok\":false,\"error\":\"Too many attempts — locked for 30 seconds.\"}");
+              "{\"ok\":false,\"error\":\"Too many attempts -- locked for 30 seconds.\"}");
     return;
   }
   // -1 unknown user, -2 wrong PIN: collapse to one message so attackers
@@ -536,7 +538,7 @@ static void handle_auth_profile(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// ── Registration ─────────────────────────────────────────────────────────────
+// -- Registration -------------------------------------------------------------
 void http_register_routes(AsyncWebServer& server) {
   server.on("/api/device",         HTTP_GET,  handle_device);
   server.on("/api/sensor",         HTTP_GET,  handle_sensor);

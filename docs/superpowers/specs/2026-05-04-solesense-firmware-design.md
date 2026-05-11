@@ -3,10 +3,10 @@ project: SoleSense
 component: Firmware (ESP32-C3)
 version: v0.1 skeleton
 date: 2026-05-04
-status: design — ready for implementation plan
+status: design -- ready for implementation plan
 ---
 
-# SoleSense Firmware Design — v0.1
+# SoleSense Firmware Design -- v0.1
 
 C++ Arduino firmware skeleton for the Seeed XIAO ESP32-C3, implementing all 10 HTTP endpoints, 50 Hz sampling of 6 FSRs + MPU-6050 with buffered LittleFS writes, FSR + IMU calibration, NVS-backed settings, and physical-button deep-sleep.
 
@@ -18,31 +18,31 @@ This document is the firmware-side companion to `SOLESENSE.md`. Where the two di
 
 In scope for v0.1:
 - WiFi AP, LittleFS mount, AsyncWebServer with all 10 endpoints
-- 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050 with 25-row RAM ring buffer (raw 13-column CSV, matches `SOLESENSE.md` §6 schema)
+- 50 Hz hardware-timer sampling of 6 FSRs + MPU-6050 with 25-row RAM ring buffer (raw 13-column CSV, matches `SOLESENSE.md` 6 schema)
 - FSR zero + IMU offset calibration, persisted to NVS
 - Threshold settings, persisted to NVS
 - Physical-button deep sleep + wake
 
 Out of scope for v0.1 (deferred to v0.2):
-- Averaged 5 Hz writes with peak preservation (§8 of `SOLESENSE.md`)
+- Averaged 5 Hz writes with peak preservation (8 of `SOLESENSE.md`)
 - Binary storage format
 - Multi-session support
 - OTA updates
 - ESP-NOW pairing
 
-The frontend `index.html` is not part of this design — it already exists and consumes the raw 13-column CSV defined in `SOLESENSE.md` §6. (The frontend's analysis pipeline will need a one-time update to read 6 FSR columns instead of 7; that's a frontend task, not firmware.)
+The frontend `index.html` is not part of this design -- it already exists and consumes the raw 13-column CSV defined in `SOLESENSE.md` 6. (The frontend's analysis pipeline will need a one-time update to read 6 FSR columns instead of 7; that's a frontend task, not firmware.)
 
 ---
 
 ## 2. File Layout
 
-Single-file Arduino sketch matching `SOLESENSE.md` §11:
+Single-file Arduino sketch matching `SOLESENSE.md` 11:
 
 ```
 SoleSense/
-├── SoleSense.ino     # ~700 lines, sectioned by banner comments
-└── data/
-    └── index.html    # frontend SPA (already designed, uploaded via LittleFS plugin)
+|-- SoleSense.ino     # ~700 lines, sectioned by banner comments
+`-- data/
+    `-- index.html    # frontend SPA (already designed, uploaded via LittleFS plugin)
 ```
 
 `SoleSense.ino` sections in this order:
@@ -80,7 +80,7 @@ volatile bool gSleepRequested = false;
 
 `loop()` observes the flags, transitions state, and performs file/timer/sleep operations. All file I/O happens on a single task. No mutex needed for the recording path.
 
-**Calibration is the exception.** Calibration handlers run synchronously inside the HTTP task — but only when `gState == IDLE`. Handlers return HTTP 409 Conflict otherwise, so the sampling path is guaranteed quiet. Calibration touches the same ADC/I²C resources as `takeSample()`; the IDLE gate makes that safe.
+**Calibration is the exception.** Calibration handlers run synchronously inside the HTTP task -- but only when `gState == IDLE`. Handlers return HTTP 409 Conflict otherwise, so the sampling path is guaranteed quiet. Calibration touches the same ADC/I^2C resources as `takeSample()`; the IDLE gate makes that safe.
 
 State enum:
 ```cpp
@@ -92,22 +92,22 @@ volatile State gState = IDLE;
 
 ## 4. Pin Assignments
 
-Updated for the no-multiplexer wiring scheme — 6 FSRs split into 2 sets of 3, each set powered by its own digital pin, with 3 shared analog inputs:
+Updated for the no-multiplexer wiring scheme -- 6 FSRs split into 2 sets of 3, each set powered by its own digital pin, with 3 shared analog inputs:
 
 ```cpp
-#define PIN_SDA       6      // I²C — MPU-6050
-#define PIN_SCL       7      // I²C — MPU-6050
+#define PIN_SDA       6      // I^2C -- MPU-6050
+#define PIN_SCL       7      // I^2C -- MPU-6050
 #define PIN_ADC_A     2      // GPIO2 / A0 - shared analog A (FSR 1A and 2A)
 #define PIN_ADC_B     3      // GPIO3      - shared analog B (FSR 1B and 2B)
 #define PIN_ADC_C     4      // GPIO4      - shared analog C (FSR 1C and 2C)
 #define PIN_PWR_SET1  5      // GPIO5  - digital power for Set 1 (1A, 1B, 1C)
 #define PIN_PWR_SET2  10     // GPIO10 - digital power for Set 2 (2A, 2B, 2C)
-#define PIN_WAKE      9      // GPIO9 — on-board BOOT button doubles as wake button
+#define PIN_WAKE      9      // GPIO9 -- on-board BOOT button doubles as wake button
 ```
 
-Per-FSR wiring: pin 1 → digital power for its set, pin 2 → shared analog input AND through a 10 kΩ pull-down resistor to GND (standard voltage divider). The unpowered set's GPIO is set to INPUT (high-Z) during reads to minimize cross-talk through the unpowered FSRs.
+Per-FSR wiring: pin 1 -> digital power for its set, pin 2 -> shared analog input AND through a 10 kOhm pull-down resistor to GND (standard voltage divider). The unpowered set's GPIO is set to INPUT (high-Z) during reads to minimize cross-talk through the unpowered FSRs.
 
-**Wake pin rationale:** `SOLESENSE.md` §9 calls for a tactile-to-GND wake button but does not pick a pin. The XIAO ESP32-C3 board includes an on-board BOOT button on GPIO9 that is already a momentary-to-GND switch. Reusing it for v0.1 means hardware (Norton/Jordan) does not need to add a button to demo deep sleep. If a dedicated button is wired later, change `PIN_WAKE`.
+**Wake pin rationale:** `SOLESENSE.md` 9 calls for a tactile-to-GND wake button but does not pick a pin. The XIAO ESP32-C3 board includes an on-board BOOT button on GPIO9 that is already a momentary-to-GND switch. Reusing it for v0.1 means hardware (Norton/Jordan) does not need to add a button to demo deep sleep. If a dedicated button is wired later, change `PIN_WAKE`.
 
 GPIO9 is configured `INPUT_PULLUP` in `setup()`. Active low.
 
@@ -143,13 +143,13 @@ static void readAllFsr() {
 }
 ```
 
-Two 50 µs settle delays + 6 ADC reads ≈ ~150 µs total. Stored into `int16_t gFsr[6]`. Channel-to-zone mapping per `SOLESENSE.md` §3.
+Two 50 us settle delays + 6 ADC reads ~= ~150 us total. Stored into `int16_t gFsr[6]`. Channel-to-zone mapping per `SOLESENSE.md` 3.
 
 **Cross-talk note:** when Set 1 is powered HIGH, the unpowered Set 2's FSRs share the analog read node via their pin 2. Setting Set 2's GPIO to INPUT (high-Z) breaks the active current path through those FSRs, but if a Set 2 FSR is heavily pressed at the same time as a Set 1 FSR sharing its analog pin, residual leakage through MCU input protection can affect the reading. Acceptable noise at 50 Hz scanning; flag if real-world data looks anomalous during double-support phases.
 
-### 5.2 MPU-6050 via I²C
+### 5.2 MPU-6050 via I^2C
 
-400 kHz I²C. Burst-read 14 bytes from register `0x3B` (`ACCEL_XOUT_H` through `GYRO_ZOUT_L`):
+400 kHz I^2C. Burst-read 14 bytes from register `0x3B` (`ACCEL_XOUT_H` through `GYRO_ZOUT_L`):
 
 ```
 [ax_h ax_l] [ay_h ay_l] [az_h az_l]   // accel int16
@@ -158,12 +158,12 @@ Two 50 µs settle delays + 6 ADC reads ≈ ~150 µs total. Stored into `int16_t 
 ```
 
 Convert to physical units after applying offsets:
-- accel raw → m/s²: `(raw / 16384.0) * 9.80665 - gImuOffset[ax|ay|az]`
-- gyro raw → °/s: `raw / 131.0 - gImuOffset[gx|gy|gz]`
+- accel raw -> m/s^2: `(raw / 16384.0) * 9.80665 - gImuOffset[ax|ay|az]`
+- gyro raw ->  deg/s: `raw / 131.0 - gImuOffset[gx|gy|gz]`
 
-~350 µs over I²C.
+~350 us over I^2C.
 
-Total `takeSample()` budget: ~650 µs, well under the 20 ms timer window.
+Total `takeSample()` budget: ~650 us, well under the 20 ms timer window.
 
 ---
 
@@ -172,8 +172,8 @@ Total `takeSample()` budget: ~650 µs, well under the 20 ms timer window.
 ### 6.1 FSR zero (`POST /api/calibrate/zero`)
 
 Insole assumed unloaded. For each channel 0..5:
-- Sample 32 times with ~1 ms spacing between samples (10 µs mux settle is already in `readFsr()`)
-- Average → `gFsrZero[channel]` (int)
+- Sample 32 times with ~1 ms spacing between samples (10 us mux settle is already in `readFsr()`)
+- Average -> `gFsrZero[channel]` (int)
 
 Persist all 6 zeros to NVS. Return as JSON:
 ```json
@@ -183,10 +183,10 @@ Persist all 6 zeros to NVS. Return as JSON:
 ### 6.2 IMU zero (`POST /api/calibrate/imu`)
 
 Insole assumed flat and stationary. Sample 64 readings of all 6 axes (raw, no offset applied). Average each. Then:
-- `gImuOffset[ax]` = mean(accel_x in m/s²)
-- `gImuOffset[ay]` = mean(accel_y in m/s²)
-- `gImuOffset[az]` = mean(accel_z in m/s²) − 9.80665   ← gravity stays on Z
-- `gImuOffset[gx|gy|gz]` = mean(gyro in °/s)
+- `gImuOffset[ax]` = mean(accel_x in m/s^2)
+- `gImuOffset[ay]` = mean(accel_y in m/s^2)
+- `gImuOffset[az]` = mean(accel_z in m/s^2) - 9.80665   <- gravity stays on Z
+- `gImuOffset[gx|gy|gz]` = mean(gyro in  deg/s)
 
 Persist to NVS. Return offsets as JSON.
 
@@ -201,7 +201,7 @@ Persist to NVS. Return offsets as JSON.
 ### 7.1 Ring buffer
 
 ```cpp
-static char     gRowBuf[25][96];    // 25 rows × ~90 chars = 2.4 KB RAM
+static char     gRowBuf[25][96];    // 25 rows x ~90 chars = 2.4 KB RAM
 static uint8_t  gRowCount = 0;
 static uint32_t gLastFlushMs = 0;
 ```
@@ -212,21 +212,21 @@ Called by `loop()` when `gNewSample` is set, only while `gState == RECORDING`:
 
 1. Clear `gNewSample`.
 2. Read all 6 FSRs (mux loop).
-3. Read MPU-6050 (14-byte I²C burst, convert to m/s² + °/s, apply offsets).
+3. Read MPU-6050 (14-byte I^2C burst, convert to m/s^2 +  deg/s, apply offsets).
 4. `snprintf` one row into `gRowBuf[gRowCount++]`:
    ```
    "%lu,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n"
    ```
-   13 columns, matches `SOLESENSE.md` §6 schema exactly.
+   13 columns, matches `SOLESENSE.md` 6 schema exactly.
 5. If `gRowCount >= 25` OR `(millis() - gLastFlushMs) >= 500`:
    - One `gFile.write()` of all queued rows in a single call
    - Reset `gRowCount = 0`, update `gLastFlushMs`
 
-One `file.write()` per flush → ~2 syscalls/sec to LittleFS instead of 50.
+One `file.write()` per flush -> ~2 syscalls/sec to LittleFS instead of 50.
 
 ### 7.3 Storage budget
 
-~90 chars/row × 50 rows/sec = ~4.5 KB/sec. On the 1.5 MB partition that gives **~5.5 minutes** of recording. Matches `SOLESENSE.md` §8's updated 13-col storage table. Adequate for v0.1 demo runs. The averaged 5 Hz path lands in v0.2 to extend this to 40+ minutes.
+~90 chars/row x 50 rows/sec = ~4.5 KB/sec. On the 1.5 MB partition that gives **~5.5 minutes** of recording. Matches `SOLESENSE.md` 8's updated 13-col storage table. Adequate for v0.1 demo runs. The averaged 5 Hz path lands in v0.2 to extend this to 40+ minutes.
 
 ### 7.4 Hardware timer
 
@@ -238,9 +238,9 @@ timerAttachInterrupt(gTimer, &onTimer);
 timerAlarm(gTimer, 20000, true, 0);        // 20 ms period, autoreload
 ```
 
-Timer is started by the IDLE→RECORDING transition and stopped by RECORDING→IDLE.
+Timer is started by the IDLE->RECORDING transition and stopped by RECORDING->IDLE.
 
-ISR body — minimum work, no I/O, no logging:
+ISR body -- minimum work, no I/O, no logging:
 ```cpp
 void IRAM_ATTR onTimer() { gNewSample = true; }
 ```
@@ -259,16 +259,16 @@ WiFi AP: `WiFi.softAP("SoleSense", "solesense")`.
 | `GET` | `/data.csv` | `request->send(LittleFS, "/data.csv", "text/csv")` (chunked) | 404 if no recording yet, 409 if RECORDING |
 | `POST` | `/api/start` | If IDLE: `gStartRequested = true`, return `{"ok":true}` | 409 if already RECORDING |
 | `POST` | `/api/stop` | If RECORDING: `gStopRequested = true`, return `{"ok":true}` | 409 if IDLE |
-| `POST` | `/api/calibrate/zero` | Block 32 × 6 samples → `gFsrZero[]`, persist NVS, return offsets | 409 if RECORDING |
-| `POST` | `/api/calibrate/imu` | Block 64 samples → `gImuOffset[6]`, persist NVS, return offsets | 409 if RECORDING |
+| `POST` | `/api/calibrate/zero` | Block 32 x 6 samples -> `gFsrZero[]`, persist NVS, return offsets | 409 if RECORDING |
+| `POST` | `/api/calibrate/imu` | Block 64 samples -> `gImuOffset[6]`, persist NVS, return offsets | 409 if RECORDING |
 | `POST` | `/api/settings` | Parse form-urlencoded, validate, update RAM thresholds, persist NVS | 400 on out-of-range |
 | `POST` | `/api/data/clear` | `LittleFS.remove("/data.csv")`, return `{"ok":true}` | 409 if RECORDING |
 | `POST` | `/api/sleep` | Return `{"ok":true}`, `gSleepRequested = true` | 409 if RECORDING |
-| `GET` | `/api/device` | Return JSON device info | — |
+| `GET` | `/api/device` | Return JSON device info | -- |
 
 ### 8.1 `GET /api/device` response
 
-Per `SOLESENSE.md` §10:
+Per `SOLESENSE.md` 10:
 ```json
 {
   "firmware": "SoleSense v0.1",
@@ -301,13 +301,13 @@ Parsed via `request->getParam("hlr", true)`. Validation ranges:
 
 | Param | Range |
 |---|---|
-| `hlr` | 1–10000 |
-| `proneMax` | 0–90 |
-| `proneMin` | −90–0 |
-| `gct` | 50–2000 |
-| `cadenceMin` | 60–300 |
+| `hlr` | 1-10000 |
+| `proneMax` | 0-90 |
+| `proneMin` | -90-0 |
+| `gct` | 50-2000 |
+| `cadenceMin` | 60-300 |
 
-Out-of-range → 400 Bad Request, no thresholds updated. All-or-nothing per request.
+Out-of-range -> 400 Bad Request, no thresholds updated. All-or-nothing per request.
 
 ---
 
@@ -319,12 +319,12 @@ ESP32 Arduino built-in `Preferences` library. Single namespace `"solesense"`.
 |---|---|---|---|
 | `hlr` | int | 100 | threshold |
 | `proneMax` | int | 15 | threshold |
-| `proneMin` | int | −8 | threshold |
+| `proneMin` | int | -8 | threshold |
 | `gct` | int | 300 | threshold |
 | `cadenceMin` | int | 160 | threshold |
-| `fsrZ0` … `fsrZ5` | int | 0 | FSR zero per channel |
-| `imuOax`, `imuOay`, `imuOaz` | float | 0.0 | accel offset (m/s²) |
-| `imuOgx`, `imuOgy`, `imuOgz` | float | 0.0 | gyro offset (°/s) |
+| `fsrZ0` ... `fsrZ5` | int | 0 | FSR zero per channel |
+| `imuOax`, `imuOay`, `imuOaz` | float | 0.0 | accel offset (m/s^2) |
+| `imuOgx`, `imuOgy`, `imuOgz` | float | 0.0 | gyro offset ( deg/s) |
 
 Loaded once in `setup()` via `prefs.getInt(key, default)` / `prefs.getFloat(key, default)`. Written from `/api/settings`, `/api/calibrate/zero`, `/api/calibrate/imu`.
 
@@ -338,15 +338,15 @@ NVS write counts: thresholds change only when user taps Save (rare); calibration
 
 ```
 POST /api/sleep
-  → handler (HTTP task):
-      if RECORDING       → 409 Conflict
-      else               → set gSleepRequested = true, return {"ok":true}
-  → loop() (next tick):
+  -> handler (HTTP task):
+      if RECORDING       -> 409 Conflict
+      else               -> set gSleepRequested = true, return {"ok":true}
+  -> loop() (next tick):
       observes flag
-      delay(150 ms)                         ← lets TCP flush + AP shutdown gracefully
+      delay(150 ms)                         <- lets TCP flush + AP shutdown gracefully
       WiFi.softAPdisconnect(true)
       LittleFS.end()
-      esp_deep_sleep_start()                ← never returns
+      esp_deep_sleep_start()                <- never returns
 ```
 
 The 150 ms grace prevents `esp_deep_sleep_start()` from firing before the `{"ok":true}` packet hits the wire. Without it, the user's browser sees a connection reset instead of a clean response.
@@ -363,7 +363,7 @@ Active low. `PIN_WAKE = GPIO9` configured `INPUT_PULLUP` in `setup()`.
 
 ### 10.3 Wake-side behavior
 
-Boot from deep sleep is indistinguishable from cold boot for v0.1 — `setup()` runs unconditionally, AP comes up at `192.168.4.1` in ~1 second. No `esp_sleep_get_wakeup_cause()` inspection needed.
+Boot from deep sleep is indistinguishable from cold boot for v0.1 -- `setup()` runs unconditionally, AP comes up at `192.168.4.1` in ~1 second. No `esp_sleep_get_wakeup_cause()` inspection needed.
 
 ---
 
@@ -377,7 +377,7 @@ Boot from deep sleep is indistinguishable from cold boot for v0.1 — `setup()` 
 | HTTP handler fires while in wrong state | 409 Conflict with `{"ok":false,"error":"<reason>"}` |
 | Bad form body to `/api/settings` | 400 Bad Request with `{"ok":false,"error":"<param> out of range"}` |
 
-Logging is to `Serial` at 115200 baud, matching the boot-output expectations in `SOLESENSE.md` §12 step 7.
+Logging is to `Serial` at 115200 baud, matching the boot-output expectations in `SOLESENSE.md` 12 step 7.
 
 ---
 
@@ -390,14 +390,14 @@ Logging is to `Serial` at 115200 baud, matching the boot-output expectations in 
 4. MPU-6050 init: write `PWR_MGMT_1 = 0` (wake), `CONFIG = 0`, `GYRO_CONFIG = 0`, `ACCEL_CONFIG = 0`
 5. ADC: `analogReadResolution(12)`
 6. `LittleFS.begin()`
-7. `prefs.begin("solesense", false)` → load thresholds, FSR zeros, IMU offsets
+7. `prefs.begin("solesense", false)` -> load thresholds, FSR zeros, IMU offsets
 8. `WiFi.softAP("SoleSense", "solesense")`
 9. Register all 10 HTTP routes on `server`
 10. `server.begin()`
-11. Print boot banner matching `SOLESENSE.md` §12:
+11. Print boot banner matching `SOLESENSE.md` 12:
     ```
     === SoleSense booting ===
-    [FS] Mounted — X / Y bytes used
+    [FS] Mounted -- X / Y bytes used
     [WiFi] AP 'SoleSense' up at 192.168.4.1
     [HTTP] server started
     ```
@@ -431,9 +431,9 @@ Arduino code is hard to unit-test. Verification path for v0.1:
    curl http://192.168.4.1/data.csv | head
    ```
    Expect: clean JSON, then 13-column CSV with ~500 rows for a 10-second run.
-4. **Frontend integration:** open `http://192.168.4.1/` on phone, full Start → Stop → Report flow against real CSV.
-5. **Error states:** `POST /api/start` while recording → 409. `POST /api/settings` with `cadenceMin=999` → 400.
-6. **Deep sleep:** `POST /api/sleep` while idle, observe board goes silent (~5 µA on a multimeter), press BOOT button, AP comes back in ~1 s.
+4. **Frontend integration:** open `http://192.168.4.1/` on phone, full Start -> Stop -> Report flow against real CSV.
+5. **Error states:** `POST /api/start` while recording -> 409. `POST /api/settings` with `cadenceMin=999` -> 400.
+6. **Deep sleep:** `POST /api/sleep` while idle, observe board goes silent (~5 uA on a multimeter), press BOOT button, AP comes back in ~1 s.
 
 No automated tests in v0.1. CI runs the compile step only (if/when CI exists for this repo).
 
@@ -441,10 +441,10 @@ No automated tests in v0.1. CI runs the compile step only (if/when CI exists for
 
 ## 14. Open Questions Deferred to v0.2
 
-- Averaged 5 Hz writes with peak preservation (`SOLESENSE.md` §8 recommendation). Requires CSV schema change and frontend analysis-pipeline update.
+- Averaged 5 Hz writes with peak preservation (`SOLESENSE.md` 8 recommendation). Requires CSV schema change and frontend analysis-pipeline update.
 - Binary storage format with CSV-conversion endpoint.
 - Multi-session support (session separator + picker).
 - ESP-NOW left/right pairing.
 - OTA firmware updates.
 
-These are listed in `SOLESENSE.md` §14 v0.2 and remain there.
+These are listed in `SOLESENSE.md` 14 v0.2 and remain there.

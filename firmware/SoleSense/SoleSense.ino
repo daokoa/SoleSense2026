@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.1 — XIAO ESP32-C3 firmware
+// SoleSense v0.1 -- XIAO ESP32-C3 firmware
 // =============================================================================
 
 #include <WiFi.h>
@@ -17,7 +17,7 @@
 
 // FSR matrix: 6 sensors in 2 sets of 3 (A, B, C). No multiplexer.
 // Each FSR's pin 2 sits in a voltage divider:
-//     <PWR_SETx pin> -- FSR -- <ADC_x pin> -- 10kΩ -- GND
+//     <PWR_SETx pin> -- FSR -- <ADC_x pin> -- 10kOhm -- GND
 // Two FSRs share each analog input (one from each set). Cross-talk is
 // minimised by setting the unpowered set's GPIO to INPUT (high-Z).
 #define PIN_ADC_A     2      // GPIO2 / A0 - analog A (FSR 1A and 2A)

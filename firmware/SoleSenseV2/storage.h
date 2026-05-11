@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — storage.h
+// SoleSense v0.2 -- storage.h
 // Multi-slot ring buffer in LittleFS. Each slot holds a snapshot of run state
 // (FFT bin states, outlier buffer, run metadata). On boot or reconnect we
 // scan all slots and pick the one with the highest valid timestamp.

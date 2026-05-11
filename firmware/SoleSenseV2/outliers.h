@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — outliers.h
+// SoleSense v0.2 -- outliers.h
 // Top-N min-heap of outlier samples, ordered by absolute magnitude. New
 // outliers above OUTLIER_SIGMA_THRESH push out the smallest tracked outlier
 // once the buffer is full.
@@ -32,7 +32,7 @@ bool outliers_offer(uint32_t ts_ms,
                     float    running_mean,
                     float    running_stddev);
 
-// Number of outliers currently held (≤ OUTLIER_CAPACITY).
+// Number of outliers currently held (<= OUTLIER_CAPACITY).
 uint8_t outliers_count();
 
 // Read access (used by /api/run-outliers and storage.cpp).

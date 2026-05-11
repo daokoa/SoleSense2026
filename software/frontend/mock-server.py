@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SoleSense mock server — simulates the firmware backend so you can see
+SoleSense mock server -- simulates the firmware backend so you can see
 the frontend live in a browser without flashing the XIAO.
 
 Run from the repo root or from this folder. Default serves the canonical
@@ -11,7 +11,7 @@ v0.1-compatible UI instead:
 
 Then open http://localhost:8080/ in any browser.
 
-Implements the same HTTP API as the real firmware (see SOLESENSE.md §10):
+Implements the same HTTP API as the real firmware (see SOLESENSE.md 10):
     GET  /                  serves index.html
     GET  /api/device        device info JSON
     GET  /api/sensor        live FSR + IMU snapshot (the frontend polls this at 5 Hz)
@@ -53,7 +53,7 @@ if not os.path.isdir(SERVE_DIR):
     print("expected one of: solesense-v1, solesense-v2", file=sys.stderr)
     sys.exit(1)
 
-# Server "state" (mock — not persisted, not enforced)
+# Server "state" (mock -- not persisted, not enforced)
 state = {
     "recording": False,
     "has_data": True,
@@ -71,13 +71,13 @@ state = {
 def mock_sensor():
     """
     Synthesize one sample of FSR + IMU data that looks like a runner's
-    stride at roughly 170 spm (≈2.83 Hz).
+    stride at roughly 170 spm (~=2.83 Hz).
     """
     t = time.monotonic() - state["started_at"]
     stride_hz = 2.83
     phase = (t * stride_hz) % 1.0  # 0..1 within one stride
 
-    # Heel strike spike during phase 0.0–0.15, toe-off spike during 0.20–0.35
+    # Heel strike spike during phase 0.0-0.15, toe-off spike during 0.20-0.35
     def pulse(p, center, width, peak):
         d = abs(p - center)
         if d > width:
@@ -144,7 +144,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=SERVE_DIR, **kwargs)
 
     def log_message(self, fmt, *args):
-        # Quieter than the default — one line per request, no timestamps
+        # Quieter than the default -- one line per request, no timestamps
         sys.stderr.write(f"  {self.command} {self.path} -> {args[1]}\n")
 
     def _send_json(self, status, payload):
@@ -220,7 +220,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/sleep":
             self._send_json(200, {"ok": True})
-            print("[mock] /api/sleep called — exiting")
+            print("[mock] /api/sleep called -- exiting")
             sys.exit(0)
 
         return self._send_text(404, "text/plain", "not found")

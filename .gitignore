@@ -29,6 +29,13 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 
-# Node (if any frontend tooling added later)
+# Node (frontend / Cloudflare Worker tooling)
 node_modules/
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+
+# User-local notes (never committed)
 max.md
+NOTES.md

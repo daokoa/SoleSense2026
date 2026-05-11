@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — outliers.cpp
+// SoleSense v0.2 -- outliers.cpp
 // Fixed-capacity min-heap on |sigma|. Standard textbook impl.
 // =============================================================================
 

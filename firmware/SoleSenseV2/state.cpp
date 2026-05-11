@@ -1,5 +1,5 @@
 // =============================================================================
-// SoleSense v0.2 — state.cpp
+// SoleSense v0.2 -- state.cpp
 // =============================================================================
 
 #include "state.h"
@@ -41,18 +41,18 @@ static uint32_t sStepContactStartMs     = 0;
 static uint32_t sStepLastImpactMs       = 0;
 static float    sStepPeak               = 0.0f;   // peak heel ADC seen during current contact
 
-// ── 2-state Kalman filter on the heel composite ─────────────────────────────
+// -- 2-state Kalman filter on the heel composite -----------------------------
 // State x = [pressure, velocity]^T. Constant-velocity transition model:
 //   x[k+1] = F x[k] + w,   F = [[1, dt],[0, 1]],   w ~ N(0, Q)
 // Measurement:
 //   z = H x + v,   H = [1, 0],   v ~ N(0, R)
 //
 // Q is built from a white-noise-acceleration model
-//   Q = σ_a² × [[dt⁴/4, dt³/2],[dt³/2, dt²]]
-// with σ_a ≈ 1×10⁵ ADC counts/s² — large enough to track running-impact
-// transients (5–20 ms rise to ~3000 ADC ⇒ velocity in the 1×10⁵-5×10⁵
-// counts/s band; acceleration in 1×10⁷-1×10⁸ counts/s²) without locking
-// onto smoothing too aggressively. R = 25 ≈ 5 LSB ADC noise variance.
+//   Q = sigma_a^2 x [[dt/4, dt^3/2],[dt^3/2, dt^2]]
+// with sigma_a ~= 1x10 ADC counts/s^2 -- large enough to track running-impact
+// transients (5-20 ms rise to ~3000 ADC => velocity in the 1x10-5x10
+// counts/s band; acceleration in 1x10-1x10 counts/s^2) without locking
+// onto smoothing too aggressively. R = 25 ~= 5 LSB ADC noise variance.
 //
 // Why a Kalman filter instead of the previous Schmitt trigger?
 //   - Velocity is a direct signal. A real strike rises monotonically for
@@ -66,7 +66,7 @@ static float    sStepPeak               = 0.0f;   // peak heel ADC seen during c
 //     ADC noise spikes can't trigger spurious strikes.
 struct KalmanCV {
   float x0, x1;                 // state: pressure, velocity (ADC counts, counts/s)
-  float P00, P01, P10, P11;     // 2×2 covariance
+  float P00, P01, P10, P11;     // 2x2 covariance
   static constexpr float DT  = 1.0f / (float)SAMPLE_RATE_HZ;
   static constexpr float Q00 = 4.0e-2f;
   static constexpr float Q01 = 4.0e1f;
@@ -171,20 +171,20 @@ void state_tick() {
   uint32_t now = millis();
 
   if (gRunActive && clients == 0) {
-    // Just lost all clients — pause.
+    // Just lost all clients -- pause.
     gRunElapsedMs += (now - gLastActiveMs);   // commit the in-progress active interval
     gRunActive    = false;
     gPauseStartMs = now;
     Serial.println("[Run] paused (no clients)");
   } else if (!gRunActive && clients > 0) {
-    // Just regained a client — resume.
+    // Just regained a client -- resume.
     gLastActiveMs = now;
     gRunActive    = true;
     Serial.printf("[Run] resumed after %lu ms paused\n",
                   (unsigned long)(now - gPauseStartMs));
     gPauseStartMs = 0;
   } else if (gRunActive) {
-    // Still active — advance the running-elapsed cheaply (small per-tick adds keep
+    // Still active -- advance the running-elapsed cheaply (small per-tick adds keep
     // /api/run-state responsive even between flushes).
     gRunElapsedMs += (now - gLastActiveMs);
     gLastActiveMs = now;
@@ -201,17 +201,17 @@ const char* state_name() {
   return gState == RS_IDLE ? "idle" : "recording";
 }
 
-// ── Time-domain step detector (Kalman-driven) ───────────────────────────────
+// -- Time-domain step detector (Kalman-driven) -------------------------------
 // Pipes the raw heel composite through the 2-state Kalman filter above and
 // detects strikes / toe-offs from the filter's smoothed pressure + velocity
 // estimates instead of the raw ADC samples.
 //
 // Why Kalman over the previous Schmitt-trigger + peak-relative fall:
-//   - Velocity is the natural signal for "rising vs. falling" — a real
+//   - Velocity is the natural signal for "rising vs. falling" -- a real
 //     strike has v > 0 for the entire leading edge, while FSR ringing has
 //     v oscillate around zero. Gating on v > MIN_RISE_VEL filters the ring
 //     mathematically instead of via refractory band-aids.
-//   - Toe-off becomes v < MIN_FALL_VEL — robust to absolute-baseline drift
+//   - Toe-off becomes v < MIN_FALL_VEL -- robust to absolute-baseline drift
 //     (sweat, temperature, calibration) because we look at the rate of fall,
 //     not the post-fall level.
 //   - Filtered pressure x0 is smoothed, so single-sample ADC noise can't
@@ -234,8 +234,8 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
   const float v = sHeelKalman.x1;   // filtered velocity (ADC counts / second)
 
   constexpr float    STEP_RISE_THRESHOLD =  400.0f;   // filtered pressure floor
-  constexpr float    STEP_RISE_VEL       =  8000.0f;  // rising at ≥ this rate
-  constexpr float    STEP_FALL_VEL       = -5000.0f;  // falling at ≤ this rate
+  constexpr float    STEP_RISE_VEL       =  8000.0f;  // rising at >= this rate
+  constexpr float    STEP_FALL_VEL       = -5000.0f;  // falling at <= this rate
   constexpr uint32_t STEP_REFRACTORY_MS  = 250;       // covers a stride contact
   constexpr uint32_t MIN_CONTACT_MS      = 50;        // shorter = bounce, drop
   constexpr uint32_t MAX_CONTACT_MS      = 800;       // longer  = lean, drop
@@ -245,9 +245,9 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
   const bool imuValidated = !gImuConnected ||
                             (nowMs - gLastImuImpactMs) <= IMU_IMPACT_WINDOW_MS;
 
-  // ── STRIKE ────────────────────────────────────────────────────────────────
+  // -- STRIKE ----------------------------------------------------------------
   // Pressure must clear an absolute floor AND velocity must be clearly
-  // positive — that's what distinguishes the real leading edge of a press
+  // positive -- that's what distinguishes the real leading edge of a press
   // from the secondary peaks during ringing (where v oscillates near 0).
   if (!sHeelInContact
       && p > STEP_RISE_THRESHOLD
@@ -266,7 +266,7 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
 
   if (!sHeelInContact) return;
 
-  // ── IN-CONTACT ───────────────────────────────────────────────────────────
+  // -- IN-CONTACT -----------------------------------------------------------
   if (p > sStepPeak) sStepPeak = p;
 
   const uint32_t contactSoFar = nowMs - sStepContactStartMs;
@@ -288,7 +288,7 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
                   (unsigned long)gStepCount,
                   timeoutRelease ? " TIMEOUT" : "");
     if (timeoutRelease) {
-      // Don't immediately re-strike on a still-high signal — bump the
+      // Don't immediately re-strike on a still-high signal -- bump the
       // refractory window so the user must release-and-press again.
       sStepLastImpactMs = nowMs;
     }
