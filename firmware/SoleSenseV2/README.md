@@ -5,7 +5,6 @@ All run state lives on the MCU, no browser-side analysis, crash-recoverable flas
 ## Background
 
 - **Architecture spec:** [`../../docs/design/specs/2026-05-06-v0.2-data-architecture.md`](../../docs/design/specs/2026-05-06-v0.2-data-architecture.md)
-- **Implementation plan:** [`../../docs/design/plans/2026-05-06-v0.2-firmware.md`](../../docs/design/plans/2026-05-06-v0.2-firmware.md)
 - **Frontend (v0.2-aware viewer):** [`../../software/frontend/solesense-v2/index.html`](../../software/frontend/solesense-v2/index.html)
 
 ## Sensor layout

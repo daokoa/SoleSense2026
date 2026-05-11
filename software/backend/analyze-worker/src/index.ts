@@ -208,8 +208,27 @@ function jsonResponse(
   });
 }
 
+// In-memory fallback bucket -- used only when RATE_LIMIT KV isn't bound.
+// Per-isolate (not global), so Cloudflare's autoscaling can still allow more
+// total requests than this constant suggests, but it caps the worst-case
+// single-isolate burn rate. For production we want the KV binding so the
+// per-IP 30/hr limit kicks in.
+const FALLBACK_MAX_PER_MINUTE = 10;
+let _fallbackBucket = { resetAt: 0, count: 0 };
+
 async function rateLimit(env: Env, ip: string): Promise<boolean> {
-  if (!env.RATE_LIMIT) return true; // no KV bound -> no limit
+  if (!env.RATE_LIMIT) {
+    // No KV bound -- apply an in-memory cap per isolate per minute so an
+    // open mic can't drain the OpenAI account. Not perfect (multiple
+    // isolates each get their own counter), but vastly better than no cap.
+    const now = Date.now();
+    if (now > _fallbackBucket.resetAt) {
+      _fallbackBucket = { resetAt: now + 60_000, count: 0 };
+    }
+    if (_fallbackBucket.count >= FALLBACK_MAX_PER_MINUTE) return false;
+    _fallbackBucket.count++;
+    return true;
+  }
   const key = `rl:${ip}`;
   const current = parseInt((await env.RATE_LIMIT.get(key)) || "0", 10);
   if (current >= 30) return false; // 30 calls per hour per IP

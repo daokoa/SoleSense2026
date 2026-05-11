@@ -260,7 +260,6 @@ solesense/
 - [`docs/research.md`](docs/research.md) — peer-reviewed sources backing the thresholds + sample rate
 - [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) — data architecture
 - [`docs/design/specs/2026-05-09-profile-system.md`](docs/design/specs/2026-05-09-profile-system.md) — auth / profile system
-- [`docs/design/plans/2026-05-06-v0.2-firmware.md`](docs/design/plans/2026-05-06-v0.2-firmware.md) — firmware implementation plan
 
 ---
 

@@ -56,5 +56,4 @@ Pin map and matrix-scan FSR layout are documented in the [root README](../README
 ## Cross-references
 
 - Architecture spec: [`../docs/design/specs/2026-05-06-v0.2-data-architecture.md`](../docs/design/specs/2026-05-06-v0.2-data-architecture.md)
-- Implementation plan: [`../docs/design/plans/2026-05-06-v0.2-firmware.md`](../docs/design/plans/2026-05-06-v0.2-firmware.md)
 - Profile / auth spec: [`../docs/design/specs/2026-05-09-profile-system.md`](../docs/design/specs/2026-05-09-profile-system.md)
