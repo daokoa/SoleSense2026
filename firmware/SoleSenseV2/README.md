@@ -9,7 +9,7 @@ The post-demo architecture: all run state lives on the MCU, no browser-side anal
 
 - **Architecture spec:** [`../../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md)
 - **Implementation plan:** [`../../docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](../../docs/superpowers/plans/2026-05-06-v0.2-firmware.md)
-- **Frontend (v0.2-aware viewer):** [`../../software/frontend/dao-v2/index.html`](../../software/frontend/dao-v2/index.html)
+- **Frontend (v0.2-aware viewer):** [`../../software/frontend/solesense-v2/index.html`](../../software/frontend/solesense-v2/index.html)
 
 ## Sensor layout
 
@@ -90,7 +90,7 @@ Or open `SoleSenseV2.ino` in Arduino IDE and click Upload — the IDE picks up a
 LittleFS data (the v0.2-aware frontend):
 
 ```bash
-cp software/frontend/dao-v2/index.html firmware/SoleSenseV2/data/index.html
+cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.html
 bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 

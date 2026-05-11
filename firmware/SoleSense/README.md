@@ -8,7 +8,7 @@ The original, hardware-verified firmware. Single-file Arduino sketch (~520 lines
 ## What this firmware does
 
 - Brings up a WiFi AP: `SoleSense-XXXX` / pw `solesense`
-- Serves the dao frontend (`software/frontend/dao/index.html`) from LittleFS at `/`
+- Serves the dao frontend (`software/frontend/solesense-v1/index.html`) from LittleFS at `/`
 - Exposes the v0.1 HTTP API:
   - `GET /api/sensor` — live one-shot FSR + IMU read
   - `POST /api/start` / `POST /api/stop` — gate 50 Hz CSV recording into LittleFS
@@ -38,7 +38,7 @@ ARDUINO_CLI="/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/re
 LittleFS data (the v0.1 frontend):
 
 ```bash
-cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
+cp software/frontend/solesense-v1/index.html firmware/SoleSense/data/index.html
 bash firmware/SoleSense/flash-littlefs.sh
 ```
 

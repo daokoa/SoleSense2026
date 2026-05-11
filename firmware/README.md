@@ -60,7 +60,7 @@ Same idea but pointed at `SoleSenseV2/`:
 bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 
-LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `software/frontend/dao-v2/index.html` (the v0.2-aware frontend that polls `/api/run-state` and `/api/run-report` instead of running JS analysis on a CSV).
+LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `software/frontend/solesense-v2/index.html` (the v0.2-aware frontend that polls `/api/run-state` and `/api/run-report` instead of running JS analysis on a CSV).
 
 > **Heads-up:** the Arduino IDE auto-respawns its Serial Monitor whenever the XIAO re-enumerates after a flash, which holds the port and breaks the next upload. Close the Serial Monitor pane before flashing, or run `kill $(lsof -t /dev/cu.usbmodem*)` between attempts.
 

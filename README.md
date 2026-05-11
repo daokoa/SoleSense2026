@@ -11,9 +11,8 @@
 |---|---|
 | **Firmware v0.1** (demo) | ✅ Flashed and running. Records 50 Hz CSV to LittleFS, browser-side JS analysis. This is what's on the device for live demos. |
 | **Firmware v0.2** (active development) | ✅ Modular rewrite, **500 Hz sampling**, all metrics on-MCU: any-zone OR-gate step counter + GCT (with IMU sensor-fusion when wired), FSR-jerk loading rate (BW/s) using per-user body weight, 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect, NVS-backed user accounts with PIN auth. Open follow-ups: per-FSR saturation calibration, hardware verification under real running. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
-| **Frontend dao** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. |
-| **Frontend dao-v2** (v0.2-compat) | ✅ Anatomical foot SVG, 3-zone × medial/lateral live readout, polls `/api/run-state` + `/api/run-report` instead of running JS analysis. All headline metrics now display real numbers. |
-| **Frontend andony** | ✅ Dark-themed alternative SPA. Polls `/api/sensor` for live readout. |
+| **Frontend `solesense-v1`** (v0.1-compat) | ✅ White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. |
+| **Frontend `solesense-v2`** (canonical v0.2 SPA) | ✅ Anatomical foot SVG, 3-zone × medial/lateral live readout, NVS-backed auth + self-signup, AI Coach via the Cloudflare Worker. All headline metrics display real numbers. |
 | **Sensors** | 6 FSRs in 3-zone × medial/lateral layout (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot. Hardware bring-up + per-channel verification ongoing. IMU optional (not required for any of the headline metrics). |
 | **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
 
@@ -184,8 +183,8 @@ solesense/
 │   └── frontend/                     ← two parallel UIs, see frontend/README.md
 │       ├── README.md
 │       ├── mock-server.py            ← Python http.server simulating the firmware
-│       ├── dao/index.html            ← Dao's white/blue UI (currently active on device)
-│       └── andony/index.html         ← Andony's dark SPA
+│       ├── solesense-v1/index.html   ← v0.1-compatible UI (currently flashed)
+│       └── solesense-v2/index.html   ← canonical v0.2 SPA (auth + AI Coach)
 │
 ├── hardware/
 │   ├── cad/FSR Cutout.SLDPRT         ← SolidWorks CAD
@@ -243,9 +242,9 @@ Two paths — pick whichever works on your machine.
 **Terminal (recommended, more reliable):**
 ```bash
 # Pick which UI you want flashed:
-cp software/frontend/dao/index.html firmware/SoleSense/data/index.html
+cp software/frontend/solesense-v1/index.html firmware/SoleSense/data/index.html
 # or:
-cp software/frontend/andony/index.html firmware/SoleSense/data/index.html
+cp software/frontend/solesense-v1/index.html firmware/SoleSense/data/index.html
 
 # Then build + flash:
 bash firmware/SoleSense/flash-littlefs.sh
@@ -287,7 +286,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [x] 50 Hz hardware-timer sampling with 25-row ring-buffered CSV writes
 - [x] NVS-backed thresholds + FSR/IMU calibration
 - [x] Deep sleep + GPIO9 wake
-- [x] Frontend SPA (Dao's UI) with home / recording / report / settings screens
+- [x] Frontend SPA (`solesense-v1`) with home / recording / report / settings screens
 - [x] Injury-flag analysis pipeline (7 flags) with research-based thresholds
 - [x] Pressure-distribution-by-zone display (% of total foot load)
 - [x] End-to-end verified on hardware
@@ -300,12 +299,12 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings → Cellular`) so 
 - [x] **Time-domain step counter and ground-contact-time** (Schmitt trigger on the heel composite, 150 ms refractory).
 - [x] **FSR-jerk loading rate (BW/s)** — peak heel d(ADC)/dt converted via FSR-saturation × body-weight assumptions.
 - [x] **3-zone × medial/lateral sensor layout** (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot.
-- [x] **Anatomical foot SVG** in dao-v2: asymmetric medial/lateral edges, arch indent, toes anchored as ellipses.
+- [x] **Anatomical foot diagram** in `solesense-v2`: cut-out CAD render of the actual insole with live-data overlays on the six visible sensor pads.
 - [ ] User-configurable body weight (currently hardcoded 70 kg) and per-FSR saturation calibration via `/api/settings`.
 - [ ] EMA-baseline tracking in the step detector for FSR baseline drift (sweat / temperature).
 - [ ] End-to-end hardware verification: 30 s real-run test on a fully-wired insole.
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO).
-- [ ] Pick canonical frontend (dao-v2 or andony — only one survives).
+- [x] Pick canonical frontend (`solesense-v2` is the active one; `solesense-v1` retained for the demo path).
 - [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet).
 
 ### v1.0 — *future*

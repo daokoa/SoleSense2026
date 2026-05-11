@@ -153,7 +153,7 @@ Status codes: `400` bad payload, `405` wrong method, `429` rate-limited, `502` u
 
 ## Frontend integration
 
-When the analysis feature lands in `software/frontend/dao-v2/index.html`, the report screen will get an "Analyze with AI" button that:
+When the analysis feature lands in `software/frontend/solesense-v2/index.html`, the report screen will get an "Analyze with AI" button that:
 
 1. Reads the run-report JSON from the report state (already cached after `/api/run-report`).
 2. Reads `body_kg` and the rest of the profile from `localStorage` (cached at login).

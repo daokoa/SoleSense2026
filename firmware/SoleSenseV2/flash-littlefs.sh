@@ -8,7 +8,7 @@
 #
 # Sync the v0.2 frontend into firmware/SoleSenseV2/data/ first if you've
 # changed it:
-#   cp software/frontend/dao-v2/index.html firmware/SoleSenseV2/data/index.html
+#   cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.html
 #
 # Then run:
 #   bash firmware/SoleSenseV2/flash-littlefs.sh
@@ -42,7 +42,7 @@ if [ ! -d "$DATA_DIR" ]; then
 fi
 if [ ! -f "$DATA_DIR/index.html" ]; then
   echo "warning: $DATA_DIR/index.html does not exist — flashing an empty filesystem" >&2
-  echo "         Did you forget to sync from software/frontend/dao-v2/?" >&2
+  echo "         Did you forget to sync from software/frontend/solesense-v2/?" >&2
 fi
 
 # ── Detect the XIAO's USB port ────────────────────────────────────────────────
