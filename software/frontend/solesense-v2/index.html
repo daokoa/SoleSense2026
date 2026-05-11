@@ -1430,19 +1430,6 @@ button{ font-family:inherit; }
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Power</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Sleep insole</div>
-            <div class="settings-desc">Drops draw to ~5 µA. Wake by pressing the BOOT button on the XIAO inside the housing.</div>
-          </div>
-          <button class="btn-cal" onclick="sleepDevice()">Sleep</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-group">
       <button class="btn-danger" onclick="clearData()">Clear All Run Data</button>
     </div>
 
@@ -2263,27 +2250,6 @@ async function zeroIMU(){
   try { await authFetch('/api/calibrate/imu', { method: 'POST' }); toast('IMU zeroed'); }
   catch { toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.'); }
 }
-async function sleepDevice(){
-  const ok = confirm(
-    'Put the insole to sleep?\n\n' +
-    'The device will stop broadcasting WiFi and use ~5 microamps. ' +
-    'To wake it, press the small BOOT button on the XIAO inside the housing.\n\n' +
-    'You will disconnect immediately and need to reconnect to the SoleSense ' +
-    'WiFi after waking the device.'
-  );
-  if (!ok) return;
-  try {
-    const r = await authFetch('/api/sleep', { method: 'POST' });
-    if (r.status === 409) { toast('Stop the current run before sleeping.'); return; }
-    if (!r.ok)            { toast('Could not put device to sleep.'); return; }
-    toast('Going to sleep. WiFi will drop in a moment.');
-  } catch {
-    // The device may enter deep sleep before the HTTP response finishes,
-    // so a network failure here is the expected success path.
-    toast('Sleep command sent. WiFi has dropped.');
-  }
-}
-
 async function clearData(){
   if(!confirm('Clear all run data? "Last Report" will be empty until you record a new run.')) return;
   // Wipe the client cache first; if the device call succeeds we also wipe
