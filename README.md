@@ -34,7 +34,7 @@ A 3D-printed smart running insole that delivers full biomechanical analysis offl
 - Report screen with verdict card, foot-pressure heatmap, findings cards, and optional AI Coach (proxied through a Cloudflare Worker that holds the OpenAI key — the device never touches it).
 
 **Injury flags** — research-backed thresholds (full citations in [`docs/research.md`](docs/research.md))
-- Heel striking · high loading rate · low cadence · overpronation · supination · medial/lateral asymmetry · long ground contact time
+- Heel striking · high impact rate · low cadence · overpronation · supination · medial/lateral asymmetry · FSR saturation diagnostic
 
 ---
 
@@ -114,7 +114,7 @@ The firmware time-multiplexes which set is active. Only one FSR is ever in the d
 | `POST` | `/api/storage-selftest`  | public  | On-bench validation of the ring buffer |
 | `POST` | `/api/fft-selftest`      | public  | 1.95 Hz sine validation — expect ~100 mag on the on-bin frequency |
 | `GET`  | `/api/auth/state`        | public  | `ownerExists, sessionActive, username, userCount, maxUsers` |
-| `POST` | `/api/auth/register`     | public, capped (`MAX_USERS=20`, 3-per-60-s) | Walk-up signup; first call claims the device |
+| `POST` | `/api/auth/register`     | public, capped (`MAX_USERS=50`, 3-per-60-s) | Walk-up signup; first call claims the device |
 | `POST` | `/api/auth/login`        | rate-limited | `username, pin → token, body_kg` |
 | `POST` | `/api/auth/logout`       | session | Clear active session |
 | `GET`  | `/api/auth/profile`      | session | Current user info |

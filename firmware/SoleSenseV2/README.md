@@ -55,7 +55,7 @@ If you flash v0.2 onto a wired XIAO:
 - 500 Hz sampling routes each sample through outlier detection -> FFT -> step detector
 - Step count increments per heel strike, cadence = steps x 60 / runtime
 - Ground contact time averages valid heel-strike-to-toe-off intervals
-- Loading rate reports BW/s from peak heel d(ADC)/dt, gated on a 70 kg assumed body weight (placeholder until `/api/settings` exposes a user-set value)
+- Loading rate reports BW/s from peak heel d(ADC)/dt, scaled by the logged-in user's body weight (or 70 kg fallback when no session is active)
 - FFT magnitudes populate per channel/bin (validated against Python reference, 0% on-bin error)
 - Storage flushes a CRC-protected snapshot every 3 s into a 10-slot ring; corrupted slots correctly rejected on load
 - `/api/run-state` reports live elapsed time (sourced from latest valid flash slot, not wall clock -- pauses honestly during disconnect)
@@ -163,7 +163,7 @@ Spec: [`../../docs/design/specs/2026-05-09-profile-system.md`](../../docs/design
 - **Self-signup** -- any client on the SoleSense AP can create an account. The first registration becomes the "owner" (a label, not a role); subsequent accounts are equal peers.
 - **Atomic registration** -- writes salt -> hash -> body_kg in sequence, rolling back partial state on any NVS failure. A username slot is never left half-written.
 - **Anti-abuse caps**:
-  - **`MAX_USERS = 20`** total accounts. Further registrations return HTTP `507 Insufficient Storage` with message *"This device is full (account limit reached)."*
+  - **`MAX_USERS = 50`** total accounts. Further registrations return HTTP `507 Insufficient Storage` with message *"This device is full (account limit reached)."*
   - **Registration rate limit** = `REG_RATE_MAX_PER_WINDOW (3) / REG_RATE_WINDOW_MS (60 s)` global sliding window. 4th signup within 60 s returns HTTP `429`.
 - Login PIN rate limiter: 3 failed PINs in 60 s -> 30 s lockout for that username.
 

@@ -20,7 +20,7 @@
 
 AsyncWebServer server(HTTP_PORT);
 
-// -- 50 Hz hardware-timer ISR -------------------------------------------------
+// -- 500 Hz hardware-timer ISR ------------------------------------------------
 hw_timer_t* gTimer = nullptr;
 
 void IRAM_ATTR onSampleTick() {

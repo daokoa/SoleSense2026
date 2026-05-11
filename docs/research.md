@@ -17,11 +17,14 @@ The injury flags surfaced by the report screen use the following research-backed
 | Flag | Cutoff | Source |
 |---|---|---|
 | Low cadence | < 160 spm | Heiderscheit et al. (2011), *Medicine & Science in Sports & Exercise* |
-| Long ground contact time | > 300 ms | Heiderscheit et al. (2011) |
-| Heel striking + high impact rate | heel/forefoot load ratio > 65 %, heel-ball delta > 10 | Lieberman et al. (2010), *Nature* |
+| Heel striking | heel/forefoot load ratio > 65 % AND heel-ball delta > 10 | Lieberman et al. (2010), *Nature* |
+| High impact rate | loading rate > 80 BW/s | Milner et al. (2006), *MSSE*; Davis et al. (2016), *BJSM* |
 | Overpronation | gyro_x running mean > 15 deg/s | Souza (2016), *Journal of Orthopaedic & Sports Physical Therapy* |
 | Supination | gyro_x running mean < -8 deg/s | Souza (2016) |
 | Medial / lateral asymmetry | > 10 % difference | Zifchock et al. (2006), *Clinical Biomechanics* |
+| FSR saturation (diagnostic, not a risk) | peak avg-channel ADC > 3500 | --- |
+
+Ground contact time is **computed and displayed** but not flagged in this version — it appears in the run report as a metric (with a 250-300 ms typical range note), not as a thresholded injury flag. Adding a `gct_long` flag is a planned follow-up.
 
 ## FSR sensor placement
 
@@ -47,7 +50,7 @@ Users provide their height at signup. The report uses it to derive an estimated 
 
 **What height is *not* used for** (deliberate — needs more rigorous validation first):
 
-- Adjusting the injury-flag thresholds themselves (cadence < 160 spm, GCT > 300 ms). These remain the universal research-backed cutoffs; the AI Coach can contextualize them by stature but the rule-based flags don't shift.
+- Adjusting the injury-flag thresholds themselves (cadence < 160 spm, loading > 80 BW/s, etc.). These remain the universal research-backed cutoffs; the AI Coach can contextualize them by stature but the rule-based flags don't shift.
 
 ## Commercial benchmarks
 

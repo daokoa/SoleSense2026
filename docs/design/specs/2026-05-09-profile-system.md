@@ -18,7 +18,7 @@ Both close with a per-user profile system stored on-device in NVS.
 - Login -> session token. Token in `Authorization: Bearer ...` header for protected endpoints.
 - Per-user `body_kg` field used in loading-rate calc.
 - Frontend login screen, blocks the rest of the UI until logged in.
-- "Owner" model: first registration claims the device. Subsequent registrations are walk-up self-signup (the shared WiFi password is the access gate), capped by `MAX_USERS = 20` and a 3-per-60-s sliding-window rate limit.
+- "Owner" model: first registration claims the device. Subsequent registrations are walk-up self-signup (the shared WiFi password is the access gate), capped by `MAX_USERS = 50` and a 3-per-60-s sliding-window rate limit.
 
 **Out of scope:**
 - Multi-device sync -- there's no internet, no cloud.
@@ -38,18 +38,18 @@ We are NOT protecting against:
 
 ## Storage (NVS)
 
-Namespace: `solesense_auth`. Per-user keys under a `users/<username>/` prefix.
+Namespace: `solesense_auth`. Per-user data is stored as four flat keys, prefixed by a single-character type tag (`Preferences` library limits key length to 15 chars, so `<tag>_<username>` keeps everything in budget for a 13-char username).
 
 | Key | Type | Notes |
 |---|---|---|
-| `users/<u>/pinhash` | bytes(32) | SHA-256(pin || salt) |
-| `users/<u>/salt`    | bytes(16) | per-user random, generated at registration |
-| `users/<u>/body_kg` | float    | for loading-rate BW/s calc |
-| `users/<u>/created` | u64      | seconds-since-epoch (well, since-boot at registration) |
-| `owner_user`        | string   | username of the device owner |
-| `_init_done`        | u8       | sentinel; if missing, device is in claim-mode |
+| `s_<u>`             | bytes(16) | per-user random salt |
+| `h_<u>`             | bytes(32) | SHA-256(pin || salt) |
+| `w_<u>`             | float     | body_kg, for loading-rate BW/s calc |
+| `t_<u>`             | float     | height_cm, for stride-length + estimated-speed derivation |
+| `owner_user`        | string    | username of the device owner |
+| `uc`                | u16       | total user count (incremented atomically on each register) |
 
-Estimated ~150 B per user. Plenty of room for ~50 users in the default NVS partition.
+About ~250 B per user with NVS overhead. The 24 KB default NVS partition fits 50 users comfortably (the cap is set by `MAX_USERS`, not by capacity).
 
 ## Session model
 
@@ -59,9 +59,10 @@ One slot, RAM only:
 struct Session {
     bool      active;
     char      username[32];
-    uint8_t   token[32];     // hex-encoded -> 64 chars in HTTP header
-    uint32_t  expires_ms;    // millis() rollover-aware
-    float     body_kg;       // cached at login
+    char      token_hex[65];  // 32 random bytes hex-encoded + null
+    uint32_t  expires_ms;     // millis() rollover-aware
+    float     body_kg;        // cached at login
+    float     height_cm;      // cached at login (Cavanagh & Williams stride math)
 } gSession;
 ```
 
@@ -79,18 +80,20 @@ Logout clears the slot. Re-login replaces the slot.
 | `GET`  | `/api/device`                         | identity, AP discovery |
 | `GET`  | `/api/auth/state`                     | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
 | `POST` | `/api/auth/register`                  | first call claims the device; subsequent calls are walk-up self-signup, capped by `MAX_USERS` + a 3-per-60-s rate limit |
-| `POST` | `/api/auth/login`                     | `{ username, pin }` -> `{ token, body_kg }` |
+| `POST` | `/api/auth/login`                     | `{ username, pin }` -> `{ token, body_kg, height_cm, username }` |
 
 ### Protected (require valid token)
 
 | Method | Path | Notes |
 |---|---|---|
 | `POST` | `/api/auth/logout`        | clear session |
-| `GET`  | `/api/auth/profile`       | current profile |
+| `GET`  | `/api/auth/profile`       | current profile (`username`, `body_kg`, `height_cm`) |
+| `POST` | `/api/auth/profile`       | edit `body_kg` and/or `height_cm` without re-registering |
 | `POST` | `/api/start`              | start recording |
 | `POST` | `/api/stop`               | stop recording |
 | `POST` | `/api/calibrate/zero`     | FSR zero |
 | `POST` | `/api/calibrate/imu`      | IMU zero |
+| `POST` | `/api/data/clear`         | wipe the run-snapshot ring buffer |
 | `POST` | `/api/sleep`              | deep sleep |
 
 ### Read-only diagnostic (intentionally still public)
@@ -104,9 +107,11 @@ Logout clears the slot. Re-login replaces the slot.
 | Protected route, no `Authorization` header | `401 Unauthorized` |
 | Token invalid or expired | `401 Unauthorized`, frontend kicks back to login |
 | Login with wrong PIN, 3 times in a 60 s window | `429 Too Many Requests`, lock the username for 30 s |
-| Register over the `MAX_USERS` cap | `409 Conflict` |
+| Register over the `MAX_USERS` cap | `507 Insufficient Storage` |
 | Register more than 3 times in a 60 s window | `429 Too Many Requests` |
-| NVS write failure | `500`, abort registration cleanly |
+| NVS write failure | `400 Bad Request` (after atomic rollback of any partial state) |
+| Register with invalid body_kg (< 25 or > 250 kg) | `400 Bad Request` |
+| Register with invalid height_cm (< 100 or > 250 cm) | `400 Bad Request` |
 
 ## Frontend changes
 

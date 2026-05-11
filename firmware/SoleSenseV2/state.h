@@ -48,7 +48,7 @@ extern volatile uint32_t gContactCount;
 extern volatile float gMaxHeelJerk;
 
 // IMU sensor fusion. gLastImuImpactMs is the run-elapsed time of the most
-// recent vertical-acceleration impact (|az - mean(az)| > IMU_IMPACT_THRESH).
+// recent vertical-acceleration impact (|az - mean(az)| > IMU_IMPACT_DELTA_MS2).
 // gImuConnected is set true once Welford stddev on az exceeds a tiny floor --
 // proxy for "the IMU is actually producing real samples". When false (IMU
 // disconnected or zero motion), the step detector skips IMU validation.
@@ -79,7 +79,7 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
 // /api/start. Updated per sample by process_sample() in SoleSenseV2.ino.
 extern volatile float gMaxJerkZ;
 
-// Set true by the 50Hz hardware-timer ISR. loop() drains this flag.
+// Set true by the 500 Hz hardware-timer ISR. loop() drains this flag.
 extern volatile bool gNewSample;
 
 // HTTP-task -> loop() request flags. Handlers set these and return immediately;
