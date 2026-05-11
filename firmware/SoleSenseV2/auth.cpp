@@ -147,12 +147,13 @@ uint16_t auth_user_count() {
   return sNvs.getUShort("uc", 0);
 }
 
-int auth_register(const String& username, const String& pin, float body_kg) {
+int auth_register(const String& username, const String& pin, float body_kg, float height_cm) {
   // Granular validation so handle_auth_register can return a specific
   // human-readable error, instead of a generic "invalid input".
   if (!valid_username(username)) return -3;   // bad username
   if (!valid_pin(pin))           return -4;   // bad PIN
   if (body_kg < 25.0f || body_kg > 250.0f) return -5;   // bad body weight
+  if (height_cm < 100.0f || height_cm > 250.0f) return -8; // bad height
 
   // Anti-abuse caps. Both must pass BEFORE any state mutation.
   if (auth_user_count() >= MAX_USERS) {
@@ -169,9 +170,10 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   const bool wasClaimMode = auth_in_claim_mode();
 
   // Username taken? Check with isKey on the salt key (matches the type we wrote).
-  const String saltKey = key_for(username.c_str(), 's');
-  const String hashKey = key_for(username.c_str(), 'h');
-  const String bodyKey = key_for(username.c_str(), 'w');
+  const String saltKey   = key_for(username.c_str(), 's');
+  const String hashKey   = key_for(username.c_str(), 'h');
+  const String bodyKey   = key_for(username.c_str(), 'w');
+  const String heightKey = key_for(username.c_str(), 't');
   if (sNvs.isKey(saltKey.c_str())) return -1;
 
   uint8_t salt[16];
@@ -206,6 +208,15 @@ int auth_register(const String& username, const String& pin, float body_kg) {
     sNvs.remove(saltKey.c_str());
     sNvs.remove(hashKey.c_str());
     sNvs.remove(bodyKey.c_str());
+    return -2;
+  }
+  size_t w4 = sNvs.putFloat(heightKey.c_str(), height_cm);
+  if (w4 == 0) {
+    Serial.printf("[Auth] register NVS w4=0 FAIL -- rolling back\n");
+    sNvs.remove(saltKey.c_str());
+    sNvs.remove(hashKey.c_str());
+    sNvs.remove(bodyKey.c_str());
+    sNvs.remove(heightKey.c_str());
     return -2;
   }
 
@@ -269,6 +280,7 @@ int auth_login(const String& username, const String& pin) {
   hex_encode(tok, sizeof(tok), gSession.token_hex);
   gSession.expires_ms = millis() + SESSION_IDLE_MS;
   gSession.body_kg    = sNvs.getFloat(key_for(username.c_str(), 'w').c_str(), 70.0f);
+  gSession.height_cm  = sNvs.getFloat(key_for(username.c_str(), 't').c_str(), 170.0f);
 
   // Reset failure count for this user
   for (auto& e : sFails) {
@@ -277,8 +289,8 @@ int auth_login(const String& username, const String& pin) {
     }
   }
 
-  Serial.printf("[Auth] login ok user=%s body_kg=%.1f\n",
-                gSession.username, gSession.body_kg);
+  Serial.printf("[Auth] login ok user=%s body_kg=%.1f height_cm=%.1f\n",
+                gSession.username, gSession.body_kg, gSession.height_cm);
   return 0;
 }
 

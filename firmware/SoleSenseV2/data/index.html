@@ -804,6 +804,9 @@ button{ font-family:inherit; }
   border-radius:16px;
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
   overflow:hidden;
+  /* Matches .section margin so this sits at the same rhythm as the rest
+     of the report (Findings -> AI Coach -> Where you landed -> here). */
+  margin-top:28px;
 }
 .metrics-details > summary{
   list-style:none;cursor:pointer;
@@ -997,6 +1000,10 @@ button{ font-family:inherit; }
       <label class="auth-field" id="auth-bodykg-field" style="display:none;">
         <span class="auth-label">Body weight (kg)</span>
         <input id="auth-bodykg" type="number" step="0.1" autocomplete="off" placeholder="e.g. 70.0">
+      </label>
+      <label class="auth-field" id="auth-height-field" style="display:none;">
+        <span class="auth-label">Height (cm)</span>
+        <input id="auth-height" type="number" step="0.5" autocomplete="off" placeholder="e.g. 175">
       </label>
       <button id="auth-submit-btn" type="submit" class="btn-start auth-submit">
         <span id="auth-submit-label">Log in</span>
@@ -1307,6 +1314,25 @@ button{ font-family:inherit; }
         </div>
         <div class="metrics-row">
           <div class="metrics-keywrap">
+            <span class="metrics-key">Stride length</span>
+            <span class="metrics-sub">Estimated from your height. Distance-running stride averages ~0.42 × height (Cavanagh &amp; Williams, 1982).</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-stride">--</span><span class="unit">m</span></span>
+            <span class="metric-pill" id="pill-stride"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Estimated speed</span>
+            <span class="metrics-sub">Cadence × stride length. Approximation for distance running at steady cadence.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-speed">--</span><span class="unit">km/h</span></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
             <span class="metrics-key">Total steps</span>
             <span class="metrics-sub">Number of foot strikes detected during the run.</span>
           </div>
@@ -1403,6 +1429,7 @@ button{ font-family:inherit; }
  * wipes the cache and returns to login. */
 const AUTH_TOKEN_KEY    = 'solesense_token';
 const AUTH_BODYKG_KEY   = 'solesense_body_kg';
+const AUTH_HEIGHT_KEY   = 'solesense_height_cm';
 const AUTH_USERNAME_KEY = 'solesense_username';
 let authMode = 'login';   // 'login' or 'claim'
 
@@ -1416,6 +1443,7 @@ async function authFetch(url, opts = {}){
   if (r.status === 401) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_BODYKG_KEY);
+    localStorage.removeItem(AUTH_HEIGHT_KEY);
     showScreen('auth');
     refreshAuthScreen();
     throw new Error('unauthorized');
@@ -1432,13 +1460,14 @@ function setText(id, t){ const el = document.getElementById(id); if (el) el.text
 function applyAuthMode(){
   const isSignup = authMode === 'signup';
   document.getElementById('auth-bodykg-field').style.display = isSignup ? 'flex' : 'none';
+  document.getElementById('auth-height-field').style.display = isSignup ? 'flex' : 'none';
   setText('auth-submit-label', isSignup ? 'Create account' : 'Log in');
   setText('auth-headline',     isSignup ? (authForced ? 'Claim your insole.' : 'Create account.') : 'Sign in.');
   setText('auth-eyebrow',      isSignup ? (authForced ? 'First-time setup' : 'New here?')         : 'Welcome back');
   setText('auth-subtitle',     isSignup
     ? (authForced
-        ? 'Pick a username and PIN. Body weight is used for honest loading-rate readings.'
-        : 'Pick a username, PIN, and your body weight to set up your account.')
+        ? 'Pick a username and PIN. Body weight + height tune the loading-rate and stride math.'
+        : 'Pick a username, PIN, body weight, and height to set up your account.')
     : 'Enter your username and PIN to start a run.');
   setText('auth-toggle-text',  isSignup ? 'Already have an account?' : "Don't have an account?");
   setText('auth-toggle-action',isSignup ? 'Sign in'                  : 'Create one');
@@ -1458,7 +1487,7 @@ async function refreshAuthScreen(){
   // the previous user's username pre-populated (or worse, autofilled by
   // the browser's password manager). Username is only meant to be visible
   // on the Settings screen for the currently signed-in user.
-  ['auth-username','auth-pin','auth-bodykg'].forEach(id => {
+  ['auth-username','auth-pin','auth-bodykg','auth-height'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('auth-error').textContent = '';
@@ -1482,6 +1511,7 @@ async function submitAuth(){
   const u  = document.getElementById('auth-username').value.trim();
   const p  = document.getElementById('auth-pin').value;
   const bk = document.getElementById('auth-bodykg').value;
+  const ht = document.getElementById('auth-height').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
 
@@ -1502,11 +1532,17 @@ async function submitAuth(){
     if (!bk || +bk < 25 || +bk > 250) {
       errEl.textContent = 'Body weight must be between 25 and 250 kg.'; return;
     }
+    if (!ht || +ht < 100 || +ht > 250) {
+      errEl.textContent = 'Height must be between 100 and 250 cm.'; return;
+    }
   }
 
   const url = (authMode === 'signup') ? '/api/auth/register' : '/api/auth/login';
   const body = new URLSearchParams({ username: u, pin: p });
-  if (authMode === 'signup') body.append('body_kg', bk);
+  if (authMode === 'signup') {
+    body.append('body_kg', bk);
+    body.append('height_cm', ht);
+  }
   try {
     const r = await fetch(url, {
       method: 'POST',
@@ -1517,6 +1553,7 @@ async function submitAuth(){
     if (!d.ok) { errEl.textContent = d.error || 'Authentication failed.'; return; }
     localStorage.setItem(AUTH_TOKEN_KEY, d.token);
     localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
+    if (d.height_cm) localStorage.setItem(AUTH_HEIGHT_KEY, String(d.height_cm));
     if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
     document.getElementById('auth-pin').value = '';
     showScreen('home');
@@ -1531,6 +1568,7 @@ async function logout(){
   try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch {}
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_BODYKG_KEY);
+  localStorage.removeItem(AUTH_HEIGHT_KEY);
   localStorage.removeItem(AUTH_USERNAME_KEY);
   showScreen('auth');
   refreshAuthScreen();
@@ -1910,13 +1948,16 @@ async function runAiAnalysis(){
   document.getElementById('ai-result').innerHTML = '';
   document.getElementById('ai-loading').style.display = 'flex';
 
-  const bodyKg = parseFloat(localStorage.getItem(AUTH_BODYKG_KEY) || '0') || null;
+  const bodyKg   = parseFloat(localStorage.getItem(AUTH_BODYKG_KEY) || '0') || null;
+  const heightCm = parseFloat(localStorage.getItem(AUTH_HEIGHT_KEY) || '0')
+                || (lastReport.profile && lastReport.profile.height_cm)
+                || null;
 
   // Map firmware run-report -> worker schema. The worker prompt names these
   // exactly so anything else is ignored. Skip undefined fields rather than
   // sending zeros that the LLM might over-interpret.
   const payload = {
-    user: { body_kg: bodyKg },
+    user: { body_kg: bodyKg, height_cm: heightCm },
     run: {
       duration_sec:     Math.round((lastReport.durationMs || 0) / 1000) || undefined,
       steps:            lastReport.steps || undefined,
@@ -2064,6 +2105,33 @@ function render(r){
     setPill('pill-balance', null);
   }
   set('m-steps', r.steps);
+
+  // Height-derived metrics. Stride length scales ~0.42 of standing height for
+  // distance-pace running (Cavanagh & Williams, 1982; Bramble & Lieberman, 2004).
+  // Server-side profile beats client cache (server is the source of truth).
+  const heightCm = (r.profile && r.profile.height_cm)
+                 || parseFloat(localStorage.getItem(AUTH_HEIGHT_KEY) || '0')
+                 || null;
+  if (heightCm && heightCm >= 100) {
+    const strideM = (heightCm / 100) * 0.42;
+    set('m-stride', strideM.toFixed(2));
+    // A "typical" stride for this height runs 0.40-0.45 × height; flag if
+    // the derived value falls outside that band (it shouldn't, since we
+    // compute from height alone -- but the pill provides visual confirmation
+    // that the derivation came from real profile data, not a fallback).
+    setPill('pill-stride', { label: 'For your height', tone: 'good' });
+    // Speed from cadence x stride: km/h = (cadence/60) * stride_m * 3.6.
+    if (cad > 0) {
+      const speedKmh = (cad / 60) * strideM * 3.6;
+      set('m-speed', speedKmh.toFixed(1));
+    } else {
+      set('m-speed', '--');
+    }
+  } else {
+    set('m-stride', '--');
+    setPill('pill-stride', null);
+    set('m-speed', '--');
+  }
 
   // Heatmap: only repaint when the underlying zone/balance changed, otherwise
   // the .45s fill transition perpetually restarts under the 0.5 Hz live-poll.

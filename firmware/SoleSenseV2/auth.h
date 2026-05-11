@@ -13,6 +13,7 @@ struct Session {
   char      token_hex[65] = {0};   // 32 bytes -> 64 hex chars + null
   uint32_t  expires_ms    = 0;
   float     body_kg       = 70.0f;
+  float     height_cm     = 170.0f;
 };
 extern Session gSession;
 
@@ -40,7 +41,7 @@ void auth_init();
 //   -1 username taken
 //   -2 NVS write failure
 //   -3 invalid input (empty PIN, etc.)
-int auth_register(const String& username, const String& pin, float body_kg);
+int auth_register(const String& username, const String& pin, float body_kg, float height_cm);
 
 // Log in an existing user. Returns 0 on success, negative on error:
 //   -1 unknown username

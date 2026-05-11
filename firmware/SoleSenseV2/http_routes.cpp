@@ -380,6 +380,16 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   j += "\"durationMs\":";   j += (unsigned long)durMs;      j += ",";
   j += "\"samples\":";      j += (unsigned long)gSampleCount; j += ",";
   j += "\"outliers\":";     j += (unsigned)outliers_count(); j += ",";
+  // Per-user body profile (used by the frontend to derive stride length,
+  // estimated speed, and any height-normalized display). Falls back to
+  // safe defaults when no session is active so /api/run-report stays
+  // useful for debug calls without authentication.
+  float prof_kg = gSession.active ? gSession.body_kg   : 70.0f;
+  float prof_cm = gSession.active ? gSession.height_cm : 170.0f;
+  j += "\"profile\":{";
+  j +=   "\"body_kg\":";   j += String(prof_kg, 1);
+  j +=   ",\"height_cm\":"; j += String(prof_cm, 1);
+  j += "},";
   // Diagnostic / sensor-fusion fields (frontend may ignore).
   j += "\"imuConnected\":"; j += (gImuConnected ? "true":"false"); j += ",";
   j += "\"imuImpacts\":";   j += (unsigned long)gImuImpactCount; j += ",";
@@ -450,20 +460,22 @@ static void handle_auth_state(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
-// Register a new user. URL-encoded body: username, pin, body_kg.
+// Register a new user. URL-encoded body: username, pin, body_kg, height_cm.
 // Self-signup: anyone connected to the AP can create an account. The shared
 // WiFi password already gates network access; layering an owner-token check
 // on top would block a legitimate household member from making themselves
 // an account. The new user is auto-logged-in atomically.
 static void handle_auth_register(AsyncWebServerRequest* req) {
-  String username = req->arg("username");
-  String pin      = req->arg("pin");
-  float  body_kg  = req->arg("body_kg").toFloat();
-  int rc = auth_register(username, pin, body_kg);
+  String username  = req->arg("username");
+  String pin       = req->arg("pin");
+  float  body_kg   = req->arg("body_kg").toFloat();
+  float  height_cm = req->arg("height_cm").toFloat();
+  int rc = auth_register(username, pin, body_kg, height_cm);
   if (rc == 0) {
     String j = "{\"ok\":true,\"token\":\"";
     j += gSession.token_hex;
-    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += "\",\"body_kg\":";   j += String(gSession.body_kg, 1);
+    j += ",\"height_cm\":";   j += String(gSession.height_cm, 1);
     j += ",\"username\":\""; j += gSession.username; j += "\"}";
     req->send(200, "application/json", j);
     return;
@@ -475,6 +487,7 @@ static void handle_auth_register(AsyncWebServerRequest* req) {
     (rc == -3) ? "Username must be 4-13 letters, digits, or underscore." :
     (rc == -4) ? "PIN must be 4-16 digits." :
     (rc == -5) ? "Body weight must be 25-250 kg." :
+    (rc == -8) ? "Height must be 100-250 cm." :
     (rc == -6) ? "This device is full (account limit reached). "
                  "Ask the owner to factory-reset to free up space." :
     (rc == -7) ? "Too many signups too fast. Wait a minute and try again." :
@@ -493,7 +506,8 @@ static void handle_auth_login(AsyncWebServerRequest* req) {
   if (rc == 0) {
     String j = "{\"ok\":true,\"token\":\"";
     j += gSession.token_hex;
-    j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1);
+    j += "\",\"body_kg\":";  j += String(gSession.body_kg, 1);
+    j += ",\"height_cm\":";  j += String(gSession.height_cm, 1);
     j += ",\"username\":\""; j += gSession.username; j += "\"";
     j += "}";
     req->send(200, "application/json", j);
@@ -519,7 +533,9 @@ static void handle_auth_logout(AsyncWebServerRequest* req) {
 static void handle_auth_profile(AsyncWebServerRequest* req) {
   if (!require_auth(req)) return;
   String j = "{\"username\":\""; j += gSession.username;
-  j += "\",\"body_kg\":"; j += String(gSession.body_kg, 1); j += "}";
+  j += "\",\"body_kg\":";   j += String(gSession.body_kg, 1);
+  j += ",\"height_cm\":";   j += String(gSession.height_cm, 1);
+  j += "}";
   req->send(200, "application/json", j);
 }
 
