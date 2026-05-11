@@ -13,19 +13,32 @@ float   gGyro[3]         = {0,0,0};
 int     gFsrZero[N_FSR]  = {0,0,0,0,0,0};
 float   gImuOffset[6]    = {0,0,0,0,0,0};
 
+// 4-sample oversampling kills high-frequency noise (60 Hz hum, switching
+// transients, breadboard capacitive coupling). The first read after a
+// multiplexer switch is often slightly dirty; averaging 4 reads dilutes
+// the warm-up sample without adding a separate discard step. ~12 us per
+// channel x 3 channels = ~36 us extra per set, well under the 1.4 ms
+// per-sample slack we measured.
+static inline int read_adc_oversampled(uint8_t pin) {
+  int sum = 0;
+  for (uint8_t i = 0; i < 4; i++) sum += analogRead(pin);
+  return sum >> 2;
+}
+
 // Drive the inactive set's power pin LOW (not floating) so any ghost
 // current path from a pressed FSR shorts to GND instead of propagating
-// across to the other ADC pins. 150 us settling per set fits the
-// 2 ms per-sample budget at 500 Hz with margin.
+// across to the other ADC pins. 200 us settling per set fits the 2 ms
+// per-sample budget at 500 Hz with margin and gives the analog domain
+// extra headroom on noisy breadboard prototypes.
 static void read_set_a() {
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, LOW);
   pinMode(PIN_PWR_SET1, OUTPUT);
   digitalWrite(PIN_PWR_SET1, HIGH);
-  delayMicroseconds(150);
-  gFsr[0] = analogRead(PIN_ADC_A) - gFsrZero[0];   // Heel medial
-  gFsr[1] = analogRead(PIN_ADC_B) - gFsrZero[1];   // Heel lateral
-  gFsr[2] = analogRead(PIN_ADC_C) - gFsrZero[2];   // Midfoot medial
+  delayMicroseconds(200);
+  gFsr[0] = read_adc_oversampled(PIN_ADC_A) - gFsrZero[0];   // Heel medial
+  gFsr[1] = read_adc_oversampled(PIN_ADC_B) - gFsrZero[1];   // Heel lateral
+  gFsr[2] = read_adc_oversampled(PIN_ADC_C) - gFsrZero[2];   // Midfoot medial
 }
 
 static void read_set_b() {
@@ -33,10 +46,10 @@ static void read_set_b() {
   digitalWrite(PIN_PWR_SET1, LOW);
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, HIGH);
-  delayMicroseconds(150);
-  gFsr[3] = analogRead(PIN_ADC_A) - gFsrZero[3];   // Midfoot lateral
-  gFsr[4] = analogRead(PIN_ADC_B) - gFsrZero[4];   // Forefoot medial
-  gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];   // Forefoot lateral
+  delayMicroseconds(200);
+  gFsr[3] = read_adc_oversampled(PIN_ADC_A) - gFsrZero[3];   // Midfoot lateral
+  gFsr[4] = read_adc_oversampled(PIN_ADC_B) - gFsrZero[4];   // Forefoot medial
+  gFsr[5] = read_adc_oversampled(PIN_ADC_C) - gFsrZero[5];   // Forefoot lateral
 }
 
 // Drive both sets LOW between active reads so any leakage path is grounded
