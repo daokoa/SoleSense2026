@@ -1,0 +1,4 @@
+# Force GitHub's Linguist to classify .h headers as C++ instead of C.
+# Every .h in this repo is a C++ header for the SoleSenseV2 Arduino firmware
+# (Arduino's traditional convention for C++ headers, not C).
+*.h linguist-language=C++
