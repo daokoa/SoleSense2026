@@ -26,7 +26,7 @@ uint16_t auth_user_count();
 
 // Hard caps surface to callers (route handlers, README, frontend) so they
 // can display accurate "X of Y accounts used" or reject early.
-static constexpr uint16_t MAX_USERS               = 20;     // total accounts
+static constexpr uint16_t MAX_USERS               = 50;     // total accounts (NVS budget ~24 KB; each user ~250 B with overhead)
 static constexpr uint32_t REG_RATE_WINDOW_MS      = 60000;  // 60-second window
 static constexpr uint8_t  REG_RATE_MAX_PER_WINDOW = 3;      // <=3 signups / window
 
