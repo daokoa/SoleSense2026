@@ -12,10 +12,6 @@ software/frontend/
 
 The SPA is a single self-contained file using system fonts -- no build step, no external resources. The recording screen shows a 3-zone x medial/lateral foot diagram (the actual insole CAD render, cut out with a transparent background) with live FSR fill on the six visible sensor pads.
 
-## Why one SPA instead of two
-
-The earlier `solesense-v1/` UI was paired with the v0.1 firmware path: it downloaded a CSV from `/data.csv` after each run and did the analysis client-side in JavaScript. Moving the analysis on-device (see [`../../firmware/SoleSenseV2/README.md`](../../firmware/SoleSenseV2/README.md) for the rationale) made the v1 SPA redundant -- a parser that re-derived metrics the firmware was now reporting directly. The SPA has been deleted; `solesense-v2/` is the only frontend.
-
 ## Verify what's flashed
 
 ```bash
@@ -43,7 +39,7 @@ The flash script auto-detects mklittlefs / esptool / the USB port. Close any ope
 python3 software/frontend/mock-server.py
 ```
 
-Open <http://localhost:8080/>. The mock implements a subset of the HTTP API (live `/api/sensor` polls, `/api/start`, `/api/stop`, `/api/calibrate/*`, `/data.csv`). The v0.2-only endpoints (`/api/run-state`, `/api/run-report`, all of `/api/auth/*`) aren't mocked -- use real firmware to validate those.
+Open <http://localhost:8080/>. The mock implements a subset of the HTTP API (live `/api/sensor` polls, `/api/start`, `/api/stop`, `/api/calibrate/*`). The run-state, run-report, and `/api/auth/*` endpoints aren't mocked -- use real firmware to validate those.
 
 ## Auth flow
 
@@ -74,4 +70,4 @@ Cadence < 160 spm, pronation > 15 deg/s, supination < -8 deg/s, asymmetry > 10 %
 
 - **Loading rate / Impact rate** reports a real BW/s value via FSR-jerk extrapolation, with the UI showing a Healthy / Elevated / High category. The conversion uses the logged-in user's body weight from their profile; FSR saturation point is still hardcoded at full-scale ADC = 10 kg.
 - **Browser cache pitfall** -- when LittleFS gets a frontend update (new auth fields, renamed keys), iOS Safari and desktop browsers keep serving the cached old `index.html` and you'll see undefined values render as `NaN` or `26500 %`. Force-refresh after every LittleFS reflash.
-- **Mock server is incomplete** -- doesn't simulate `/api/run-state`, `/api/run-report`, or the auth endpoints, so the v2-only screens need real firmware to exercise.
+- **Mock server is incomplete** -- doesn't simulate `/api/run-state`, `/api/run-report`, or the auth endpoints, so those screens need real firmware to exercise.

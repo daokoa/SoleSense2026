@@ -1,7 +1,7 @@
 // =============================================================================
-// SoleSense v0.2 -- sensors.h
-// Sensor reads, lifted from v0.1 with minor module-isation. The matrix-scan
-// scheme (2 sets of 3 FSRs, 3 shared ADC pins) is unchanged.
+// SoleSense -- sensors.h
+// FSR matrix-scan + MPU-6050 reads. The matrix scheme uses 2 sets of 3 FSRs
+// sharing 3 ADC pins, gated by two power lines (PIN_PWR_SET1/2).
 // =============================================================================
 
 #pragma once

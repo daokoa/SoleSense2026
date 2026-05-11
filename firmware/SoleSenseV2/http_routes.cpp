@@ -222,8 +222,7 @@ static void handle_run_outliers(AsyncWebServerRequest* req) {
 
 // -- /api/run-report ----------------------------------------------------------
 // Computes the final metrics from the FFT bins + outlier buffer + running
-// channel stats. Mirrors the v0.1 dao analyse() function but pulls data from
-// the device-side modules instead of parsed CSV rows.
+// channel stats. All analysis runs on-device; the browser is a renderer.
 //
 // Channel index reminder (3-zone x medial/lateral layout, Choi 2024 +E-at-heel):
 //   0 = heel medial,     1 = heel lateral
@@ -323,7 +322,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
                   : 0.0f;
   (void)durSec;
 
-  // -- Injury flags (same thresholds as v0.1 dao THRESH constants)
+  // -- Injury flags (research-based THRESH constants, see SOLESENSE.md 13)
   String flags = "[";
   bool firstFlag = true;
   auto pushFlag = [&](const char* key, const String& val) {

@@ -43,7 +43,6 @@ Everything runs on-device. No external dependencies at runtime.
 | Name | Role |
 |---|---|
 | Dao Doan | Firmware / Software |
-| Andony Velasquez | Software Lead |
 | Jasmine Dhaliwal | Software |
 | Natalie Dai | Software |
 | Norton Hoang | Electrical & Firmware Lead |
@@ -194,7 +193,7 @@ IDLE  --/api/start--  RECORDING  --/api/stop--  IDLE
 
 ## 6. Data Pipeline
 
-> **v0.2 in progress:** the raw-CSV-to-browser pipeline below is the v0.1 implementation. The team's plan for v0.2 moves all run state onto the MCU (FFT coefficients + outlier buffer in RAM, periodic multi-slot flash flushes). The browser will hold no state. Full design: [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
+> **Current architecture:** all run state lives on the MCU -- FFT coefficients + outlier buffer in RAM, flushed periodically to a multi-slot ring buffer in flash. The browser holds no state. Full design: [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
 
 ### CSV Format (50Hz, 13 columns)
 ```
@@ -331,7 +330,7 @@ All endpoints served by `AsyncWebServer` on port 80 at `192.168.4.1`.
 ### `/api/device` Response
 ```json
 {
-  "firmware": "SoleSense v0.1",
+  "firmware": "SoleSense v0.2",
   "board": "XIAO ESP32-C3",
   "sampleRateHz": 50,
   "state": "idle",
@@ -460,22 +459,23 @@ Arduino IDE -> `Cmd+Shift+P` -> **Upload LittleFS** -> Enter
 
 ## 14. Roadmap
 
-### v0.1 -- Current (Spring 2026 Demo)
-- [x] Firmware skeleton -- WiFi AP, LittleFS, AsyncWebServer, all 8 endpoints
-- [x] Frontend SPA -- 4 screens, demo mode, analysis pipeline, 7 injury flags
-- [ ] 50Hz sampling with 25-row RAM buffer
-- [ ] Deep sleep + wake button
-- [ ] Averaged 5Hz writes with peak preservation
-- [ ] Full sensor integration (FSRs + IMU wired to PCB)
+### Shipped
+- [x] Firmware: WiFi AP, LittleFS, AsyncWebServer, full HTTP API surface
+- [x] Frontend SPA: auth, recording, report, AI Coach
+- [x] 500 Hz sampling, on-device FFT + outliers + Welford stats
+- [x] Multi-slot crash-recoverable storage, pause-on-disconnect
+- [x] Step detector + GCT (Schmitt trigger, IMU sensor-fusion when wired)
+- [x] FSR-jerk loading rate using per-user body weight
+- [x] NVS-backed user accounts with PIN auth + self-signup
+- [x] Cloudflare Worker proxy for personalised AI Coach analysis
 
-### v0.2 -- Post-Demo
+### Open follow-ups
+- [ ] Full sensor integration: FSRs + IMU mounted to PCB, real-run validation
+- [ ] Per-FSR saturation calibration via `/api/settings`
 - [ ] Binary storage format with CSV conversion endpoint
-- [ ] Multi-session support (session separator in CSV, session picker in UI)
+- [ ] Multi-session support (session separator, session picker in UI)
 - [ ] Over-the-air (OTA) firmware updates
 - [ ] Left/right insole pairing over ESP-NOW
-
-### v1.0 -- Future
-- [ ] RNN/LSTM model trained on collected CSV data (per Choi et al. 2024)
 - [ ] Real-time CoP trajectory visualization
 - [ ] Cadence audio feedback via BLE to earbuds
 - [ ] Mobile app wrapper

@@ -1,9 +1,6 @@
-# SoleSense Firmware v0.2
+# SoleSense Firmware
 
-The post-demo architecture: all run state lives on the MCU, no browser-side analysis, crash-recoverable flash storage. Now sampling at **500 Hz** with a **3-zone x medial/lateral sensor layout** (Choi 2024 with FSR E moved next to the heel).
-
-> v0.1 still lives at [`../SoleSense/`](../SoleSense/) for the live demo.
-> v0.2 has now reached feature-parity on the metrics that matter (step count, cadence, ground-contact-time, loading rate). It is the path forward.
+All run state lives on the MCU, no browser-side analysis, crash-recoverable flash storage. Samples at **500 Hz** with a **3-zone x medial/lateral sensor layout** (Choi 2024 with FSR E moved next to the heel).
 
 ## Background
 

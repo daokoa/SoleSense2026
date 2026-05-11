@@ -27,4 +27,4 @@ python3 software/scripts/diag-fsr.py
 
 ## Future additions
 
-When the team adds host-side analysis tooling, training pipelines for the v1.0 CNN/LSTM model, or a mobile app wrapper, those go here too -- likely as `software/analysis/`, `software/training/`, `software/mobile/`.
+When the team adds host-side analysis tooling, training pipelines for a CNN/LSTM model, or a mobile app wrapper, those go here too -- likely as `software/analysis/`, `software/training/`, `software/mobile/`.

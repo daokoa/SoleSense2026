@@ -1545,10 +1545,9 @@ function viewLastReport(){
   setTimeout(()=>loadReport(), 300);
 }
 
-/* The v0.1 frontend used to parse the raw CSV and run the analysis pipeline
-   (cadence, GCT, pronation, flags) in JS here. In v0.2 the firmware computes
-   all of that on the MCU and returns the result via /api/run-report. The
-   browser is a thin viewer -- no parseCSV, no detectSteps, no thresholds. */
+/* The firmware computes cadence, GCT, pronation, and injury flags on the
+   MCU and returns them via /api/run-report. The browser is a thin viewer --
+   no parseCSV, no detectSteps, no thresholds in JS. */
 
 /* -- FLAG DEFS -- */
 const FLAG_DEFS={

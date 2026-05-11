@@ -40,7 +40,7 @@ void setup() {
   // Device info endpoint
   server.on("/api/device", HTTP_GET, [](AsyncWebServerRequest *request) {
     String json = "{";
-    json += "\"firmware\":\"v0.1\",";
+    json += "\"firmware\":\"stub\",";
     json += "\"board\":\"XIAO ESP32-C3\",";
     json += "\"sampleRateHz\":100,";
     json += "\"state\":\"idle\",";

@@ -14,9 +14,7 @@
 | **Sensors** | 6 FSRs in 3-zone x medial/lateral layout (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot. Hardware bring-up + per-channel verification ongoing. IMU optional (not required for any of the headline metrics). |
 | **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
 
-> **Why v0.2?** v0.1 was a single-file `.ino` that streamed 50 Hz CSV to LittleFS and did the analysis client-side. WiFi blips lost runs; the device couldn't show live metrics; 50 Hz wasn't enough for impact-rate extrapolation. v0.2 keeps everything on-MCU (FFT magnitudes + outliers + Welford stats in a CRC ring buffer) and the browser is purely a renderer. The v0.1 code has been removed; the rationale and the architectural design doc are kept under [`docs/superpowers/specs/`](docs/superpowers/specs/).
-
-See **[Roadmap](#roadmap)** for the path to v1.0.
+> **Architecture:** all run state lives on the MCU. The firmware computes the analysis on-device (FFT magnitudes + outliers + Welford stats in a CRC ring buffer); the browser is purely a renderer. WiFi blips no longer cost runs because the phone holds no state. Full rationale in [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md).
 
 ---
 
@@ -177,8 +175,8 @@ solesense/
 |-- docs/
 |   |-- pseudocode/                   <- system-level pseudocode (system-flow + injury-analysis)
 |   `-- superpowers/
-|       |-- specs/                    <- v0.1 + v0.2 design docs, profile-system spec
-|       `-- plans/                    <- v0.1 + v0.2 implementation plans
+|       |-- specs/                    <- design docs, profile-system spec
+|       `-- plans/                    <- implementation plans
 |
 `-- assets/                           <- images, diagrams (reserved, empty)
 ```
@@ -204,31 +202,22 @@ solesense/
 
 ### Flashing the sketch
 
-In Arduino IDE: open `firmware/SoleSense/SoleSense.ino` -> click Upload (`->`).
+In Arduino IDE: open `firmware/SoleSenseV2/SoleSenseV2.ino` -> click Upload (`->`). From the terminal:
+
+```bash
+ARDUINO_CLI="/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/arduino-cli"
+"$ARDUINO_CLI" compile --fqbn esp32:esp32:XIAO_ESP32C3 firmware/SoleSenseV2
+"$ARDUINO_CLI" upload  --fqbn esp32:esp32:XIAO_ESP32C3 --port /dev/cu.usbmodem2101 firmware/SoleSenseV2
+```
 
 ### Flashing the LittleFS data (frontend)
 
-Two paths -- pick whichever works on your machine.
-
-**Terminal (recommended, more reliable):**
 ```bash
-# Pick which UI you want flashed:
-cp software/frontend/solesense-v1/index.html firmware/SoleSense/data/index.html
-# or:
-cp software/frontend/solesense-v1/index.html firmware/SoleSense/data/index.html
-
-# Then build + flash:
-bash firmware/SoleSense/flash-littlefs.sh
+cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.html
+bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 
 The script auto-detects `mklittlefs`, `esptool`, and the XIAO's USB port. Close Serial Monitor first -- it locks the port.
-
-**Arduino IDE plugin:**
-1. Sync your chosen UI as above
-2. Close Serial Monitor
-3. `Cmd+Shift+P` -> `Upload LittleFS to Pico/ESP8266/ESP32` -> Enter
-
-(The plugin needs to be installed first -- see `firmware/README.md`.)
 
 ### Expected boot output
 
@@ -237,9 +226,12 @@ Open Serial Monitor at 115200 baud, tap reset on the XIAO:
 === SoleSense booting ===
 [FS] Mounted - <N> / 1441792 bytes used
 [Sensors] FSR sets + MPU-6050 initialised
-[NVS] thresholds + calibration loaded
+[Storage] init: <N>/10 slot files present
+[Auth] init; ownerExists=<yes|no>
 [WiFi] AP 'SoleSense' up at 192.168.4.1
+[mDNS] solesense.local resolving
 [HTTP] server started
+[Timer] 500 Hz sampling armed
 ```
 
 ### Test the demo
@@ -252,38 +244,22 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 
 ## Roadmap
 
-### v0.1 -- *current, deployed*
-- [x] Firmware skeleton, all 10 HTTP endpoints
-- [x] 50 Hz hardware-timer sampling with 25-row ring-buffered CSV writes
-- [x] NVS-backed thresholds + FSR/IMU calibration
-- [x] Deep sleep + GPIO9 wake
-- [x] Frontend SPA (`solesense-v1`) with home / recording / report / settings screens
-- [x] Injury-flag analysis pipeline (7 flags) with research-based thresholds
-- [x] Pressure-distribution-by-zone display (% of total foot load)
-- [x] End-to-end verified on hardware
-- [ ] FSRs soldered with 10 kOhm pull-downs and reading real pressure
-- [ ] MPU-6050 soldered and reading real motion
-
-### v0.2 -- *current development*
-- [x] **All run state on the MCU. No browser-side storage.** Raw-CSV recording replaced with FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot -- not a JS wall-clock -- so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
-- [x] **Sample rate bumped to 500 Hz** (from 50 Hz). RAM usage is rate-independent because Goertzel is incremental. Captures impact rising edges with enough resolution for FSR-jerk extrapolation.
+### Shipped
+- [x] **All run state on the MCU. No browser-side storage.** FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot -- not a JS wall-clock -- so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
+- [x] **500 Hz sampling.** RAM usage is rate-independent because Goertzel is incremental. Captures impact rising edges with enough resolution for FSR-jerk extrapolation.
 - [x] **Time-domain step counter and ground-contact-time** (Schmitt trigger on the heel composite, 150 ms refractory).
 - [x] **FSR-jerk loading rate (BW/s)** -- peak heel d(ADC)/dt converted via FSR-saturation x body-weight assumptions.
 - [x] **3-zone x medial/lateral sensor layout** (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot.
-- [x] **Anatomical foot diagram** in `solesense-v2`: cut-out CAD render of the actual insole with live-data overlays on the six visible sensor pads.
+- [x] **Anatomical foot diagram** in the frontend: cut-out CAD render of the actual insole with live-data overlays on the six visible sensor pads.
+- [x] **NVS-backed user accounts with PIN auth + self-signup**, mDNS hostname, captive-portal-free flow.
+- [x] **AI Coach panel** via Cloudflare Worker (`software/backend/analyze-worker/`).
+
+### Open follow-ups
 - [ ] User-configurable body weight (currently hardcoded 70 kg) and per-FSR saturation calibration via `/api/settings`.
 - [ ] EMA-baseline tracking in the step detector for FSR baseline drift (sweat / temperature).
 - [ ] End-to-end hardware verification: 30 s real-run test on a fully-wired insole.
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO).
-- [x] Pick canonical frontend (`solesense-v2` is the active one; `solesense-v1` retained for the demo path).
 - [ ] Inline Google Fonts as base64 (any UI that uses them fails on the AP because no internet).
-
-### v1.0 -- *future*
-- [ ] CNN/LSTM model trained on collected CSV data (per Choi et al. 2024)
-- [ ] Real-time CoP trajectory visualization
-- [ ] Cadence audio feedback via BLE
-- [ ] Left/right insole pairing over ESP-NOW
-- [ ] Mobile app wrapper
 
 ---
 
@@ -298,7 +274,6 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 | James Kim | Mechanical |
 | Daniel Grivennikov | Mechanical |
 | Ethan Kim | Mechanical |
-| Andony Velasquez | Software Lead |
 | Dao Doan | Firmware / Software |
 | Jasmine Dhaliwal | Software |
 | Natalie Dai | Software |
@@ -310,7 +285,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 - [`SOLESENSE.md`](SOLESENSE.md) -- canonical project spec (hardware, firmware, frontend, data pipeline, injury flags, research basis)
 - [`firmware/README.md`](firmware/README.md) -- Arduino IDE vs PlatformIO firmware breakdown + flash instructions
 - [`software/README.md`](software/README.md) and [`software/frontend/README.md`](software/frontend/README.md) -- frontend layout, mock-server usage, UI swap procedure
-- [`docs/superpowers/specs/2026-05-04-solesense-firmware-design.md`](docs/superpowers/specs/2026-05-04-solesense-firmware-design.md) -- v0.1 firmware design doc
-- [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) -- v0.2 data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
-- [`docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md`](docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md) -- v0.1 implementation plan
+- [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) -- data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
+- [`docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](docs/superpowers/plans/2026-05-06-v0.2-firmware.md) -- firmware implementation plan
+- [`docs/superpowers/specs/2026-05-09-profile-system.md`](docs/superpowers/specs/2026-05-09-profile-system.md) -- profile / auth system spec
 - [`docs/pseudocode/`](docs/pseudocode/) -- system-level pseudocode (high-level flow + detailed injury analysis)

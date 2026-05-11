@@ -1,13 +1,7 @@
 #!/bin/bash
-# flash-littlefs.sh -- build and flash the v0.2 LittleFS data folder to the XIAO ESP32-C3.
+# flash-littlefs.sh -- build and flash the LittleFS data folder to the XIAO ESP32-C3.
 #
-# This is the v0.2 sibling of firmware/SoleSense/flash-littlefs.sh. Same XIAO,
-# same partition layout, same offset -- only the source data folder differs.
-# Use this one when you're flashing the v0.2 firmware (firmware/SoleSenseV2/).
-# Use the v0.1 script for the v0.1 firmware.
-#
-# Sync the v0.2 frontend into firmware/SoleSenseV2/data/ first if you've
-# changed it:
+# Sync the frontend into firmware/SoleSenseV2/data/ first if you've changed it:
 #   cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.html
 #
 # Then run:
@@ -65,7 +59,7 @@ BLOCK=4096
 IMG="/tmp/solesense-v2-littlefs-$$.bin"
 
 # -- Build the image -----------------------------------------------------------
-echo "==> Building LittleFS image (v0.2)"
+echo "==> Building LittleFS image"
 echo "    source:   $DATA_DIR"
 echo "    size:     $SIZE ($(printf '%d' $SIZE) bytes)"
 echo "    output:   $IMG"
@@ -73,7 +67,7 @@ echo "    output:   $IMG"
 
 # -- Flash it ------------------------------------------------------------------
 echo ""
-echo "==> Flashing to XIAO ESP32-C3 (v0.2 partition)"
+echo "==> Flashing to XIAO ESP32-C3"
 echo "    port:     $PORT"
 echo "    offset:   $OFFSET"
 echo "    tool:     $ESPTOOL"
@@ -81,7 +75,7 @@ echo ""
 echo "    If esptool can't enter download mode, hold the BOOT button on the"
 echo "    XIAO while it connects, then release."
 echo ""
-echo "    NOTE: the v0.2 storage module also creates /run_slot_*.bin files in"
+echo "    NOTE: the storage module also creates /run_slot_*.bin files in"
 echo "    the same partition. Re-flashing LittleFS wipes those -- any unread"
 echo "    run snapshot in flash will be lost. That's normal and expected."
 echo ""
@@ -94,6 +88,5 @@ echo "==> Done"
 echo "    Reset the XIAO (or unplug + replug USB)."
 echo "    On phone/laptop connected to SoleSense WiFi, hard-refresh http://192.168.4.1/"
 echo ""
-echo "    Verify v0.2 is running:"
+echo "    Verify the firmware is running:"
 echo "      curl --noproxy '*' -s http://192.168.4.1/api/device"
-echo "    The 'firmware' field should report something containing 'v0.2'."
