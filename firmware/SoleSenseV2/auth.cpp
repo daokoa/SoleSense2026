@@ -12,6 +12,29 @@ Session gSession;
 static Preferences sNvs;
 static constexpr const char* NS = "solesense_auth";
 
+// In-RAM sliding-window rate limiter for /api/auth/register. Stores
+// timestamps (millis) of the last REG_RATE_MAX_PER_WINDOW successful
+// registrations. If the oldest of those is within REG_RATE_WINDOW_MS, the
+// next request is rejected. Per-AP, not per-IP — sharing one AP means one
+// limiter is enough.
+static uint32_t sRegTimestamps[REG_RATE_MAX_PER_WINDOW] = {0};
+
+static bool reg_rate_check_and_record() {
+  const uint32_t now = millis();
+  // Find the slot with the oldest timestamp.
+  uint8_t oldest = 0;
+  for (uint8_t i = 1; i < REG_RATE_MAX_PER_WINDOW; i++) {
+    if (sRegTimestamps[i] < sRegTimestamps[oldest]) oldest = i;
+  }
+  // If the oldest slot is still inside the window AND populated, deny.
+  if (sRegTimestamps[oldest] != 0 &&
+      (now - sRegTimestamps[oldest]) < REG_RATE_WINDOW_MS) {
+    return false;
+  }
+  sRegTimestamps[oldest] = now;
+  return true;
+}
+
 // ── In-memory rate limiter ──────────────────────────────────────────────────
 // Per-username, slot-allocated. Plenty for a single-insole device.
 struct FailEntry {
@@ -120,6 +143,10 @@ bool auth_in_claim_mode() {
   return !auth_owner_exists();
 }
 
+uint16_t auth_user_count() {
+  return sNvs.getUShort("uc", 0);
+}
+
 int auth_register(const String& username, const String& pin, float body_kg) {
   // Granular validation so handle_auth_register can return a specific
   // human-readable error, instead of a generic "invalid input".
@@ -127,12 +154,24 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   if (!valid_pin(pin))           return -4;   // bad PIN
   if (body_kg < 25.0f || body_kg > 250.0f) return -5;   // bad body weight
 
-  // Capture claim-mode state BEFORE we mutate it, so we know whether this
-  // is the very first registration on the device.
+  // Anti-abuse caps. Both must pass BEFORE any state mutation.
+  if (auth_user_count() >= MAX_USERS) {
+    Serial.printf("[Auth] register denied: at user cap (%u)\n",
+                  (unsigned)MAX_USERS);
+    return -6;
+  }
+  if (!reg_rate_check_and_record()) {
+    Serial.println("[Auth] register denied: rate limit");
+    return -7;
+  }
+
+  // Capture claim-mode state BEFORE we mutate it.
   const bool wasClaimMode = auth_in_claim_mode();
 
   // Username taken? Check with isKey on the salt key (matches the type we wrote).
-  String saltKey = key_for(username.c_str(), 's');
+  const String saltKey = key_for(username.c_str(), 's');
+  const String hashKey = key_for(username.c_str(), 'h');
+  const String bodyKey = key_for(username.c_str(), 'w');
   if (sNvs.isKey(saltKey.c_str())) return -1;
 
   uint8_t salt[16];
@@ -140,21 +179,51 @@ int auth_register(const String& username, const String& pin, float body_kg) {
   uint8_t hash[32];
   sha256_concat((const uint8_t*)pin.c_str(), pin.length(), salt, sizeof(salt), hash);
 
-  size_t w1 = sNvs.putBytes(saltKey.c_str(),                        salt, sizeof(salt));
-  size_t w2 = sNvs.putBytes(key_for(username.c_str(), 'h').c_str(), hash, sizeof(hash));
-  size_t w3 = sNvs.putFloat(key_for(username.c_str(), 'w').c_str(), body_kg);
-  if (w1 != sizeof(salt) || w2 != sizeof(hash) || w3 == 0) {
-    Serial.printf("[Auth] register NVS write failed: w1=%u w2=%u w3=%u\n",
-                  (unsigned)w1, (unsigned)w2, (unsigned)w3);
+  // ── Atomic write with rollback on partial failure ──────────────────────
+  // NVS is per-key transactional but our profile = three keys. If any one
+  // fails (out of space, hardware glitch), the partial state would lock
+  // the username slot — isKey(saltKey) would return true but the hash
+  // would be missing, so login can never succeed. We roll back to a clean
+  // state on any failure so the user can retry with the same username.
+  size_t w1 = sNvs.putBytes(saltKey.c_str(), salt, sizeof(salt));
+  if (w1 != sizeof(salt)) {
+    Serial.printf("[Auth] register NVS w1=%u FAIL — aborting cleanly\n",
+                  (unsigned)w1);
+    sNvs.remove(saltKey.c_str());   // no-op if not present
+    return -2;
+  }
+  size_t w2 = sNvs.putBytes(hashKey.c_str(), hash, sizeof(hash));
+  if (w2 != sizeof(hash)) {
+    Serial.printf("[Auth] register NVS w2=%u FAIL — rolling back\n",
+                  (unsigned)w2);
+    sNvs.remove(saltKey.c_str());
+    sNvs.remove(hashKey.c_str());
+    return -2;
+  }
+  size_t w3 = sNvs.putFloat(bodyKey.c_str(), body_kg);
+  if (w3 == 0) {
+    Serial.printf("[Auth] register NVS w3=0 FAIL — rolling back\n");
+    sNvs.remove(saltKey.c_str());
+    sNvs.remove(hashKey.c_str());
+    sNvs.remove(bodyKey.c_str());
     return -2;
   }
 
+  // Bump user-count after all writes succeed. If this write fails, log it
+  // but proceed — the counter drift is recoverable on factory_reset and
+  // doesn't affect login/list functionality.
+  const uint16_t newCount = auth_user_count() + 1;
+  if (sNvs.putUShort("uc", newCount) == 0) {
+    Serial.println("[Auth] user count write failed (non-fatal)");
+  }
   if (wasClaimMode) {
     sNvs.putString("owner_user", username);
   }
-  // Self-signup: always auto-login the freshly-created user. The owner is
-  // just whoever claimed first; subsequent users sign themselves up and
-  // sign themselves in atomically.
+  Serial.printf("[Auth] register OK user='%s' count=%u/%u%s\n",
+                username.c_str(), (unsigned)newCount, (unsigned)MAX_USERS,
+                wasClaimMode ? " (claim)" : "");
+
+  // Self-signup: always auto-login the freshly-created user.
   return auth_login(username, pin);
 }
 

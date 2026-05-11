@@ -25,6 +25,16 @@ extern Session gSession;
 // Whether the device has an owner (first user) yet.
 bool auth_owner_exists();
 
+// Total number of registered users on this device. Bounded by MAX_USERS;
+// once that ceiling is hit, further registrations return -6 (full).
+uint16_t auth_user_count();
+
+// Hard caps surface to callers (route handlers, README, frontend) so they
+// can display accurate "X of Y accounts used" or reject early.
+static constexpr uint16_t MAX_USERS               = 20;     // total accounts
+static constexpr uint32_t REG_RATE_WINDOW_MS      = 60000;  // 60-second window
+static constexpr uint8_t  REG_RATE_MAX_PER_WINDOW = 3;      // ≤3 signups / window
+
 // Initialise NVS namespace, load any persisted state. Call from setup().
 void auth_init();
 

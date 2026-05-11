@@ -160,11 +160,15 @@ What's protected, what's not, and how the firmware survives the obvious failure 
 
 Spec: [`../../docs/superpowers/specs/2026-05-09-profile-system.md`](../../docs/superpowers/specs/2026-05-09-profile-system.md).
 
-- Storage: NVS namespace `solesense_auth`, per-user keys under `u/<username>/`.
+- Storage: NVS namespace `solesense_auth`, per-user keys `s_<user>` (16-byte salt), `h_<user>` (32-byte SHA-256 hash), `w_<user>` (float body_kg). Plus globals `owner_user` (string) and `uc` (uint16 user count).
 - Hashing: SHA-256(pin || 16-byte random salt) via mbedtls.
 - One active session at a time, RAM-only, 30-minute idle timeout.
-- "Owner claim" model: first registration is unrestricted, subsequent registrations require an existing-owner token.
-- Rate limiter: 3 failed PINs in 60 s → 30 s lockout for that username.
+- **Self-signup** — any client on the SoleSense AP can create an account. The first registration becomes the "owner" (a label, not a role); subsequent accounts are equal peers.
+- **Atomic registration** — writes salt → hash → body_kg in sequence, rolling back partial state on any NVS failure. A username slot is never left half-written.
+- **Anti-abuse caps**:
+  - **`MAX_USERS = 20`** total accounts. Further registrations return HTTP `507 Insufficient Storage` with message *"This device is full (account limit reached)."*
+  - **Registration rate limit** = `REG_RATE_MAX_PER_WINDOW (3) / REG_RATE_WINDOW_MS (60 s)` global sliding window. 4th signup within 60 s returns HTTP `429`.
+- Login PIN rate limiter: 3 failed PINs in 60 s → 30 s lockout for that username.
 
 Endpoints:
 

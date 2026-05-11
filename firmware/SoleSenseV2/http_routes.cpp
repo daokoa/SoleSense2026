@@ -450,13 +450,16 @@ static void handle_storage_state(AsyncWebServerRequest* req) {
 
 // ── /api/auth/* ──────────────────────────────────────────────────────────────
 // Public state endpoint: tells the frontend whether to show login or
-// claim-mode (first-user registration).
+// claim-mode (first-user registration), and current account usage so the
+// signup form can warn if the device is full.
 static void handle_auth_state(AsyncWebServerRequest* req) {
   String j = "{";
   j += "\"ownerExists\":";    j += (auth_owner_exists() ? "true" : "false");
   j += ",\"sessionActive\":"; j += (gSession.active     ? "true" : "false");
   j += ",\"username\":\"";    j += (gSession.active ? gSession.username : "");
-  j += "\"}";
+  j += "\",\"userCount\":";   j += auth_user_count();
+  j += ",\"maxUsers\":";      j += MAX_USERS;
+  j += "}";
   req->send(200, "application/json", j);
 }
 
@@ -485,9 +488,14 @@ static void handle_auth_register(AsyncWebServerRequest* req) {
     (rc == -3) ? "Username must be 4–13 letters, digits, or underscore." :
     (rc == -4) ? "PIN must be 4–16 digits." :
     (rc == -5) ? "Body weight must be 25–250 kg." :
+    (rc == -6) ? "This device is full (account limit reached). "
+                 "Ask the owner to factory-reset to free up space." :
+    (rc == -7) ? "Too many signups too fast. Wait a minute and try again." :
                  "Invalid input.";
+  // 429 for rate-limit, 507 for capacity, 400 for everything else.
+  int status = (rc == -6) ? 507 : (rc == -7) ? 429 : 400;
   String j = "{\"ok\":false,\"error\":\""; j += err; j += "\"}";
-  req->send(400, "application/json", j);
+  req->send(status, "application/json", j);
 }
 
 // Login. URL-encoded body: username, pin.
