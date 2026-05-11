@@ -1199,14 +1199,29 @@ function showScreen(id){
   if(id === 'settings') refreshSettings();
 }
 
-/* On first paint, decide which screen to show. */
-window.addEventListener('DOMContentLoaded', () => {
-  if (authToken()) {
-    showScreen('home');
-  } else {
-    showScreen('auth');
-    refreshAuthScreen();
-  }
+/* On first paint, always land on the auth screen so the user sees the
+   login/signup prompt instantly. A cached localStorage token is not
+   trustworthy on its own -- the firmware's session table is RAM-only and
+   gets wiped on reboot or reflash, so a token that looks valid client-side
+   can be stale. If a token is present, verify it against the device in the
+   background and skip ahead to Home only when the device confirms it. */
+window.addEventListener('DOMContentLoaded', async () => {
+  showScreen('auth');
+  refreshAuthScreen();
+
+  const tok = authToken();
+  if (!tok) return;
+  try {
+    const r = await fetch('/api/auth/profile', {
+      headers: { 'Authorization': 'Bearer ' + tok }
+    });
+    if (r.ok) {
+      showScreen('home');
+      return;
+    }
+  } catch (e) { /* network error -- stay on auth */ }
+  // Token rejected (401) or unreachable: wipe so we don't try again next refresh.
+  localStorage.removeItem(AUTH_TOKEN_KEY);
 });
 
 /* -- RECORDING (v0.2: timer + paused state come from /api/run-state;
