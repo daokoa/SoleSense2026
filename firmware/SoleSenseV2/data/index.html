@@ -77,19 +77,6 @@ body{
 }
 .home-nav-link:hover{background:var(--blue-bg);color:var(--blue)}
 
-.open-in-browser{
-  font-size:12px; font-weight:600; color:var(--blue);
-  text-decoration:none; padding:6px 10px;
-  border:1px solid var(--blue-lt); border-radius:8px;
-  background:var(--blue-bg); transition:background .15s;
-}
-.open-in-browser:hover, .open-in-browser:active{
-  background:var(--blue); color:white; border-color:var(--blue);
-}
-/* Hide when the app is launched as an installed PWA — the user is
-   already in their browser/PWA shell, no sandbox to break out of. */
-@media (display-mode: standalone){ .open-in-browser{ display:none; } }
-
 .home-hero{
   display:flex;
   flex-direction:column;
@@ -730,16 +717,6 @@ body{
 
   <nav class="home-nav">
     <div class="home-wordmark">Sole<span>Sense</span></div>
-    <!-- Captive-portal escape hatch. iOS shows the SoleSense UI inside its
-         Captive Network Assistant sandbox when you first join the WiFi.
-         This link uses target="_blank" to try to break out into real
-         Safari — modern iOS treats it as "open externally". If you're
-         already in Safari it just opens a new tab. Hidden in standalone
-         PWA mode where the sandbox doesn't apply. -->
-    <a class="open-in-browser" id="open-in-browser"
-       href="http://192.168.4.1/" target="_blank" rel="noopener">
-      Open in browser ↗
-    </a>
   </nav>
 
   <div class="home-hero">

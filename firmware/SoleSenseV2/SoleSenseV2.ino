@@ -13,7 +13,6 @@
 #include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
-#include <DNSServer.h>
 #include <esp_sleep.h>
 
 #include "config.h"
@@ -25,11 +24,6 @@
 #include "storage.h"
 #include "http_routes.h"
 #include "auth.h"
-
-// DNS server for captive-portal redirect — every DNS query that hits the AP
-// is answered with the device's IP, so any URL the user types lands on the
-// SoleSense web UI (and iOS/Android pop the captive-portal auto-launch).
-static DNSServer gDns;
 
 AsyncWebServer server(HTTP_PORT);
 
@@ -189,21 +183,15 @@ void setup() {
   Serial.printf("[WiFi] AP '%s' up at %s\n", SS_AP_SSID, ip.toString().c_str());
 
   // mDNS: lets users on iOS/macOS visit http://solesense.local/ instead
-  // of typing the IP. Android Chrome historically doesn't support .local —
-  // they fall back to the captive portal pop-up below.
+  // of typing the IP. Doesn't trigger any captive-portal auto-popup —
+  // it's a passive hostname resolver. Android Chrome historically doesn't
+  // support .local; those users type 192.168.4.1 directly.
   if (MDNS.begin("solesense")) {
     MDNS.addService("http", "tcp", 80);
     Serial.println("[mDNS] solesense.local resolving");
   } else {
     Serial.println("[mDNS] init FAILED (continuing without)");
   }
-
-  // DNS captive portal: answer every query with our own IP. This makes
-  // the AP look like a captive-portal hotspot, so iOS/Android automatically
-  // open the SoleSense UI in a popup the moment you join the WiFi —
-  // no URL typing required at all.
-  gDns.start(53, "*", ip);
-  Serial.println("[DNS] captive portal active (any URL → device)");
 
   http_register_routes(server);
   server.begin();
@@ -216,7 +204,6 @@ void setup() {
 // ── loop() ───────────────────────────────────────────────────────────────────
 void loop() {
   state_tick();
-  gDns.processNextRequest();    // serve the captive-portal DNS responses
   auth_serial_console_tick();   // listen for "factory_reset" from USB serial
 
   if (gSleepRequested) {
