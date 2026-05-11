@@ -1,12 +1,6 @@
-// =============================================================================
-// SoleSense v0.2 -- auth.h
-// On-device user/profile/auth system. Spec:
-//   docs/superpowers/specs/2026-05-09-profile-system.md
-//
-// One-session, single-slot model. Sessions are RAM-only (no persistence
-// across reboot -- re-login required). User profiles (PIN hash + body weight)
-// live in NVS under namespace "solesense_auth".
-// =============================================================================
+// On-device auth: one RAM-only session at a time; user profiles persisted
+// in NVS namespace "solesense_auth". Full spec:
+// docs/superpowers/specs/2026-05-09-profile-system.md
 #pragma once
 
 #include <Arduino.h>

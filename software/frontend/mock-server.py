@@ -3,11 +3,8 @@
 SoleSense mock server -- simulates the firmware backend so you can see
 the frontend live in a browser without flashing the XIAO.
 
-Run from the repo root or from this folder. Default serves the canonical
-v2 SPA; pass `solesense-v1` as the first argument to serve the older
-v0.1-compatible UI instead:
-    python3 software/frontend/mock-server.py                  # solesense-v2/
-    python3 software/frontend/mock-server.py solesense-v1     # solesense-v1/
+Run from the repo root or from this folder:
+    python3 software/frontend/mock-server.py
 
 Then open http://localhost:8080/ in any browser.
 
@@ -44,13 +41,10 @@ from urllib.parse import urlparse
 PORT = 8080
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Pick which UI to serve: default is the canonical v2, pass "solesense-v1"
-# as the first CLI arg to serve the older v0.1-compatible UI instead.
-UI = sys.argv[1] if len(sys.argv) > 1 else "solesense-v2"
+UI = "solesense-v2"
 SERVE_DIR = os.path.join(THIS_DIR, UI)
 if not os.path.isdir(SERVE_DIR):
     print(f"error: no UI folder at {SERVE_DIR}", file=sys.stderr)
-    print("expected one of: solesense-v1, solesense-v2", file=sys.stderr)
     sys.exit(1)
 
 # Server "state" (mock -- not persisted, not enforced)

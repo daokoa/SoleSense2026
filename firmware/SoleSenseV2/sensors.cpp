@@ -13,17 +13,10 @@ float   gGyro[3]         = {0,0,0};
 int     gFsrZero[N_FSR]  = {0,0,0,0,0,0};
 float   gImuOffset[6]    = {0,0,0,0,0,0};
 
-// Matrix-scan crosstalk fix: drive the INACTIVE set's power pin LOW (not
-// floating). Pressing an FSR raises voltage at its ADC pin; with the other
-// set's power pin floating, that voltage leaks back through any FSR in the
-// inactive set, raising the floating power pin's voltage and propagating
-// onto the other two ADC pins (classic "ghosting"). Driving the inactive
-// pin LOW shorts that ghost path to ground so each set is read cleanly.
-//
-// Settling time bumped to 150 us because the LOW-driving means a real
-// transition to settle each scan, where the previous floating-pin scheme
-// settled almost instantly. Total per-sample budget at 500 Hz is 2 ms;
-// 6 reads x ~170 us = ~1 ms, comfortably within budget.
+// Drive the inactive set's power pin LOW (not floating) so any ghost
+// current path from a pressed FSR shorts to GND instead of propagating
+// across to the other ADC pins. 150 us settling per set fits the
+// 2 ms per-sample budget at 500 Hz with margin.
 static void read_set_a() {
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET2, LOW);

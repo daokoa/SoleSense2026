@@ -9,12 +9,12 @@
 
 | Track | State |
 |---|---|
-| **Firmware v0.1** (demo) | [x] Flashed and running. Records 50 Hz CSV to LittleFS, browser-side JS analysis. This is what's on the device for live demos. |
-| **Firmware v0.2** (active development) | [x] Modular rewrite, **500 Hz sampling**, all metrics on-MCU: any-zone OR-gate step counter + GCT (with IMU sensor-fusion when wired), FSR-jerk loading rate (BW/s) using per-user body weight, 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect, NVS-backed user accounts with PIN auth. Open follow-ups: per-FSR saturation calibration, hardware verification under real running. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
-| **Frontend `solesense-v1`** (v0.1-compat) | [x] White/blue UI with foot-diagram recording screen, JS-side analysis pipeline. |
-| **Frontend `solesense-v2`** (canonical v0.2 SPA) | [x] Anatomical foot SVG, 3-zone x medial/lateral live readout, NVS-backed auth + self-signup, AI Coach via the Cloudflare Worker. All headline metrics display real numbers. |
+| **Firmware** ([`firmware/SoleSenseV2/`](firmware/SoleSenseV2/)) | [x] **500 Hz sampling**, all metrics on-MCU: any-zone OR-gate step counter + GCT (with IMU sensor-fusion when wired), FSR-jerk loading rate using per-user body weight, 1024-sample Goertzel FFT, multi-slot crash-recoverable storage, pause-on-disconnect, NVS-backed user accounts with PIN auth, mDNS hostname. Open follow-ups: per-FSR saturation calibration, hardware verification under real running. See [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) for the full status table. |
+| **Frontend** ([`software/frontend/solesense-v2/`](software/frontend/solesense-v2/)) | [x] Anatomical foot SVG, 3-zone x medial/lateral live readout, NVS-backed auth + self-signup, AI Coach via the Cloudflare Worker. All headline metrics display real numbers. |
 | **Sensors** | 6 FSRs in 3-zone x medial/lateral layout (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot. Hardware bring-up + per-channel verification ongoing. IMU optional (not required for any of the headline metrics). |
 | **Mechanical (TPU shell, PCB)** | In progress separately by the mechanical/electrical team. |
+
+> **Why v0.2?** v0.1 was a single-file `.ino` that streamed 50 Hz CSV to LittleFS and did the analysis client-side. WiFi blips lost runs; the device couldn't show live metrics; 50 Hz wasn't enough for impact-rate extrapolation. v0.2 keeps everything on-MCU (FFT magnitudes + outliers + Welford stats in a CRC ring buffer) and the browser is purely a renderer. The v0.1 code has been removed; the rationale and the architectural design doc are kept under [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
 See **[Roadmap](#roadmap)** for the path to v1.0.
 
@@ -26,12 +26,10 @@ A self-contained biomechanical analysis insole that records pressure and motion 
 
 **Core loop:**
 1. Power on -> ESP32-C3 boots, starts WiFi AP `SoleSense`
-2. User connects phone to AP -> opens `http://192.168.4.1`
-3. Taps **Start Run** -> firmware samples sensors (50 Hz on v0.1, 500 Hz on v0.2)
-4. Taps **Stop** -> report is computed
-   - **v0.1:** firmware writes raw CSV to LittleFS; frontend fetches and runs the JS analysis pipeline.
-   - **v0.2:** firmware computes everything on-MCU (FFT + outlier buffer + Welford stats + time-domain step detector); frontend just polls `/api/run-report` and renders.
-5. Report screen shows cadence, ground contact time, pronation, medial/lateral balance, pressure distribution by zone, loading rate (BW/s), and up to 7 injury risk flags
+2. User connects phone to AP -> opens `http://solesense.local/` (or `http://192.168.4.1`)
+3. Logs in / claims the device on first use -> Taps **Start Run** -> firmware samples sensors at 500 Hz
+4. Taps **Stop** -> firmware finalises FFT magnitudes + Welford stats + step detector, frontend polls `/api/run-report` and renders
+5. Report screen shows cadence, ground contact time, pronation, medial/lateral balance, pressure distribution by zone, impact rate (Healthy / Elevated / High), and up to 7 injury risk flags, optionally followed by a personalised AI Coach analysis
 
 ---
 
@@ -110,51 +108,31 @@ Pin defines live at the top of [`firmware/SoleSense/SoleSense.ino`](firmware/Sol
 
 ## API
 
-All endpoints served at `http://192.168.4.1` once connected to the `SoleSense` WiFi AP.
-
-### Endpoints in both v0.1 and v0.2
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/` | Serves the frontend SPA from LittleFS |
-| `GET` | `/api/device` | Device info: firmware/version, board, sample rate (50 on v0.1, 500 on v0.2), free heap, state, fs bytes, hasData, thresholds |
-| `GET` | `/api/sensor` | Live FSR + IMU snapshot |
-| `POST` | `/api/start` | Begin recording |
-| `POST` | `/api/stop` | End recording, flush state |
-| `POST` | `/api/data/clear` | Delete recorded run data |
-| `POST` | `/api/calibrate/zero` | Zero the 6 FSRs (insole unloaded), persist to NVS |
-| `POST` | `/api/calibrate/imu` | Zero accel + gyro offsets (insole flat), persist to NVS |
-| `POST` | `/api/settings` | Update injury-flag thresholds (validated, persisted; not currently exposed in UI) |
-| `POST` | `/api/sleep` | Enter deep sleep; wake on GPIO9 LOW |
-
-### v0.1-only
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/data.csv` | Stream the recorded 50 Hz CSV (409 while recording). Frontend parses + analyses in JS. |
-
-CSV schema (13 columns, 50 Hz):
-```
-timestamp_ms, fsr1..fsr6, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
-```
-
-### v0.2-only
+All endpoints served at `http://solesense.local/` (or `http://192.168.4.1`) once connected to the `SoleSense` WiFi AP.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
+| `GET` | `/` | public | Serves the frontend SPA from LittleFS |
+| `GET` | `/api/device` | public | Device info: firmware/version, board, sample rate, free heap, state, fs bytes |
+| `GET` | `/api/sensor` | public | Live FSR + IMU snapshot; returns both raw `fsr[]` and EMA-smoothed `fsrEma[]` |
 | `GET` | `/api/run-state` | public | Live run state: elapsed_ms (sourced from latest valid flash slot), sample count, paused flag, current state |
-| `GET` | `/api/run-report` | public | Computed metrics: steps, cadence, contactMs, loadingRate (BW/s), pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, imuConnected, imuImpacts, maxTotalPressure, flags |
+| `GET` | `/api/run-report` | public | Computed metrics: steps, cadence, contactMs, loadingRate, pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, imuConnected, imuImpacts, maxTotalPressure, flags |
 | `GET` | `/api/run-spectrum` | public | FFT magnitude spectrum (12 channels x 18 bins, Goertzel) |
 | `GET` | `/api/run-outliers` | public | Top-N outliers by sigma (channel, ts_ms, value, delta, sigma) |
 | `GET` | `/api/storage-selftest` | public | On-bench validation of multi-slot ring buffer |
-| `GET` | `/api/fft-selftest` | public | Feeds a 1.95 Hz sine into channel 0 and prints per-bin magnitudes to Serial |
-| `GET` | `/api/auth/state` | public | `{ ownerExists, sessionActive, username }` -- tells the frontend which screen to show |
-| `POST` | `/api/auth/register` | claim-mode public; afterwards owner-only | Create account; URL-encoded `username, pin, body_kg` |
-| `POST` | `/api/auth/login` | public | URL-encoded `username, pin` -> `{ token, body_kg }` |
+| `GET` | `/api/fft-selftest` | public | Feeds a 1.95 Hz sine into channel 0; expect ~100 magnitude on the on-bin frequency |
+| `GET` | `/api/auth/state` | public | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
+| `POST` | `/api/auth/register` | public (capped) | Create account. URL-encoded `username, pin, body_kg`. Capped at `MAX_USERS = 20` and a 3-per-60-s rate limit. |
+| `POST` | `/api/auth/login` | public (rate-limited) | URL-encoded `username, pin` -> `{ token, body_kg, username }` |
 | `POST` | `/api/auth/logout` | session | Clear active session |
 | `GET` | `/api/auth/profile` | session | Current user info |
+| `POST` | `/api/start` | session | Begin recording |
+| `POST` | `/api/stop` | session | End recording, flush state |
+| `POST` | `/api/calibrate/zero` | session | Zero the 6 FSRs (insole unloaded), persist to NVS |
+| `POST` | `/api/calibrate/imu` | session | Zero accel + gyro offsets (insole flat), persist to NVS |
+| `POST` | `/api/sleep` | session | Enter deep sleep; wake on GPIO9 LOW |
 
-**Protected endpoints (require `Authorization: Bearer <token>`):** all `POST /api/start`, `POST /api/stop`, `POST /api/sleep`, `POST /api/calibrate/*`, `POST /api/data/clear`. Detail in [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md).
+Protected endpoints require `Authorization: Bearer <token>`. Full handler-by-handler detail is in [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md).
 
 ---
 
@@ -164,27 +142,29 @@ timestamp_ms, fsr1..fsr6, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 solesense/
 |-- README.md                         <- you are here
 |-- SOLESENSE.md                      <- canonical project spec
+|-- LICENSE                           <- MIT
 |-- .gitignore
 |
-|-- firmware/                         <- BOTH firmware paths grouped, see firmware/README.md
+|-- firmware/                         <- see firmware/README.md
 |   |-- README.md
-|   |-- SoleSense/                    <- (Arduino IDE) WORKING firmware
-|   |   |-- SoleSense.ino             <- v0.1 firmware, ~520 lines, flashed and verified
-|   |   |-- flash-littlefs.sh         <- terminal-based LittleFS flash script
-|   |   `-- data/
-|   |       `-- index.html            <- LittleFS deployment copy of software/frontend/<ui>/index.html
-|   `-- platformio/                   <- (PlatformIO) parallel stub firmware
+|   |-- SoleSenseV2/                  <- (Arduino IDE) canonical firmware
+|   |   |-- SoleSenseV2.ino
+|   |   |-- config.h / state.* / sensors.* / fft.* / outliers.* / stats.* / storage.* / auth.* / http_routes.*
+|   |   |-- flash-littlefs.sh
+|   |   `-- data/index.html           <- LittleFS deployment copy of solesense-v2/index.html
+|   `-- platformio/                   <- (PlatformIO) parallel stub firmware, not currently used
 |       |-- platformio.ini
-|       |-- src/main.cpp
-|       |-- include/, lib/, test/
+|       `-- src/main.cpp
 |
 |-- software/                         <- all browser/host-side code, see software/README.md
 |   |-- README.md
-|   `-- frontend/                     <- two parallel UIs, see frontend/README.md
-|       |-- README.md
-|       |-- mock-server.py            <- Python http.server simulating the firmware
-|       |-- solesense-v1/index.html   <- v0.1-compatible UI (currently flashed)
-|       `-- solesense-v2/index.html   <- canonical v0.2 SPA (auth + AI Coach)
+|   |-- frontend/
+|   |   |-- README.md
+|   |   |-- mock-server.py            <- Python http.server simulating the firmware
+|   |   `-- solesense-v2/index.html   <- canonical SPA (auth + AI Coach)
+|   |-- backend/
+|   |   `-- analyze-worker/           <- Cloudflare Worker proxy holding the OpenAI key
+|   `-- scripts/                      <- host-side Python utilities for FSR bring-up
 |
 |-- hardware/
 |   |-- cad/FSR Cutout.SLDPRT         <- SolidWorks CAD
@@ -193,24 +173,12 @@ solesense/
 |
 |-- docs/
 |   |-- pseudocode/                   <- system-level pseudocode (system-flow + injury-analysis)
-|   |   |-- README.md
-|   |   |-- system-flow.md
-|   |   `-- injury-analysis.md
 |   `-- superpowers/
-|       |-- specs/                    <- v0.1 firmware design doc
-|       `-- plans/                    <- v0.1 implementation plan
+|       |-- specs/                    <- v0.1 + v0.2 design docs, profile-system spec
+|       `-- plans/                    <- v0.1 + v0.2 implementation plans
 |
 `-- assets/                           <- images, diagrams (reserved, empty)
 ```
-
-### Note on the two firmwares
-
-Both live under [`firmware/`](firmware/) -- see [`firmware/README.md`](firmware/README.md) for the breakdown:
-
-- **`firmware/SoleSense/SoleSense.ino`** (Arduino IDE) -- the working v0.1 firmware. ~520 lines. All 10 endpoints, 50 Hz hardware-timer sampling, NVS-backed thresholds + sensor calibration, deep sleep. **This is what's flashed on the XIAO right now.**
-- **`firmware/platformio/src/main.cpp`** (PlatformIO) -- early scaffold returning dummy random data, with a different SSID (`XIAO-ESP32`) and password (`12345678`), plus ArduinoOTA. Not currently used.
-
-Pick one before v0.2.
 
 ---
 

@@ -1,12 +1,5 @@
-// =============================================================================
-// SoleSense v0.2 -- main sketch
-//
-// This is the v0.2 firmware. v0.1 still lives at firmware/SoleSense/ and is
-// what's flashed for the Spring 2026 demo.
-//
-// Architecture (full design): docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md
-// Implementation plan:        docs/superpowers/plans/2026-05-06-v0.2-firmware.md
-// =============================================================================
+// SoleSense v0.2 main sketch.
+// Architecture: docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -60,12 +53,8 @@ static void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-// -- Per-sample processing ----------------------------------------------------
-// Jerk-tracking state. We use vertical jerk (d(accel_z)/dt) as the impact-rate
-// indicator because the FSR 402 saturates at ~10 kg -- far below running peak
-// ground-reaction force (100-200 kg). The IMU gives clean vertical
-// acceleration regardless of how saturated the FSRs are, and its derivative
-// is the standard biomechanics loading-rate signal.
+// Per-sample processing. Vertical IMU jerk is tracked as a fusion signal
+// alongside the FSR-based step detector.
 static float sPrevAccelZ  = 0.0f;
 static bool  sJerkHasPrev = false;
 

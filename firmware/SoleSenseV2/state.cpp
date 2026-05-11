@@ -41,29 +41,10 @@ static uint32_t sStepContactStartMs     = 0;
 static uint32_t sStepLastImpactMs       = 0;
 static float    sStepPeak               = 0.0f;   // peak heel ADC seen during current contact
 
-// -- 2-state Kalman filter on the heel composite -----------------------------
-// State x = [pressure, velocity]^T. Constant-velocity transition model:
-//   x[k+1] = F x[k] + w,   F = [[1, dt],[0, 1]],   w ~ N(0, Q)
-// Measurement:
-//   z = H x + v,   H = [1, 0],   v ~ N(0, R)
-//
-// Q is built from a white-noise-acceleration model
-//   Q = sigma_a^2 x [[dt/4, dt^3/2],[dt^3/2, dt^2]]
-// with sigma_a ~= 1x10 ADC counts/s^2 -- large enough to track running-impact
-// transients (5-20 ms rise to ~3000 ADC => velocity in the 1x10-5x10
-// counts/s band; acceleration in 1x10-1x10 counts/s^2) without locking
-// onto smoothing too aggressively. R = 25 ~= 5 LSB ADC noise variance.
-//
-// Why a Kalman filter instead of the previous Schmitt trigger?
-//   - Velocity is a direct signal. A real strike rises monotonically for
-//     ~10 ms; FSR ringing oscillates around zero in velocity. Gating on
-//     v > +MIN_RISE_VEL filters out ring without needing peak-relative
-//     arithmetic or refractory-windowed re-strikes.
-//   - Toe-off is symmetric: v < -MIN_FALL_VEL = the foot is leaving the
-//     ground, regardless of where the absolute baseline currently sits.
-//     Robust to FSR baseline drift from sweat / temperature / re-zero.
-//   - The filtered pressure x0 is naturally smoothed, so single-sample
-//     ADC noise spikes can't trigger spurious strikes.
+// 2-state constant-velocity Kalman filter on the heel composite.
+// x = [pressure, velocity]^T, F = [[1, dt],[0, 1]], H = [1, 0].
+// Q derived from a white-noise-acceleration model (sigma_a ~ 1e5 ADC/s^2);
+// R = 25 approximates 5 LSB ADC noise variance.
 struct KalmanCV {
   float x0, x1;                 // state: pressure, velocity (ADC counts, counts/s)
   float P00, P01, P10, P11;     // 2x2 covariance
@@ -201,37 +182,20 @@ const char* state_name() {
   return gState == RS_IDLE ? "idle" : "recording";
 }
 
-// -- Time-domain step detector (Kalman-driven) -------------------------------
-// Pipes the raw heel composite through the 2-state Kalman filter above and
-// detects strikes / toe-offs from the filter's smoothed pressure + velocity
-// estimates instead of the raw ADC samples.
-//
-// Why Kalman over the previous Schmitt-trigger + peak-relative fall:
-//   - Velocity is the natural signal for "rising vs. falling" -- a real
-//     strike has v > 0 for the entire leading edge, while FSR ringing has
-//     v oscillate around zero. Gating on v > MIN_RISE_VEL filters the ring
-//     mathematically instead of via refractory band-aids.
-//   - Toe-off becomes v < MIN_FALL_VEL -- robust to absolute-baseline drift
-//     (sweat, temperature, calibration) because we look at the rate of fall,
-//     not the post-fall level.
-//   - Filtered pressure x0 is smoothed, so single-sample ADC noise can't
-//     trigger spurious strikes.
-//
-// Each strike still gets validated by the original safety gates:
-//   - 250 ms refractory window between strikes
-//   - Optional IMU vertical-impact gate (active only when MPU-6050 wired)
-//   - Step credit (gStepCount++) only on valid contact duration [50, 800] ms
+// Time-domain step detector.
+//   STRIKE  = filtered pressure > RISE_THRESHOLD and velocity > RISE_VEL,
+//             plus refractory + IMU validation
+//   TOE_OFF = filtered velocity < FALL_VEL or contact > MAX_CONTACT_MS
+//   Step counted only if contact duration falls in [MIN, MAX].
 void step_detector_update(float heelValue, float heelMean, float heelStddev,
                           uint32_t nowMs) {
   (void)heelMean;
   (void)heelStddev;
   if (gState != RS_RECORDING) return;
 
-  // Run the raw heel composite through the Kalman filter and use its
-  // smoothed pressure + velocity for detection instead of the raw signal.
   sHeelKalman.update(heelValue);
   const float p = sHeelKalman.x0;   // filtered pressure (ADC counts)
-  const float v = sHeelKalman.x1;   // filtered velocity (ADC counts / second)
+  const float v = sHeelKalman.x1;   // filtered velocity (ADC counts / sec)
 
   constexpr float    STEP_RISE_THRESHOLD =  400.0f;   // filtered pressure floor
   constexpr float    STEP_RISE_VEL       =  8000.0f;  // rising at >= this rate

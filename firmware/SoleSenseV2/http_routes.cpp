@@ -1,14 +1,5 @@
-// =============================================================================
-// SoleSense v0.2 -- http_routes.cpp
-//
-// Simple state-changing routes (start, stop, calibrate, sleep, device, sensor)
-// are fully working. The new v0.2 endpoints (run-state, run-spectrum,
-// run-outliers, run-report) return shape-correct JSON populated from the FFT
-// and outlier modules. /api/run-report is the heaviest -- it computes the
-// final injury-flag analysis from the FFT bins and outliers.
-//
-// **STATUS: simple routes done; analysis logic in /api/run-report is a stub.**
-// =============================================================================
+// SoleSense v0.2 -- HTTP routes. Static UI + JSON API over the device AP.
+// Route registration is in http_register_routes() at the bottom.
 
 #include "http_routes.h"
 #include "config.h"

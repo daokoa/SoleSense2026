@@ -1,14 +1,23 @@
 # SoleSense Firmware
 
-Three parallel firmware paths in this repo. All target the **Seeed XIAO ESP32-C3**, the same pinout, the same hardware.
+Two firmware paths in this repo. Both target the **Seeed XIAO ESP32-C3**, the same pinout, the same hardware.
 
-| Folder | Build system | Status | Use this when |
-|---|---|---|---|
-| [`SoleSense/`](SoleSense/) | Arduino IDE | **v0.1 -- DEMO-READY.** ~520 lines, single `.ino`, raw 50 Hz CSV -> LittleFS, browser-side JS analysis. Fully verified on hardware. | You need a working device for the live demo. |
-| [`SoleSenseV2/`](SoleSenseV2/) | Arduino IDE | **v0.2 -- feature-complete on metrics.** Modular rewrite. **500 Hz sampling**, on-MCU step detector + GCT + FSR-jerk loading rate, incremental Goertzel FFT (1024-sample window), top-N outlier buffer, multi-slot crash-recoverable flash storage, pause-on-disconnect, no browser-side state. Sensor layout is 3-zone x medial/lateral (Choi 2024 +E-at-heel). | You're working on the post-demo architecture or running with the new layout. |
-| [`platformio/`](platformio/) | PlatformIO | **Stub.** ~76-line `src/main.cpp` returning dummy random sensor data, alt SSID (`XIAO-ESP32` / pw `12345678`), ArduinoOTA. Not currently used. | You want to migrate the build to PlatformIO + VS Code. Port one of the other paths in. |
+| Folder | Build system | Notes |
+|---|---|---|
+| [`SoleSenseV2/`](SoleSenseV2/) | Arduino IDE | **Canonical firmware.** 500 Hz sampling, modular `.h/.cpp` layout, on-MCU step detector + GCT + FSR-jerk loading rate, incremental Goertzel FFT (1024-sample window), top-N outlier buffer, multi-slot crash-recoverable flash storage, pause-on-disconnect, NVS-backed user accounts, captive-portal-free mDNS hostname. Sensor layout is 3-zone x medial/lateral (Choi 2024 +E-at-heel). |
+| [`platformio/`](platformio/) | PlatformIO | **Stub.** ~76-line `src/main.cpp` returning dummy random sensor data, alt SSID (`XIAO-ESP32` / pw `12345678`), ArduinoOTA. Not currently used. Keep around for the day we migrate the build off Arduino IDE. |
 
-## Sensor layout (v0.2)
+## Why v0.2 replaced v0.1
+
+The first iteration (a single-file `SoleSense/SoleSense.ino`) streamed raw 50 Hz CSV samples to LittleFS and did the analysis in JavaScript in the browser after `/api/stop`. It worked but had three structural problems that we couldn't fix without a rewrite:
+
+1. **Browser-side state was fragile.** A WiFi blip or page reload mid-run lost the in-progress recording.
+2. **No on-device analysis.** Cadence / GCT / loading-rate calculations only ran when the phone fetched the CSV, so the device couldn't show anything live and couldn't keep running if the phone disconnected.
+3. **No room for richer DSP.** Storing raw samples capped sample rate at ~50 Hz; we needed 500 Hz to capture impact rising edges cleanly for FSR-jerk extrapolation of loading rate.
+
+`SoleSenseV2/` keeps every byte of run state on the MCU, stores FFT magnitudes + outliers + Welford stats in a CRC-protected ring buffer (not raw samples), and runs the full analysis on-device so the browser is just a renderer. See [`docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md) for the full rationale.
+
+## Sensor layout
 
 Six FSRs, three zones, two sensors per zone:
 
@@ -21,46 +30,24 @@ Six FSRs, three zones, two sensors per zone:
 | ch4 | Forefoot medial (under 1st MT) |
 | ch5 | Forefoot lateral (under 5th MT) |
 
-v0.1 still uses the older 1-heel + 2-midfoot + 2-ball + 1-toe layout. If you switch between firmwares, the *physical* sensors stay where they are -- only the channel-to-zone aggregation changes.
-
-## What's flashed on the board right now?
-
-The most-recently-flashed sketch + LittleFS combo wins. To check:
+## What's flashed on the board right now
 
 ```bash
 curl --noproxy '*' -s http://192.168.4.1/api/device | python3 -m json.tool | head -3
 ```
 
-`firmware` field will say `SoleSense v0.1` or `SoleSense v0.2-dev`. v0.2 also reports `sampleRateHz: 500`.
+`firmware` should read `SoleSense v0.2-dev` and `sampleRateHz: 500`.
 
-## How to flash each version
-
-### v0.1 (demo)
-
-Sketch -- Arduino IDE, or terminal via the bundled arduino-cli:
+## How to flash
 
 ```bash
 ARDUINO_CLI="/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/arduino-cli"
-"$ARDUINO_CLI" compile --fqbn "esp32:esp32:XIAO_ESP32C3" firmware/SoleSense
-"$ARDUINO_CLI" upload  --fqbn "esp32:esp32:XIAO_ESP32C3" --port /dev/cu.usbmodem2101 firmware/SoleSense
-```
-
-LittleFS:
-```bash
-bash firmware/SoleSense/flash-littlefs.sh
-```
-
-### v0.2 (current development)
-
-Same idea but pointed at `SoleSenseV2/`:
-
-```bash
 "$ARDUINO_CLI" compile --fqbn "esp32:esp32:XIAO_ESP32C3" firmware/SoleSenseV2
 "$ARDUINO_CLI" upload  --fqbn "esp32:esp32:XIAO_ESP32C3" --port /dev/cu.usbmodem2101 firmware/SoleSenseV2
 bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 
-LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `software/frontend/solesense-v2/index.html` (the v0.2-aware frontend that polls `/api/run-state` and `/api/run-report` instead of running JS analysis on a CSV).
+LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `software/frontend/solesense-v2/index.html`.
 
 > **Heads-up:** the Arduino IDE auto-respawns its Serial Monitor whenever the XIAO re-enumerates after a flash, which holds the port and breaks the next upload. Close the Serial Monitor pane before flashing, or run `kill $(lsof -t /dev/cu.usbmodem*)` between attempts.
 
@@ -68,30 +55,24 @@ LittleFS data: `firmware/SoleSenseV2/data/index.html` should be a copy of `softw
 
 ```bash
 cd firmware/platformio
-pio run --target upload     # sketch
-pio run --target uploadfs   # LittleFS (needs platformio/data/index.html)
+pio run --target upload
+pio run --target uploadfs
 pio device monitor
 ```
 
-## Hardware setup (same across all paths)
+## Hardware setup
 
-Pin map and matrix-scan FSR layout are documented in the [root README](../README.md). Key constants live in:
+Pin map and matrix-scan FSR layout are documented in the [root README](../README.md). Key constants live in `firmware/SoleSenseV2/config.h`.
 
-- v0.1: top of `firmware/SoleSense/SoleSense.ino`
-- v0.2: `firmware/SoleSenseV2/config.h`
+## Known caveats
 
-## v0.2 known caveats
-
-The metrics-side stubs are gone, but a couple of calibration assumptions remain:
-
-1. **Loading rate** assumes a 70 kg body weight and the FSR's full-scale ADC = 10 kg of force. Real BW/s scales by `70 / actual_kg` and by `actual_FSR_saturation_ADC / 4095`. Both will become user-configurable via `/api/settings` later.
-2. **Step detector** uses fixed ADC thresholds (400 rise, 200 fall). FSR baseline drift (sweat, temp) could push these out of range; the EMA-baseline path is wired in (`heelMean`/`heelStddev` are already passed to `step_detector_update()`) but unused for now.
-3. **End-to-end hardware verification** -- bench-tested in pieces; a 30-second real-run test is the open follow-up.
+1. **Loading rate** assumes a 70 kg body weight only when no user is logged in -- once a user signs in, their `body_kg` from the profile is used. The other calibration assumption (FSR full-scale ADC = 10 kg of force) is still hardcoded; future work is per-FSR saturation calibration.
+2. **Step detector** uses fixed ADC thresholds gated by a 2-state Kalman filter (`R=25`, `Q` tuned for impact transients). FSR baseline drift from sweat / temperature is handled by the velocity-based toe-off, not absolute thresholds.
+3. **End-to-end hardware verification** -- bench-tested in pieces; a 30-second real-run test on a fully-wired insole is the open follow-up.
 4. **Step-detector debug Serial.printf** still in the build (handy for bring-up). Strip before clean release.
 
 ## Cross-references
 
-- v0.1 spec: [`../docs/superpowers/specs/2026-05-04-solesense-firmware-design.md`](../docs/superpowers/specs/2026-05-04-solesense-firmware-design.md)
-- v0.1 plan: [`../docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md`](../docs/superpowers/plans/2026-05-04-solesense-firmware-v0.1.md)
 - v0.2 architecture spec: [`../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md`](../docs/superpowers/specs/2026-05-06-v0.2-data-architecture.md)
 - v0.2 implementation plan: [`../docs/superpowers/plans/2026-05-06-v0.2-firmware.md`](../docs/superpowers/plans/2026-05-06-v0.2-firmware.md)
+- Profile / auth spec: [`../docs/superpowers/specs/2026-05-09-profile-system.md`](../docs/superpowers/specs/2026-05-09-profile-system.md)
