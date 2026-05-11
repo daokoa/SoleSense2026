@@ -8,7 +8,7 @@ Run from the repo root or from this folder:
 
 Then open http://localhost:8080/ in any browser.
 
-Implements the same HTTP API as the real firmware (see SOLESENSE.md 10):
+Implements a subset of the firmware HTTP API (see firmware/SoleSenseV2/http_routes.cpp for the canonical list):
     GET  /                  serves index.html
     GET  /api/device        device info JSON
     GET  /api/sensor        live FSR + IMU snapshot (the frontend polls this at 5 Hz)

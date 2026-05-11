@@ -33,7 +33,7 @@ A self-contained biomechanical analysis insole that records pressure and motion 
 
 ## Detected Injury Patterns
 
-Sourced from peer-reviewed biomechanics literature (full citations in [`SOLESENSE.md`](SOLESENSE.md) 13):
+Sourced from peer-reviewed biomechanics literature (full citations in [`docs/research.md`](docs/research.md)):
 
 - Heel striking
 - High loading rate
@@ -142,7 +142,6 @@ Protected endpoints require `Authorization: Bearer <token>`. Full handler-by-han
 ```
 solesense/
 |-- README.md                         <- you are here
-|-- SOLESENSE.md                      <- canonical project spec
 |-- LICENSE                           <- MIT
 |-- .gitignore
 |
@@ -172,7 +171,7 @@ solesense/
 |   `-- electricalpins.pdf            <- canonical pin assignment reference
 |
 `-- docs/
-    |-- pseudocode/                   <- system-level pseudocode (system-flow + injury-analysis)
+    |-- research.md                   <- peer-reviewed sources backing the thresholds + sample rate
     `-- design/
         |-- specs/                    <- architecture + profile-system specs
         `-- plans/                    <- implementation plan
@@ -280,10 +279,11 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 
 ## Documentation
 
-- [`SOLESENSE.md`](SOLESENSE.md) -- canonical project spec (hardware, firmware, frontend, data pipeline, injury flags, research basis)
-- [`firmware/README.md`](firmware/README.md) -- Arduino IDE vs PlatformIO firmware breakdown + flash instructions
+- [`firmware/README.md`](firmware/README.md) -- firmware overview + flash instructions
+- [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) -- module status, security model, known caveats
 - [`software/README.md`](software/README.md) and [`software/frontend/README.md`](software/frontend/README.md) -- frontend layout, mock-server usage, UI swap procedure
+- [`software/backend/analyze-worker/README.md`](software/backend/analyze-worker/README.md) -- Cloudflare Worker setup for the AI Coach
+- [`docs/research.md`](docs/research.md) -- peer-reviewed sources backing the thresholds + sample rate
 - [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) -- data architecture (FFT + outliers, MCU as source of truth, no browser-side state)
-- [`docs/design/plans/2026-05-06-v0.2-firmware.md`](docs/design/plans/2026-05-06-v0.2-firmware.md) -- firmware implementation plan
 - [`docs/design/specs/2026-05-09-profile-system.md`](docs/design/specs/2026-05-09-profile-system.md) -- profile / auth system spec
-- [`docs/pseudocode/`](docs/pseudocode/) -- system-level pseudocode (high-level flow + detailed injury analysis)
+- [`docs/design/plans/2026-05-06-v0.2-firmware.md`](docs/design/plans/2026-05-06-v0.2-firmware.md) -- firmware implementation plan

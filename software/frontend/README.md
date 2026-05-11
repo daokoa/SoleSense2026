@@ -64,7 +64,7 @@ The SPA labels the L/R-style split as **Medial / Lateral** because the system ha
 
 ## Injury-flag thresholds (hardcoded)
 
-Cadence < 160 spm, pronation > 15 deg/s, supination < -8 deg/s, asymmetry > 10 %, impact rate > 80 BW/s. All come from peer-reviewed biomechanics research (sources in [`../../SOLESENSE.md`](../../SOLESENSE.md) section 13). Not user-tunable in the UI today; the firmware has a `/api/settings` endpoint and an NVS-backed thresholds struct for future tooling.
+Cadence < 160 spm, pronation > 15 deg/s, supination < -8 deg/s, asymmetry > 10 %, impact rate > 80 BW/s. All come from peer-reviewed biomechanics research (sources in [`../../docs/research.md`](../../docs/research.md)). Not user-tunable in the UI today; the firmware has a `/api/settings` endpoint and an NVS-backed thresholds struct for future tooling.
 
 ## Known limitations and gaps
 

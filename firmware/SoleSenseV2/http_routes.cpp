@@ -322,7 +322,7 @@ static void handle_run_report(AsyncWebServerRequest* req) {
                   : 0.0f;
   (void)durSec;
 
-  // -- Injury flags (research-based THRESH constants, see SOLESENSE.md 13)
+  // -- Injury flags (research-based THRESH constants, see docs/research.md)
   String flags = "[";
   bool firstFlag = true;
   auto pushFlag = [&](const char* key, const String& val) {
