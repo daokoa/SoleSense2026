@@ -39,3 +39,6 @@ node_modules/
 # User-local notes (never committed)
 max.md
 NOTES.md
+
+# Private prep notes -- never commit
+docs/talking-points.md
