@@ -550,5 +550,25 @@ void http_register_routes(AsyncWebServer& server) {
   server.on("/api/auth/login",     HTTP_POST, handle_auth_login);
   server.on("/api/auth/logout",    HTTP_POST, handle_auth_logout);
   server.on("/api/auth/profile",   HTTP_GET,  handle_auth_profile);
+
+  // ── Captive-portal probe handlers ────────────────────────────────────────
+  // iOS/Android/Windows each ping a well-known URL on AP join to test for
+  // internet. If they get a NON-success response, they pop a captive-portal
+  // browser. Returning a 302 redirect to "/" is the universally-accepted way
+  // to make the popup fire instantly, every time, on every OS.
+  auto captiveRedirect = [](AsyncWebServerRequest* req) {
+    AsyncWebServerResponse* r = req->beginResponse(302, "text/plain", "");
+    r->addHeader("Location", "http://192.168.4.1/");
+    req->send(r);
+  };
+  server.on("/hotspot-detect.html",        HTTP_GET, captiveRedirect);   // iOS
+  server.on("/library/test/success.html",  HTTP_GET, captiveRedirect);   // iOS legacy
+  server.on("/generate_204",               HTTP_GET, captiveRedirect);   // Android
+  server.on("/gen_204",                    HTTP_GET, captiveRedirect);   // Android alt
+  server.on("/connecttest.txt",            HTTP_GET, captiveRedirect);   // Windows
+  server.on("/ncsi.txt",                   HTTP_GET, captiveRedirect);   // Windows
+  server.on("/redirect",                   HTTP_GET, captiveRedirect);   // Microsoft NCSI
+  server.on("/canonical.html",             HTTP_GET, captiveRedirect);   // Firefox
+
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }
