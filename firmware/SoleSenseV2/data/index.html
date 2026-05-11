@@ -722,12 +722,22 @@ button{ font-family:inherit; }
 }
 .foot-pad{
   fill:#dbeafe;stroke:rgba(30,64,175,.35);stroke-width:1.6;
-  transition:fill .45s ease;
+  transition:fill .45s var(--ease-out);
 }
 .foot-zone-label{
-  font-size:10px;fill:var(--text3);font-weight:700;
-  text-transform:uppercase;letter-spacing:.8px;
+  font-size:11px;
+  fill:var(--text);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1px;
   pointer-events:none;
+  /* White halo so the labels stay legible no matter what they sit over
+     (foot PNG, deep-blue heatmap pad, light card background). */
+  paint-order:stroke fill;
+  stroke:rgba(255,255,255,0.92);
+  stroke-width:3.5px;
+  stroke-linejoin:round;
+  stroke-linecap:round;
 }
 .foot-scale{
   display:flex;align-items:center;gap:12px;
@@ -2071,7 +2081,9 @@ function render(r){
     for (let ch = 0; ch < 6; ch++) {
       const lightness = 92 - (loads[ch] / maxLoad) * 70;
       const pad = C.pads[ch];
-      if (pad) pad.setAttribute('fill', `hsl(220, 65%, ${lightness}%)`);
+      // Inline style beats the .foot-pad class rule -- using setAttribute
+      // on `fill` was silently overridden by CSS specificity.
+      if (pad) pad.style.fill = `hsl(220, 65%, ${lightness}%)`;
     }
   }
   const container=document.getElementById('flags-container');
