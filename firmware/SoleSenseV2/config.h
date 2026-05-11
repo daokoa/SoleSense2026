@@ -40,6 +40,12 @@ constexpr float   ACCEL_LSB_PER_G  = 16384.0f;
 constexpr float   G_TO_MS2         = 9.80665f;
 constexpr float   GYRO_LSB_PER_DPS = 131.0f;
 
+// IMU sensor-fusion: accel_z stddev required to consider the IMU "connected"
+// (a disconnected MPU leaves gAccel pinned, so stddev sits at exactly 0).
+constexpr float IMU_CONNECTED_STDDEV_FLOOR = 0.05f;
+// |accel_z - running_mean| above this many m/s^2 is registered as an impact.
+constexpr float IMU_IMPACT_DELTA_MS2       = 8.0f;
+
 // -- Sampling -----------------------------------------------------------------
 // 500 Hz: chosen to oversample running-impact rising edges (~5-20 ms wide) by
 // 5-10x, so FSR-jerk extrapolation has enough resolution for honest loading-

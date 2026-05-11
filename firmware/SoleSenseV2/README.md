@@ -171,14 +171,14 @@ Endpoints:
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET`  | `/api/auth/state`     | public  | `{ ownerExists, sessionActive, username }` |
+| `GET`  | `/api/auth/state`     | public  | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
 | `POST` | `/api/auth/register`  | claim-mode -> public; otherwise requires owner token | URL-encoded `username, pin, body_kg` |
 | `POST` | `/api/auth/login`     | public  | URL-encoded `username, pin` -> `{ ok, token, body_kg }` |
 | `POST` | `/api/auth/logout`    | session | clear current session |
 | `GET`  | `/api/auth/profile`   | session | current user info |
 
 Protected endpoints (require `Authorization: Bearer <token>`):
-`POST /api/start`, `POST /api/stop`, `POST /api/sleep`, `POST /api/calibrate/zero`, `POST /api/calibrate/imu`, `POST /api/data/clear`.
+`POST /api/start`, `POST /api/stop`, `POST /api/sleep`, `POST /api/calibrate/zero`, `POST /api/calibrate/imu`.
 
 Public read-only endpoints (still available without a token, used for AP discovery and live diagnostics): `GET /api/device`, `GET /api/sensor`, `GET /api/run-state`, `GET /api/run-report`, `GET /api/run-spectrum`, `GET /api/run-outliers`, `GET /api/storage-state`.
 

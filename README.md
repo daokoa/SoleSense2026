@@ -116,12 +116,13 @@ All endpoints served at `http://solesense.local/` (or `http://192.168.4.1`) once
 | `GET` | `/` | public | Serves the frontend SPA from LittleFS |
 | `GET` | `/api/device` | public | Device info: firmware/version, board, sample rate, free heap, state, fs bytes |
 | `GET` | `/api/sensor` | public | Live FSR + IMU snapshot; returns both raw `fsr[]` and EMA-smoothed `fsrEma[]` |
-| `GET` | `/api/run-state` | public | Live run state: elapsed_ms (sourced from latest valid flash slot), sample count, paused flag, current state |
+| `GET` | `/api/run-state` | public | Live run state: `recording, run_active, elapsed_ms, sample_count, clients_connected, outlier_count` |
 | `GET` | `/api/run-report` | public | Computed metrics: steps, cadence, contactMs, loadingRate, pronate, medialPct, lateralPct, zoneAvg{heel,midfoot,forefoot}, imuConnected, imuImpacts, maxTotalPressure, flags |
 | `GET` | `/api/run-spectrum` | public | FFT magnitude spectrum (12 channels x 18 bins, Goertzel) |
-| `GET` | `/api/run-outliers` | public | Top-N outliers by sigma (channel, ts_ms, value, delta, sigma) |
-| `GET` | `/api/storage-selftest` | public | On-bench validation of multi-slot ring buffer |
-| `GET` | `/api/fft-selftest` | public | Feeds a 1.95 Hz sine into channel 0; expect ~100 magnitude on the on-bin frequency |
+| `GET` | `/api/run-outliers` | public | Top-N outliers by sigma: `ts, channel, value, sigma` |
+| `GET` | `/api/storage-state` | public | Slot count + per-slot byte usage in the run-snapshot ring buffer |
+| `POST` | `/api/storage-selftest` | public | On-bench validation of multi-slot ring buffer |
+| `POST` | `/api/fft-selftest` | public | Feeds a 1.95 Hz sine into channel 0; expect ~100 magnitude on the on-bin frequency |
 | `GET` | `/api/auth/state` | public | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
 | `POST` | `/api/auth/register` | public (capped) | Create account. URL-encoded `username, pin, body_kg`. Capped at `MAX_USERS = 20` and a 3-per-60-s rate limit. |
 | `POST` | `/api/auth/login` | public (rate-limited) | URL-encoded `username, pin` -> `{ token, body_kg, username }` |
@@ -243,7 +244,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 ### Shipped
 - [x] **All run state on the MCU. No browser-side storage.** FFT-coefficients + outlier-buffer in RAM, periodically flushed to a 10-slot ring buffer in flash. Run timer derived from the latest valid flash slot -- not a JS wall-clock -- so disconnects pause the duration counter and reconnects resume from the last persisted state. See [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) for the full design.
 - [x] **500 Hz sampling.** RAM usage is rate-independent because Goertzel is incremental. Captures impact rising edges with enough resolution for FSR-jerk extrapolation.
-- [x] **Time-domain step counter and ground-contact-time** (Schmitt trigger on the heel composite, 150 ms refractory).
+- [x] **Time-domain step counter and ground-contact-time** (any-zone OR-gate, 250 ms refractory, IMU sensor-fusion when wired).
 - [x] **FSR-jerk loading rate (BW/s)** -- peak heel d(ADC)/dt converted via FSR-saturation x body-weight assumptions.
 - [x] **3-zone x medial/lateral sensor layout** (Choi 2024 +E-at-heel): 2 heel + 2 midfoot + 2 forefoot.
 - [x] **Anatomical foot diagram** in the frontend: cut-out CAD render of the actual insole with live-data overlays on the six visible sensor pads.
@@ -251,7 +252,7 @@ If the page hangs on iPhone: turn off Wi-Fi Assist (`Settings -> Cellular`) so i
 - [x] **AI Coach panel** via Cloudflare Worker (`software/backend/analyze-worker/`).
 
 ### Open follow-ups
-- [ ] User-configurable body weight (currently hardcoded 70 kg) and per-FSR saturation calibration via `/api/settings`.
+- [ ] Per-FSR saturation calibration so the loading-rate conversion stops assuming `ADC=4095 ↔ 10 kg of force` for every channel. (Body weight is already per-user via the auth profile; 70 kg is only the no-session fallback.)
 - [ ] EMA-baseline tracking in the step detector for FSR baseline drift (sweat / temperature).
 - [ ] End-to-end hardware verification: 30 s real-run test on a fully-wired insole.
 - [ ] Pick canonical firmware build system (Arduino IDE vs PlatformIO).

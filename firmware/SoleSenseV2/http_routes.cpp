@@ -252,15 +252,10 @@ static void handle_run_report(AsyncWebServerRequest* req) {
     if (cadence < 20 || cadence > 300) cadence = 0;
   }
 
-  // FSR saturation flag: any channel hit max ADC during the run? If so the
-  // loading-rate metric is conservative (real impact was bigger than what
-  // our 10 kg-saturation conversion can express).
-  bool anySaturated = false;
-  for (uint8_t i = 0; i < N_FSR; i++) {
-    // peak FSR per channel isn't tracked separately; use total-pressure
-    // ceiling as a proxy: sum near 6 x 4095 = 24570 means all channels saturated.
-  }
-  // Use maxTotalPressure / N_FSR as average peak; flag if avg approaches saturation.
+  // FSR saturation flag: per-channel peaks aren't tracked, so we use the
+  // total-pressure ceiling as a proxy -- if the average peak across the six
+  // FSRs is above ~3500 ADC counts, several channels likely hit the rail and
+  // the loading-rate number underreports the real impact.
   bool fsrSaturated = (gMaxTotalPressure / (float)N_FSR) > 3500.0f;
 
   // -- Zone means (raw FSR units; the frontend percentage-ifies for display).

@@ -18,7 +18,7 @@ Both close with a per-user profile system stored on-device in NVS.
 - Login -> session token. Token in `Authorization: Bearer ...` header for protected endpoints.
 - Per-user `body_kg` field used in loading-rate calc.
 - Frontend login screen, blocks the rest of the UI until logged in.
-- "Owner" model: first registration is unrestricted; subsequent registrations require the existing owner's token (no walk-up account creation).
+- "Owner" model: first registration claims the device. Subsequent registrations are walk-up self-signup (the shared WiFi password is the access gate), capped by `MAX_USERS = 20` and a 3-per-60-s sliding-window rate limit.
 
 **Out of scope:**
 - Multi-device sync -- there's no internet, no cloud.
@@ -77,8 +77,8 @@ Logout clears the slot. Re-login replaces the slot.
 |---|---|---|
 | `GET`  | `/`                                   | static files |
 | `GET`  | `/api/device`                         | identity, AP discovery |
-| `GET`  | `/api/auth/state`                     | `{ ownerExists, sessionActive }` |
-| `POST` | `/api/auth/register`                  | first call creates owner; subsequent calls require token |
+| `GET`  | `/api/auth/state`                     | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
+| `POST` | `/api/auth/register`                  | first call claims the device; subsequent calls are walk-up self-signup, capped by `MAX_USERS` + a 3-per-60-s rate limit |
 | `POST` | `/api/auth/login`                     | `{ username, pin }` -> `{ token, body_kg }` |
 
 ### Protected (require valid token)
@@ -91,7 +91,6 @@ Logout clears the slot. Re-login replaces the slot.
 | `POST` | `/api/stop`               | stop recording |
 | `POST` | `/api/calibrate/zero`     | FSR zero |
 | `POST` | `/api/calibrate/imu`      | IMU zero |
-| `POST` | `/api/data/clear`         | wipe data |
 | `POST` | `/api/sleep`              | deep sleep |
 
 ### Read-only diagnostic (intentionally still public)
@@ -105,7 +104,8 @@ Logout clears the slot. Re-login replaces the slot.
 | Protected route, no `Authorization` header | `401 Unauthorized` |
 | Token invalid or expired | `401 Unauthorized`, frontend kicks back to login |
 | Login with wrong PIN, 3 times in a 60 s window | `429 Too Many Requests`, lock the username for 30 s |
-| Register without owner-token after owner exists | `403 Forbidden` |
+| Register over the `MAX_USERS` cap | `409 Conflict` |
+| Register more than 3 times in a 60 s window | `429 Too Many Requests` |
 | NVS write failure | `500`, abort registration cleanly |
 
 ## Frontend changes

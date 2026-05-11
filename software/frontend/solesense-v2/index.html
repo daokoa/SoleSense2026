@@ -445,37 +445,29 @@ body{
 /* 
    REPORT
  */
-#screen-report{flex-direction:column;padding:0 0 80px;background:var(--bg)}
+#screen-report{flex-direction:column;padding:0 0 100px;background:#f5f7fb}
 
 .report-header{
-  background:var(--surface);border-bottom:1.5px solid var(--border);
-  padding:13px 16px;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.86);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid rgba(60,60,67,.08);
+  padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:10;
 }
 .report-back{
   display:flex;align-items:center;gap:6px;
-  font-size:13px;color:var(--text2);cursor:pointer;
+  font-size:14px;color:var(--blue);cursor:pointer;font-weight:500;
   background:none;border:none;font-family:inherit;padding:6px 0;
 }
-.report-back:hover{color:var(--blue)}
-.report-header-title{font-size:15px;font-weight:700;color:var(--text)}
+.report-back:hover{opacity:.75}
+.report-header-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.01em}
 
-/* summary cards row */
-.summary{padding:12px 12px 4px}
-.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.summary-card{
-  background:var(--surface);border:1.5px solid var(--border);
-  border-radius:var(--radius);padding:11px 10px;text-align:center;
-  box-shadow:var(--shadow);
-}
-.summary-val{font-size:24px;font-weight:700;color:var(--blue);line-height:1.1}
-.summary-unit{font-size:11px;color:var(--text2);font-weight:400;margin-left:1px}
-.summary-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
-
-.report-body{padding:0 12px}
-.section{margin-top:16px}
+.report-body{padding:18px 16px 0}
+.section{margin-top:28px}
 .section-title{
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
-  color:var(--text3);margin-bottom:8px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.11em;
+  color:var(--text3);margin:0 4px 12px;
 }
 
 /* all clear */
@@ -488,16 +480,17 @@ body{
 .all-clear-sub{font-size:14px;color:var(--text2)}
 
 .flag-card{
-  background:var(--surface);border:1.5px solid var(--border);
-  border-radius:var(--radius);overflow:hidden;margin-bottom:8px;
-  box-shadow:var(--shadow);transition:box-shadow .15s;
+  background:var(--surface);border:none;
+  border-radius:16px;overflow:hidden;margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
+  transition:box-shadow .2s ease, transform .15s ease;
 }
-.flag-card:hover{box-shadow:0 4px 16px rgba(37,99,235,.1)}
+.flag-card:hover{box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.08)}
 .flag-header{
-  display:flex;align-items:center;gap:10px;
-  padding:11px 14px;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;cursor:pointer;user-select:none;
 }
-.flag-header:hover{background:var(--blue-bg)}
+.flag-header:hover{background:rgba(15,23,42,.02)}
 .flag-pill{
   font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
   flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;
@@ -520,17 +513,159 @@ body{
 
 /* metrics */
 .metrics-card{
-  background:var(--surface);border:1.5px solid var(--border);
-  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+  background:var(--surface);border:none;
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
 }
 .metrics-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 14px;border-bottom:1.5px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:14px 18px;
+  border-bottom:1px solid rgba(15,23,42,.06);
 }
 .metrics-row:last-child{border-bottom:none}
-.metrics-key{font-size:13px;color:var(--text2)}
-.metrics-val{font-size:14px;font-weight:600;color:var(--text)}
-.unit{font-size:11px;color:var(--text3);font-weight:400;margin-left:2px}
+.metrics-keywrap{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.metrics-key{font-size:14px;color:var(--text);font-weight:600;letter-spacing:-.01em}
+.metrics-sub{font-size:12px;color:var(--text3);line-height:1.4}
+.metrics-valwrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.metrics-val{
+  font-size:15px;font-weight:700;color:var(--text);
+  font-family:'DM Mono',ui-monospace,monospace;
+  white-space:nowrap;letter-spacing:-.01em;
+}
+.unit{font-size:11px;color:var(--text3);font-weight:500;margin-left:2px;font-family:inherit}
+.metric-pill{
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  padding:3px 9px;border-radius:999px;
+  background:transparent;color:var(--text3);
+  white-space:nowrap;text-transform:uppercase;
+}
+.metric-pill.good{background:#d1fae5;color:#047857}
+.metric-pill.warn{background:#fef3c7;color:#a16207}
+.metric-pill.high{background:#fee2e2;color:#b91c1c}
+.metric-pill:empty{display:none}
+
+/* zone legend */
+.zone-legend{
+  font-size:13px;color:var(--text2);line-height:1.5;
+  padding:0 4px 0;margin-bottom:4px;
+}
+.zone-legend b{color:var(--text);font-weight:600}
+
+/* Foot heatmap (report screen). Single foot, anatomical right orientation.
+ * Pads are coloured per-channel via JS; each .foot-pad's fill is an HSL
+ * interpolation from pale (#dbeafe-ish) to deep (#1e3a8a-ish). */
+.foot-report-card{
+  background:var(--surface);
+  border-radius:20px;
+  padding:18px 20px 22px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+  display:flex;flex-direction:column;align-items:stretch;gap:16px;
+}
+.foot-report-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.foot-svg-report{
+  width:190px;height:auto;
+  filter:drop-shadow(0 8px 24px rgba(15,23,42,.10));
+}
+.foot-pad{
+  fill:#dbeafe;stroke:rgba(30,64,175,.35);stroke-width:1.6;
+  transition:fill .45s ease;
+}
+.foot-zone-label{
+  font-size:10px;fill:var(--text3);font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;
+  pointer-events:none;
+}
+.foot-scale{
+  display:flex;align-items:center;gap:12px;
+  font-size:11px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;font-weight:600;
+}
+.foot-scale-bar{
+  width:160px;height:7px;border-radius:4px;
+  background:linear-gradient(to right,#dbeafe,#1e3a8a);
+}
+
+/* report hero (verdict + KPI strip) */
+.report-hero{
+  background:var(--surface);
+  border-radius:20px;
+  padding:24px 22px 22px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+}
+.hero-verdict{
+  display:flex;align-items:center;gap:16px;
+  padding-bottom:20px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+.hero-icon{
+  width:48px;height:48px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;flex-shrink:0;
+  background:#d1fae5;color:#047857;
+  letter-spacing:-.02em;
+}
+.hero-icon.warn{background:#fef3c7;color:#a16207}
+.hero-icon.high{background:#fee2e2;color:#b91c1c}
+.hero-title{
+  font-size:20px;font-weight:700;color:var(--text);
+  line-height:1.2;letter-spacing:-.02em;
+}
+.hero-sub{
+  font-size:13px;color:var(--text2);
+  line-height:1.45;margin-top:4px;
+}
+
+.hero-stats{
+  display:flex;align-items:baseline;justify-content:space-around;
+  gap:8px;padding-top:18px;
+}
+.hero-stat{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  flex:1;min-width:0;
+}
+.hero-stat-val{
+  font-size:26px;font-weight:800;color:var(--text);
+  font-family:'DM Mono',ui-monospace,monospace;line-height:1;
+  letter-spacing:-.02em;
+}
+.hero-stat-label{
+  font-size:10.5px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;
+  font-weight:600;
+}
+
+/* Collapsible technical-details */
+.metrics-details{
+  background:var(--surface);
+  border-radius:16px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
+  overflow:hidden;
+}
+.metrics-details > summary{
+  list-style:none;cursor:pointer;
+  padding:15px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:14px;font-weight:600;color:var(--text);
+  user-select:none;
+}
+.metrics-details > summary::-webkit-details-marker{display:none}
+.metrics-details > summary::after{
+  content:'';display:inline-block;
+  width:8px;height:8px;
+  border-right:2px solid var(--text3);
+  border-bottom:2px solid var(--text3);
+  transform:rotate(45deg);transition:transform .2s ease;
+  margin-right:2px;margin-top:-3px;
+}
+.metrics-details[open] > summary::after{transform:rotate(-135deg);margin-top:3px}
+.metrics-details > summary:hover{background:rgba(15,23,42,.02)}
+.metrics-details .metrics-card{
+  border:none;border-radius:0;box-shadow:none;
+  border-top:1px solid rgba(15,23,42,.06);
+  background:transparent;
+}
 
 /* zone bars */
 .zone-card{
@@ -550,14 +685,16 @@ body{
 /* done btn */
 .btn-done{
   display:flex;align-items:center;justify-content:center;
-  width:100%;padding:16px;border-radius:var(--radius);
-  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
-  border:none;background:linear-gradient(135deg,#3b82f6,var(--blue2));color:white;
-  box-shadow:0 4px 14px rgba(37,99,235,.3);transition:opacity .15s,transform .12s;
-  margin-top:16px;
+  width:100%;padding:17px;border-radius:14px;
+  font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;
+  letter-spacing:-.01em;
+  border:none;background:var(--text);color:white;
+  box-shadow:0 1px 2px rgba(15,23,42,.06), 0 6px 16px rgba(15,23,42,.12);
+  transition:opacity .15s ease, transform .12s ease, box-shadow .15s ease;
+  margin-top:28px;
 }
-.btn-done:hover{opacity:.92;transform:translateY(-1px)}
-.btn-done:active{opacity:.82;transform:translateY(0)}
+.btn-done:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 22px rgba(15,23,42,.16)}
+.btn-done:active{opacity:.85;transform:translateY(0)}
 
 /* 
    SETTINGS
@@ -871,27 +1008,28 @@ body{
     <div style="width:56px"></div>
   </div>
 
-  <div class="summary">
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-val" id="s-steps">--</div>
-        <div class="summary-label">Steps</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-val"><span id="s-cadence">--</span><span class="summary-unit">spm</span></div>
-        <div class="summary-label">Cadence</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-val" id="s-duration">--</div>
-        <div class="summary-label">Duration</div>
-      </div>
-    </div>
-  </div>
-
   <div class="report-body">
 
+    <!-- Hero: verdict + inline stat strip. The first thing a new user sees
+         is whether their run was clean and the three numbers that matter
+         most -- cadence, impact, duration. Everything else flows below. -->
+    <div class="report-hero">
+      <div class="hero-verdict">
+        <div class="hero-icon" id="hero-icon">[x]</div>
+        <div>
+          <div class="hero-title" id="hero-title">Run complete</div>
+          <div class="hero-sub" id="hero-sub">Scroll down for findings, pressure breakdown, and AI coach.</div>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="hero-stat-val" id="s-cadence">--</span><span class="hero-stat-label">spm</span></div>
+        <div class="hero-stat"><span class="hero-stat-val" id="s-impact">--</span><span class="hero-stat-label">impact</span></div>
+        <div class="hero-stat"><span class="hero-stat-val" id="s-duration">--</span><span class="hero-stat-label">duration</span></div>
+      </div>
+    </div>
+
     <div class="section">
-      <div class="section-title">Injury Risk Findings</div>
+      <div class="section-title">What we noticed</div>
       <div id="flags-container"></div>
     </div>
 
@@ -921,21 +1059,101 @@ body{
     </div>
 
     <div class="section">
-      <div class="section-title">Run Metrics</div>
-      <div class="metrics-card">
-        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">--</span><span class="unit">steps/min</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">--</span><span class="unit">ms</span></span></div>
-        <div class="metrics-row"><span class="metrics-key" title="How quickly force builds when your foot hits the ground. Healthy / Elevated / High.">Impact rate</span><span class="metrics-val"><span id="m-loading">--</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">--</span><span class="unit"> deg/s</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">--</span></span></div>
-        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">--</span></span></div>
+      <div class="section-title">Where you landed</div>
+      <div class="foot-report-card">
+      <div class="zone-legend">
+        Pressure across the run, projected onto the insole. Darker pads received more load.
+        Inside (medial) is the arch side; outside (lateral) is the pinky side.
+      </div>
+      <div class="foot-report-wrap">
+        <svg class="foot-svg-report" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet" aria-label="Foot pressure heatmap">
+          <image href="solesense.png" x="0" y="0" width="185" height="511"/>
+          <!-- Forefoot (top of image) -->
+          <circle class="foot-pad" id="rp-ch5" data-ch="5" cx="110" cy="70"  r="22"/>
+          <circle class="foot-pad" id="rp-ch4" data-ch="4" cx="55"  cy="75"  r="22"/>
+          <text class="foot-zone-label" x="93" y="35" text-anchor="middle">Forefoot</text>
+          <!-- Midfoot -->
+          <circle class="foot-pad" id="rp-ch3" data-ch="3" cx="140" cy="120" r="22"/>
+          <circle class="foot-pad" id="rp-ch2" data-ch="2" cx="40"  cy="135" r="22"/>
+          <text class="foot-zone-label" x="93" y="245" text-anchor="middle">Midfoot</text>
+          <!-- Heel (bottom of image) -->
+          <circle class="foot-pad" id="rp-ch1" data-ch="1" cx="125" cy="450" r="24"/>
+          <circle class="foot-pad" id="rp-ch0" data-ch="0" cx="65"  cy="455" r="24"/>
+          <text class="foot-zone-label" x="93" y="500" text-anchor="middle">Heel</text>
+        </svg>
+        <div class="foot-scale">
+          <span>Light</span>
+          <div class="foot-scale-bar"></div>
+          <span>Heavy</span>
+        </div>
+      </div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Pressure Distribution by Zone</div>
-      <div class="zone-card" id="zone-bars"></div>
-    </div>
+    <details class="metrics-details">
+      <summary>All technical metrics</summary>
+      <div class="metrics-card">
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Cadence</span>
+            <span class="metrics-sub">How often your feet hit the ground. Healthy distance running: 170-180 spm.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-cadence">--</span><span class="unit">spm</span></span>
+            <span class="metric-pill" id="pill-cadence"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Ground contact time</span>
+            <span class="metrics-sub">How long each foot stays planted. Quicker is generally better; over 300 ms is long.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-contact">--</span><span class="unit">ms</span></span>
+            <span class="metric-pill" id="pill-contact"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Impact rate</span>
+            <span class="metrics-sub">How quickly force builds when you land. High impact predicts stress fractures and shin splints.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-loading">--</span></span>
+            <span class="metric-pill" id="pill-loading"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Pronation</span>
+            <span class="metrics-sub">How much your foot rolls inward (positive) or outward (negative) during stance.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-pronate">--</span><span class="unit"> deg/s</span></span>
+            <span class="metric-pill" id="pill-pronate"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Inside vs. outside</span>
+            <span class="metrics-sub">Pressure split between the inside (medial) and outside (lateral) edges of your foot.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-balance">--</span></span>
+            <span class="metric-pill" id="pill-balance"></span>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-keywrap">
+            <span class="metrics-key">Total steps</span>
+            <span class="metrics-sub">Number of foot strikes detected during the run.</span>
+          </div>
+          <div class="metrics-valwrap">
+            <span class="metrics-val"><span id="m-steps">--</span></span>
+          </div>
+        </div>
+      </div>
+    </details>
 
     <button class="btn-done" onclick="showScreen('home')">Done</button>
 
@@ -1402,11 +1620,66 @@ async function animateBars(){
  * a plain-English category instead, with the number tucked alongside for
  * runners who care. The firmware payload still uses loading_rate_bws so
  * the LLM coach has the precision it needs. */
+/* Impact rate is body-weights-per-second. The firmware payload uses the raw
+ * number; the UI shows a plain-English category + the .metric-pill tone. */
 function impactCategory(bws){
-  if (!bws || bws < 1)   return { label: '--',         num: '' };
-  if (bws < 60)          return { label: 'Healthy',   num: Math.round(bws).toString() };
-  if (bws < 80)          return { label: 'Elevated',  num: Math.round(bws).toString() };
-  return                       { label: 'High',      num: Math.round(bws).toString() };
+  if (!bws || bws < 1) return { label: '--',       num: '', tone: null };
+  const num = Math.round(bws).toString();
+  if (bws < 60) return { label: 'Healthy',  num, tone: 'good' };
+  if (bws < 80) return { label: 'Elevated', num, tone: 'warn' };
+  return              { label: 'High',     num, tone: 'high' };
+}
+
+/* Per-metric health bands. Each returns { label, tone } in the
+ * good/warn/high vocabulary, or null when there's no usable value.
+ * Thresholds mirror the firmware's injury-flag cutoffs so the pill and
+ * the findings card never disagree. */
+function cadenceBand(spm){
+  if (!spm || spm < 1) return null;
+  return spm >= 160 ? { label: 'In range', tone: 'good' } : { label: 'Below typical', tone: 'warn' };
+}
+function contactBand(ms){
+  if (!ms || ms < 1) return null;
+  return ms <= 300 ? { label: 'Quick', tone: 'good' } : { label: 'Long', tone: 'warn' };
+}
+function pronateBand(deg){
+  if (deg == null || isNaN(deg)) return null;
+  if (deg >  15) return { label: 'High pronation', tone: 'high' };
+  if (deg < -8)  return { label: 'Supination',     tone: 'high' };
+  return              { label: 'Neutral',         tone: 'good' };
+}
+function balanceBand(medialPct){
+  if (!medialPct) return null;
+  const off = Math.abs(medialPct - 50);
+  if (off <= 10) return { label: 'Even',         tone: 'good' };
+  if (off <= 15) return { label: 'Slightly off', tone: 'warn' };
+  return              { label: 'Asymmetric',    tone: 'high' };
+}
+function setPill(id, band){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('good','warn','high');
+  if (!band) { el.textContent = ''; return; }
+  el.textContent = band.label;
+  el.classList.add(band.tone);
+}
+
+/* Hero verdict: one rounded icon + headline + sub, derived from the flag list.
+ * Returns { icon, tone, title, sub } for render() to paint. */
+function computeVerdict(flags){
+  const n = flags ? flags.length : 0;
+  if (n === 0) {
+    return { icon: '✓', tone: '', title: 'Looks clean.',
+             sub: 'Your run is in the healthy range across all biomechanical checks.' };
+  }
+  const rank = { high: 2, medium: 1, low: 0 };
+  const maxSev = flags.reduce((m, f) => Math.max(m, rank[FLAG_DEFS[f.key]?.severity || 'low']), 0);
+  return {
+    icon: '!',
+    tone: maxSev >= 2 ? 'high' : 'warn',
+    title: n === 1 ? '1 thing to look at' : `${n} things to look at`,
+    sub: 'Scroll down for the specifics and a personalized AI breakdown.',
+  };
 }
 
 /* -- AI COACH (LLM analysis via Cloudflare Worker proxy) --------------------
@@ -1577,32 +1850,69 @@ const FLAG_DEFS={
 /* -- RENDER -- */
 function render(r){
   const fmt=(v,d=0)=>isNaN(v)?'--':Number(v).toFixed(d);
-  set('s-steps',r.steps);
-  // v0.2 keys: loadingSigma (sigma, no unit conversion), medialPct/lateralPct.
-  // Cadence and contactMs may be 0 -- render '--' instead of '0' to be honest.
   const dashIfZero=(v,decimals=0)=>(!v||v===0)?'--':fmt(v,decimals);
-  set('s-cadence',dashIfZero(r.cadence));
-  const m=Math.floor(r.durSec/60),s=Math.round(r.durSec%60);
-  set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
-  set('m-cadence',dashIfZero(r.cadence));
-  set('m-contact',dashIfZero(r.contactMs));
-  // Impact rate: render category + the precise number in parentheses for
-  // those who want it. e.g. "Healthy (45)" / "Elevated (72)" / "High (90)".
   const ic = impactCategory(r.loadingRate);
-  set('m-loading', ic.num ? `${ic.label} (${ic.num})` : ic.label);
-  set('m-pronate',dashIfZero(r.pronate,1));
-  if(r.medialPct>0 || r.lateralPct>0){
-    set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');
-  } else {
-    set('m-balance','--');
+
+  // Cache static DOM refs on first call -- the report screen markup doesn't
+  // change after page load, so /api/run-report polling can skip the lookups.
+  if (!render._cache) {
+    render._cache = {
+      heroIcon:  document.getElementById('hero-icon'),
+      heroTitle: document.getElementById('hero-title'),
+      heroSub:   document.getElementById('hero-sub'),
+      pads:      Array.from({length:6}, (_,i) => document.getElementById('rp-ch' + i)),
+    };
   }
-  set('m-steps',r.steps);
-  // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
-  // This is more meaningful than % of ADC max -- it shows how the runner distributed load.
-  const zoneRaw=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Forefoot',val:r.zoneAvg.forefoot}];
-  const zoneSum=zoneRaw.reduce((s,z)=>s+z.val,0)||1;
-  const zones=zoneRaw.map(z=>({label:z.label,pct:z.val/zoneSum*100}));
-  document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${z.pct.toFixed(1)}%"></div></div><span class="zone-pct">${z.pct.toFixed(0)}%</span></div>`).join('');
+  const C = render._cache;
+
+  const v = computeVerdict(r.flags);
+  C.heroIcon.textContent = v.icon;
+  C.heroIcon.classList.remove('warn','high');
+  if (v.tone) C.heroIcon.classList.add(v.tone);
+  C.heroTitle.textContent = v.title;
+  C.heroSub.textContent   = v.sub;
+
+  set('s-cadence', dashIfZero(r.cadence));
+  set('s-impact',  ic.label);
+  const m = Math.floor(r.durSec/60), s = Math.round(r.durSec%60);
+  set('s-duration', m > 0 ? m+'m '+String(s).padStart(2,'0')+'s' : s+'s');
+
+  set('m-cadence', dashIfZero(r.cadence));
+  setPill('pill-cadence', cadenceBand(r.cadence));
+  set('m-contact', dashIfZero(r.contactMs));
+  setPill('pill-contact', contactBand(r.contactMs));
+  set('m-loading', ic.num ? `${ic.label} (${ic.num})` : ic.label);
+  setPill('pill-loading', ic.tone ? { label: ic.label, tone: ic.tone } : null);
+  set('m-pronate', dashIfZero(r.pronate, 1));
+  setPill('pill-pronate', pronateBand(r.pronate));
+  if(r.medialPct > 0 || r.lateralPct > 0){
+    set('m-balance', fmt(r.medialPct,0)+'% inside / '+fmt(r.lateralPct,0)+'% outside');
+    setPill('pill-balance', balanceBand(r.medialPct));
+  } else {
+    set('m-balance', '--');
+    setPill('pill-balance', null);
+  }
+  set('m-steps', r.steps);
+
+  // Heatmap: only repaint when the underlying zone/balance changed, otherwise
+  // the .45s fill transition perpetually restarts under the 0.5 Hz live-poll.
+  // Apportion zone average to its two pads via the medial/lateral bias.
+  const mF = (r.medialPct  || 50) / 50;
+  const lF = (r.lateralPct || 50) / 50;
+  const zH = r.zoneAvg ? (r.zoneAvg.heel     || 0) : 0;
+  const zM = r.zoneAvg ? (r.zoneAvg.midfoot  || 0) : 0;
+  const zF = r.zoneAvg ? (r.zoneAvg.forefoot || 0) : 0;
+  const padSig = [zH, zM, zF, mF, lF].join('|');
+  if (render._padSig !== padSig) {
+    render._padSig = padSig;
+    const loads = [zH*mF, zH*lF, zM*mF, zM*lF, zF*mF, zF*lF];
+    const maxLoad = Math.max(0.0001, ...loads);
+    for (let ch = 0; ch < 6; ch++) {
+      const lightness = 92 - (loads[ch] / maxLoad) * 70;
+      const pad = C.pads[ch];
+      if (pad) pad.setAttribute('fill', `hsl(220, 65%, ${lightness}%)`);
+    }
+  }
   const container=document.getElementById('flags-container');
   if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">[x]</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
   const order={high:0,medium:1,low:2};

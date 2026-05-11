@@ -39,9 +39,11 @@ static void read_set_b() {
   gFsr[5] = analogRead(PIN_ADC_C) - gFsrZero[5];   // Forefoot lateral
 }
 
-// Park: drive both sets LOW (instead of high-Z) when not actively reading,
-// so any leakage path is grounded rather than floating.
-static void park_sets_high_z() {
+// Drive both sets LOW between active reads so any leakage path is grounded
+// rather than floating. Despite the name's history, this is active-LOW, not
+// true high-Z; the LOW state is what kills ghost crosstalk through the
+// unpowered FSRs.
+static void park_sets_grounded() {
   pinMode(PIN_PWR_SET1, OUTPUT);
   pinMode(PIN_PWR_SET2, OUTPUT);
   digitalWrite(PIN_PWR_SET1, LOW);
@@ -98,7 +100,7 @@ void sensors_init() {
 void sensors_read_all() {
   read_set_a();
   read_set_b();
-  park_sets_high_z();
+  park_sets_grounded();
   read_imu();
 
   // EMA on the FSR readings for the live UI. gFsr stays raw so the step

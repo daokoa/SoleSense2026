@@ -71,7 +71,9 @@ static void process_sample() {
   sPrevAccelZ  = gAccel[2];
   sJerkHasPrev = true;
 
-  float channelVal[N_CHANNELS_TOTAL];
+  // Stack-allocating a 12-element float every 2 ms hits the cache, but it
+  // also re-zeros on every call -- avoid by making it static-local.
+  static float channelVal[N_CHANNELS_TOTAL];
   for (uint8_t i = 0; i < N_FSR; i++) channelVal[i] = (float)gFsr[i];
   channelVal[N_FSR + 0] = gAccel[0];
   channelVal[N_FSR + 1] = gAccel[1];
@@ -80,54 +82,40 @@ static void process_sample() {
   channelVal[N_FSR + 4] = gGyro[1];
   channelVal[N_FSR + 5] = gGyro[2];
 
+  float az_mean = 0.0f, az_stddev = 0.0f;
   for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
     stats_update(c, channelVal[c]);
     float mean = stats_get_mean(c);
     float std  = stats_get_stddev(c);
+    if (c == N_FSR + 2) { az_mean = mean; az_stddev = std; }
 
-    // Offer to the outlier buffer first; if it bites, skip the FFT update so
-    // injury-causing spikes don't smear the spectrum.
+    // Outlier-first: a sample over the sigma threshold is captured to the
+    // ring buffer but skipped from the FFT so impact spikes don't smear it.
     bool isOutlier = outliers_offer(gRunElapsedMs, c, channelVal[c], mean, std);
     if (!isOutlier) {
       fft_process_sample(c, channelVal[c], mean);
     }
   }
 
-  // -- IMU sensor-fusion bookkeeping (used by step_detector_update below).
-  // Mark the IMU as "connected" once its vertical-axis stddev has grown above
-  // a tiny floor (real samples have noise; disconnected IMU stays at exactly
-  // zero stddev because gAccel never changes). Then detect any-axis impacts
-  // by deviation from the running mean, and stamp the most recent one.
-  float az        = channelVal[N_FSR + 2];   // accel_z
-  float az_mean   = stats_get_mean(N_FSR + 2);
-  float az_stddev = stats_get_stddev(N_FSR + 2);
-  if (az_stddev > 0.05f) gImuConnected = true;
-  if (gImuConnected) {
-    constexpr float IMU_IMPACT_DELTA = 8.0f;   // m/s^2 above background
-    if (fabsf(az - az_mean) > IMU_IMPACT_DELTA) {
-      gLastImuImpactMs = gRunElapsedMs;
-      gImuImpactCount++;
-    }
+  // IMU sensor-fusion: connected iff accel_z has accumulated noise (a
+  // disconnected MPU-6050 leaves gAccel pinned, so stddev stays exactly 0).
+  float az = channelVal[N_FSR + 2];
+  if (az_stddev > IMU_CONNECTED_STDDEV_FLOOR) gImuConnected = true;
+  if (gImuConnected && fabsf(az - az_mean) > IMU_IMPACT_DELTA_MS2) {
+    gLastImuImpactMs = gRunElapsedMs;
+    gImuImpactCount++;
   }
 
-  // -- Total foot pressure (sum of all 6 FSR zones). Smoother signal than
-  // single-channel max -- useful for cross-checking the strike count and as
-  // an alternative trigger if max-based detection ever proves too noisy.
+  // Single FSR pass: total pressure for diagnostics, OR-gate max for the
+  // step detector. Refractory window in state.cpp keeps a single stride from
+  // counting heel->midfoot->forefoot as three strikes.
   float totalPressure = 0.0f;
-  for (uint8_t i = 0; i < N_FSR; i++) totalPressure += channelVal[i];
-  if (totalPressure > gMaxTotalPressure) gMaxTotalPressure = totalPressure;
-
-  // -- Time-domain step detection: OR-gate across ALL FSR zones. A real step
-  // can be heel-strike, midfoot-strike, or forefoot-strike depending on the
-  // runner; whichever zone makes contact first counts. The detector's own
-  // refractory window (250 ms in state.cpp) prevents double-counting the
-  // heel->midfoot->forefoot pressure progression within a single stride.
-  // When the IMU is connected, the detector additionally requires a recent
-  // IMU impact for the strike to count.
-  float anyZoneMax = channelVal[0];
-  for (uint8_t i = 1; i < N_FSR; i++) {
+  float anyZoneMax    = channelVal[0];
+  for (uint8_t i = 0; i < N_FSR; i++) {
+    totalPressure += channelVal[i];
     if (channelVal[i] > anyZoneMax) anyZoneMax = channelVal[i];
   }
+  if (totalPressure > gMaxTotalPressure) gMaxTotalPressure = totalPressure;
   step_detector_update(anyZoneMax,
                        stats_get_mean(0),
                        stats_get_stddev(0),
