@@ -1431,6 +1431,7 @@ const AUTH_TOKEN_KEY    = 'solesense_token';
 const AUTH_BODYKG_KEY   = 'solesense_body_kg';
 const AUTH_HEIGHT_KEY   = 'solesense_height_cm';
 const AUTH_USERNAME_KEY = 'solesense_username';
+const HAS_REPORT_KEY    = 'solesense_has_report';
 let authMode = 'login';   // 'login' or 'claim'
 
 function authToken(){ return localStorage.getItem(AUTH_TOKEN_KEY) || ''; }
@@ -1570,6 +1571,7 @@ async function logout(){
   localStorage.removeItem(AUTH_BODYKG_KEY);
   localStorage.removeItem(AUTH_HEIGHT_KEY);
   localStorage.removeItem(AUTH_USERNAME_KEY);
+  localStorage.removeItem(HAS_REPORT_KEY);
   showScreen('auth');
   refreshAuthScreen();
 }
@@ -1615,6 +1617,7 @@ function showScreen(id){
   document.getElementById('screen-'+id).classList.add('active');
   window.scrollTo(0,0);
   if(id === 'settings') refreshSettings();
+  if(id === 'home' && typeof refreshHomeCards === 'function') refreshHomeCards();
   // Leaving the report -> reset the count-up guard so the animation
   // fires again next time the report opens with fresh data.
   if(id !== 'report' && typeof render === 'function') render._heroAnimated = false;
@@ -2018,13 +2021,29 @@ function resetAiPanel(){
 }
 
 /* -- REPORT LOAD (v0.2: MCU computes the analysis, frontend just renders) -- */
-async function loadReport(){
+// `auto` = called from the recording-stop flow (always show, even if data is
+// thin). `manual` = called from the Quick Access "Last Report" card and must
+// only succeed when a real run has been recorded since this client signed in.
+async function loadReport(source = 'auto'){
   try{
     const res=await fetch('/api/run-report');
     if(!res.ok) throw new Error('HTTP '+res.status);
     const result=await res.json();
     hideLoading();
     if(!result||typeof result!=='object'){toast('No run data');showScreen('home');return;}
+    // /api/run-report ALWAYS returns a JSON envelope, even when nothing has
+    // been recorded -- every numeric field is just zero. That confuses users
+    // who click "Last Report" before their first run, so we gate the manual
+    // path on the presence of a real signal.
+    const hasSignal = (result.steps > 0)
+                   || (result.durationMs > 0)
+                   || (result.samples > 0);
+    if (source === 'manual' && !hasSignal) {
+      toast('No runs yet. Tap Start Run to record one.');
+      showScreen('home');
+      return;
+    }
+    if (hasSignal) localStorage.setItem(HAS_REPORT_KEY, '1');
     lastReport = result;
     resetAiPanel();
     render(result);
@@ -2035,8 +2054,24 @@ async function loadReport(){
 }
 
 function viewLastReport(){
+  // No-data short-circuit: skip the network round-trip when we know
+  // (from the client cache) that this account hasn't recorded a run.
+  if (!localStorage.getItem(HAS_REPORT_KEY)) {
+    toast('No runs yet. Tap Start Run to record one.');
+    return;
+  }
   showLoading('Loading last run...');
-  setTimeout(()=>loadReport(), 300);
+  setTimeout(()=>loadReport('manual'), 300);
+}
+
+/* Sync the "Last Report" home card to whatever state the client is in.
+   Called whenever the home screen becomes active. */
+function refreshHomeCards(){
+  const sub = document.getElementById('last-report-sub');
+  if (!sub) return;
+  sub.textContent = localStorage.getItem(HAS_REPORT_KEY)
+    ? 'View your most recent run'
+    : 'No runs yet';
 }
 
 /* The firmware computes cadence, GCT, pronation, and injury flags on the
@@ -2178,7 +2213,19 @@ function render(r){
 /* -- SETTINGS -- */
 async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed [x]');}catch{toast('Error');}}
 async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed [x]');}catch{toast('Error');}}
-async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await authFetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
+async function clearData(){
+  if(!confirm('Clear all run data? "Last Report" will be empty until you record a new run.')) return;
+  // Always clear the client cache first -- this is the part the user sees
+  // and the part the "Last Report" gate depends on. The server-side wipe
+  // is best-effort (the endpoint isn't always registered).
+  localStorage.removeItem(HAS_REPORT_KEY);
+  lastReport = null;
+  refreshHomeCards();
+  try {
+    await authFetch('/api/data/clear', { method: 'POST' });
+  } catch { /* device endpoint may not be implemented; client wipe is enough for the UX */ }
+  toast('Run data cleared');
+}
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 
 /* -- HELPERS -- */
