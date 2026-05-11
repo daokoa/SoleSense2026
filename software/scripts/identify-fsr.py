@@ -98,8 +98,8 @@ def main():
 
     print(f"[x]  Your FSR is on channel {best} ({ZONE_NAMES[best]}).")
     print(f"   Wiring: this is " +
-          ("Set 1 ADC " + "ABC"[best]      + f" -- power pin GPIO5, analog pin GPIO{2+best}." if best < 3 else
-           "Set 2 ADC " + "ABC"[best - 3]  + f" -- power pin GPIO10, analog pin GPIO{2+best-3}."))
+          ("Set 1 ADC " + "ABC"[best]      + f" -- power pin D7 (GPIO20), analog pin D{best}   (GPIO{2+best})." if best < 3 else
+           "Set 2 ADC " + "ABC"[best - 3]  + f" -- power pin D8 (GPIO8),  analog pin D{best-3} (GPIO{2+best-3})."))
 
 
 if __name__ == "__main__":

@@ -53,7 +53,7 @@ Thresholds are baked in from research; not user-tunable in the UI.
 |---|---|---|
 | Seeed XIAO ESP32-C3 | MCU -- reads sensors, hosts WiFi AP, serves SPA | in hand, flashed |
 | MPU-6050 | 3-axis accel + 3-axis gyro (I^2C) | in hand, soldering pending |
-| FSR 402 x 6 | Pressure sensors (heel, lateral/medial mid, lateral/medial ball, toe 1) | pending |
+| FSR 402 x 6 | Pressure sensors (2 heel + 2 midfoot + 2 forefoot, medial/lateral pairs) | pending |
 | LIR2450 x 2 in parallel | 3.7 V 120 mAh Li-ion coin cells (~240 mAh combined) | pending |
 | TPU 85A filament | 3D-printed insole shell, gyroid 20-25% infill | pending |
 

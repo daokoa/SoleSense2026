@@ -67,20 +67,20 @@ Everything runs on-device. No external dependencies at runtime.
 
 ### Pressure Sensing
 - **6x FSR 402** force sensing resistors, **no multiplexer** -- wired in two sets of three (each set time-multiplexed via a digital power line)
-- 2 digital power pins (`GPIO5`, `GPIO10`) -- one per set
-- 3 shared analog inputs (`GPIO2/A0`, `GPIO3`, `GPIO4`) -- analog A, B, C
+- 2 digital power pins (`D7 / GPIO20`, `D8 / GPIO8`) -- one per set
+- 3 shared analog inputs (`D0 / GPIO2`, `D1 / GPIO3`, `D2 / GPIO4`) -- analog A, B, C
 - 12-bit ADC resolution -> 0-4095 per sensor
 - Per-FSR wiring: pin 1 -> digital power for that set; pin 2 -> analog input AND through a 10 kOhm pull-down resistor to GND (voltage divider)
-- Read sequence per sample: power Set 1 HIGH (Set 2 high-Z) -> read ADC A/B/C -> power Set 2 HIGH (Set 1 high-Z) -> read ADC A/B/C -> both high-Z
+- Read sequence per sample: drive Set 1 power HIGH and Set 2 LOW -> read ADC A/B/C -> drive Set 2 HIGH and Set 1 LOW -> read ADC A/B/C -> park both LOW
 
-| FSR | Set / Position | Reads on | Zone |
-|---|---|---|---|
-| 1A | Set 1, slot A | ADC A (`GPIO2`) | Heel |
-| 1B | Set 1, slot B | ADC B (`GPIO3`) | Lateral Mid |
-| 1C | Set 1, slot C | ADC C (`GPIO4`) | Medial Mid |
-| 2A | Set 2, slot A | ADC A (`GPIO2`) | Ball Lateral |
-| 2B | Set 2, slot B | ADC B (`GPIO3`) | Ball Medial |
-| 2C | Set 2, slot C | ADC C (`GPIO4`) | Toe 1 (hallux) |
+| FSR | Set / Position | Reads on | Zone | Channel |
+|---|---|---|---|---|
+| 1A | Set 1, slot A | ADC A (`D0 / GPIO2`) | Heel medial      | ch0 |
+| 1B | Set 1, slot B | ADC B (`D1 / GPIO3`) | Heel lateral     | ch1 |
+| 1C | Set 1, slot C | ADC C (`D2 / GPIO4`) | Midfoot medial   | ch2 |
+| 2A | Set 2, slot A | ADC A (`D0 / GPIO2`) | Midfoot lateral  | ch3 |
+| 2B | Set 2, slot B | ADC B (`D1 / GPIO3`) | Forefoot medial  | ch4 |
+| 2C | Set 2, slot C | ADC C (`D2 / GPIO4`) | Forefoot lateral | ch5 |
 
 ### IMU
 - **MPU-6050** 6-axis IMU on I2C
@@ -115,13 +115,19 @@ Everything runs on-device. No external dependencies at runtime.
   - `LittleFS` (built into ESP32 Arduino core)
 
 ### Pin Definitions
+
+See `firmware/SoleSenseV2/config.h` for the canonical list.
+
 ```cpp
-#define PIN_SDA       6
-#define PIN_SCL       7
-#define PIN_MUX_SIG   A0   // GPIO2
-#define PIN_MUX_S0    D0   // GPIO3
-#define PIN_MUX_S1    D1   // GPIO4
-#define PIN_MUX_S2    D2   // GPIO5
+constexpr uint8_t PIN_SDA       = 6;    // D4  - I2C SDA  -> MPU-6050 SDA
+constexpr uint8_t PIN_SCL       = 7;    // D5  - I2C SCL  -> MPU-6050 SCL
+constexpr uint8_t PIN_IMU_INT   = 21;   // D6  - MPU-6050 INT (reserved)
+constexpr uint8_t PIN_ADC_A     = 2;    // D0  - shared analog A (FSR 1A / 2A)
+constexpr uint8_t PIN_ADC_B     = 3;    // D1  - shared analog B (FSR 1B / 2B)
+constexpr uint8_t PIN_ADC_C     = 4;    // D2  - shared analog C (FSR 1C / 2C)
+constexpr uint8_t PIN_PWR_SET1  = 20;   // D7  - FSR Set 1 power (1A/1B/1C)
+constexpr uint8_t PIN_PWR_SET2  = 8;    // D8  - FSR Set 2 power (2A/2B/2C)
+constexpr uint8_t PIN_WAKE      = 9;    // D9  - on-board BOOT button (wake)
 ```
 
 ### State Machine
@@ -133,7 +139,7 @@ IDLE  --/api/start--  RECORDING  --/api/stop--  IDLE
 - 50Hz hardware timer (ESP32 `timerBegin` / `timerAlarm`)
 - Timer ISR sets `gNewSample` flag only -- no work in ISR
 - `loop()` checks flag, calls `takeSample()`
-- `takeSample()` reads all 6 FSRs via mux + IMU via I2C -> formats CSV row -> writes to open file
+- `takeSample()` reads all 6 FSRs via matrix-scan power-gating + IMU via I2C -> formats CSV row -> writes to open file
 
 ### Buffered Writes
 - 25-row RAM buffer, flush every 0.5 seconds
@@ -203,7 +209,7 @@ accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 ```
 
 - `timestamp_ms` -- `millis()` since boot
-- `fsr1-6` -- ADC counts 0-4095, zero-offset applied (channels 0-5 of mux: heel, lateral mid, medial mid, ball lateral, ball medial, toe 1)
+- `fsr1-6` -- ADC counts 0-4095, zero-offset applied (channels 0-5: heel medial, heel lateral, midfoot medial, midfoot lateral, forefoot medial, forefoot lateral)
 - `accel_x/y/z` -- m/s^2, calibration offset applied, gravity on Z
 - `gyro_x/y/z` --  deg/s, calibration offset applied
 
@@ -274,7 +280,7 @@ Each flag card shows:
 - Average every 10 samples -> write 1 row at 5Hz
 - Also store `fsr_peak[6]` and `gyro_peak_x` per window
 - 40+ minutes recording on 1.5MB partition
-- Averaging acts as a free low-pass filter -- removes ADC jitter, mux switching transients, TPU material vibration
+- Averaging acts as a free low-pass filter -- removes ADC jitter, set-switching transients, TPU material vibration
 - Validated by Choi et al. (2024, *Sensors*): averaged FSR data improves downstream GRF/CoP prediction accuracy
 
 ### Partition Scheme
