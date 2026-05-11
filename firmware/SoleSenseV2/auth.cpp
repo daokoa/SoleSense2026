@@ -320,6 +320,30 @@ String auth_extract_bearer(const String& header) {
   return header.substring(7);
 }
 
+int auth_update_profile(float body_kg, float height_cm) {
+  if (!gSession.active) return -1;
+  const bool wantBody   = !isnan(body_kg);
+  const bool wantHeight = !isnan(height_cm);
+  if (!wantBody && !wantHeight) return -2;          // nothing to change
+  if (wantBody   && (body_kg   < 25.0f  || body_kg   > 250.0f)) return -3;
+  if (wantHeight && (height_cm < 100.0f || height_cm > 250.0f)) return -4;
+
+  // NVS-first, gSession-second so a failed write doesn't desync.
+  if (wantBody) {
+    const String bodyKey = key_for(gSession.username, 'w');
+    if (sNvs.putFloat(bodyKey.c_str(), body_kg) == 0) return -5;
+    gSession.body_kg = body_kg;
+  }
+  if (wantHeight) {
+    const String heightKey = key_for(gSession.username, 't');
+    if (sNvs.putFloat(heightKey.c_str(), height_cm) == 0) return -6;
+    gSession.height_cm = height_cm;
+  }
+  Serial.printf("[Auth] profile updated user=%s body_kg=%.1f height_cm=%.1f\n",
+                gSession.username, gSession.body_kg, gSession.height_cm);
+  return 0;
+}
+
 void auth_factory_reset() {
   Serial.println("[Auth] FACTORY RESET -- wiping all profiles");
   sNvs.clear();

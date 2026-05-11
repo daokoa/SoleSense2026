@@ -49,6 +49,13 @@ int auth_register(const String& username, const String& pin, float body_kg, floa
 //   -3 rate-limited (too many recent failures)
 int auth_login(const String& username, const String& pin);
 
+// Update body_kg and/or height_cm for the currently signed-in user.
+// Pass NaN for any field you don't want to change. Returns 0 on success,
+// negative on validation failure. Persists to NVS and updates gSession
+// atomically (NVS first, then gSession), so a failed write doesn't leave
+// the in-RAM session out of sync with flash.
+int auth_update_profile(float body_kg, float height_cm);
+
 // Drop the active session.
 void auth_logout();
 

@@ -203,6 +203,18 @@ void storage_end_run(uint32_t elapsed_ms, uint32_t sample_count) {
   }
 }
 
+void storage_clear() {
+  uint8_t removed = 0;
+  for (uint8_t i = 0; i < STORAGE_SLOT_COUNT; i++) {
+    const String p = slot_path(i);
+    if (LittleFS.exists(p.c_str()) && LittleFS.remove(p.c_str())) removed++;
+  }
+  sNextSlot = 0;
+  sSlotSeq  = 1;
+  Serial.printf("[Storage] cleared %u/%u slot files\n",
+                removed, (unsigned)STORAGE_SLOT_COUNT);
+}
+
 bool storage_load_latest(SlotHeader& outHeader) {
   bool found = false;
   uint32_t bestSeq = 0;

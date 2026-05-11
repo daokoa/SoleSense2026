@@ -1395,6 +1395,27 @@ button{ font-family:inherit; }
           </div>
           <button class="btn-cal" onclick="confirmLogout()">Log out</button>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Body weight</div>
+            <div class="settings-desc">Used for impact-rate calculation (BW/s -> Healthy / Elevated / High)</div>
+          </div>
+          <div class="profile-edit-cell">
+            <input id="set-bodykg" class="num-input" type="number" step="0.1" min="25" max="250" placeholder="kg">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Height</div>
+            <div class="settings-desc">Used for stride length + estimated speed (Cavanagh &amp; Williams 1982)</div>
+          </div>
+          <div class="profile-edit-cell">
+            <input id="set-height" class="num-input" type="number" step="0.5" min="100" max="250" placeholder="cm">
+          </div>
+        </div>
+        <div class="settings-row" id="set-profile-save-row" style="justify-content:flex-end;">
+          <button class="btn-cal" onclick="saveProfile()">Save profile</button>
+        </div>
       </div>
     </div>
 
@@ -1595,10 +1616,18 @@ async function refreshSettings(){
     if(r.ok){
       const d = await r.json();
       const el = document.getElementById('settings-username');
-      if(el) el.textContent = d.username + (d.body_kg ? ` . ${d.body_kg} kg` : '');
-      // Sync the cache so confirmLogout (and anything else that needs the
-      // username before a /profile round-trip) always has it available.
-      if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
+      if (el) {
+        const kgPart = d.body_kg   ? ` · ${d.body_kg} kg`   : '';
+        const cmPart = d.height_cm ? ` · ${d.height_cm} cm` : '';
+        el.textContent = d.username + kgPart + cmPart;
+      }
+      // Mirror the server's source-of-truth into the localStorage cache.
+      if (d.username)  localStorage.setItem(AUTH_USERNAME_KEY, d.username);
+      if (d.body_kg)   localStorage.setItem(AUTH_BODYKG_KEY,   String(d.body_kg));
+      if (d.height_cm) localStorage.setItem(AUTH_HEIGHT_KEY,   String(d.height_cm));
+      // Prefill the Edit Profile inputs so the user sees their current values.
+      const bk = document.getElementById('set-bodykg'); if (bk) bk.value = d.body_kg   || '';
+      const ht = document.getElementById('set-height'); if (ht) ht.value = d.height_cm || '';
     }
   } catch {/* offline / 401 already redirects */}
   try {
@@ -2211,20 +2240,55 @@ function render(r){
 }
 
 /* -- SETTINGS -- */
-async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed [x]');}catch{toast('Error');}}
-async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed [x]');}catch{toast('Error');}}
+async function zeroSensors(){
+  try { await authFetch('/api/calibrate/zero', { method: 'POST' }); toast('Sensors zeroed'); }
+  catch { toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.'); }
+}
+async function zeroIMU(){
+  try { await authFetch('/api/calibrate/imu', { method: 'POST' }); toast('IMU zeroed'); }
+  catch { toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.'); }
+}
 async function clearData(){
   if(!confirm('Clear all run data? "Last Report" will be empty until you record a new run.')) return;
-  // Always clear the client cache first -- this is the part the user sees
-  // and the part the "Last Report" gate depends on. The server-side wipe
-  // is best-effort (the endpoint isn't always registered).
+  // Wipe the client cache first; if the device call succeeds we also wipe
+  // the on-flash slot files. The Last Report gate depends on the client
+  // cache, so the UX is correct either way.
   localStorage.removeItem(HAS_REPORT_KEY);
   lastReport = null;
   refreshHomeCards();
   try {
-    await authFetch('/api/data/clear', { method: 'POST' });
-  } catch { /* device endpoint may not be implemented; client wipe is enough for the UX */ }
-  toast('Run data cleared');
+    const r = await authFetch('/api/data/clear', { method: 'POST' });
+    if (r.ok) toast('Run data cleared');
+    else if (r.status === 409) toast('Stop the current run before clearing data.');
+    else toast('Cleared on this device. The insole may still hold the previous run snapshots.');
+  } catch {
+    toast('Cleared on this device. The insole was unreachable.');
+  }
+}
+async function saveProfile(){
+  const bk = document.getElementById('set-bodykg').value;
+  const ht = document.getElementById('set-height').value;
+  if (!bk && !ht) { toast('Enter a new value first.'); return; }
+  if (bk && (+bk < 25 || +bk > 250)) { toast('Body weight must be 25-250 kg.'); return; }
+  if (ht && (+ht < 100 || +ht > 250)) { toast('Height must be 100-250 cm.'); return; }
+  const body = new URLSearchParams();
+  if (bk) body.append('body_kg',   bk);
+  if (ht) body.append('height_cm', ht);
+  try {
+    const r = await authFetch('/api/auth/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Could not update profile.'); return; }
+    if (d.body_kg)   localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
+    if (d.height_cm) localStorage.setItem(AUTH_HEIGHT_KEY, String(d.height_cm));
+    toast('Profile updated');
+    refreshSettings();
+  } catch {
+    toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.');
+  }
 }
 async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
 

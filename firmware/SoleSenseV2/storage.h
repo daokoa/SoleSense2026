@@ -43,6 +43,12 @@ void storage_end_run(uint32_t elapsed_ms, uint32_t sample_count);
 // slot in the ring; advances the ring index.
 void storage_save_snapshot(uint32_t elapsed_ms, uint32_t sample_count);
 
+// Delete every /run_slot_N.bin file on LittleFS and reset the in-RAM ring
+// pointer. Called from /api/data/clear; next storage_begin_run() reinitialises.
+// In-memory run aggregates (gMaxTotalPressure, etc.) are reset by the state
+// machine on the next Start Run, not by this call.
+void storage_clear();
+
 // Scan all slots, validate trailers, return the header of the newest valid
 // snapshot (the one with the highest timestamp_ms). Returns true if any slot
 // was valid; false if /run.bin is empty/corrupt.

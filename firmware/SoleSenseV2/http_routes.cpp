@@ -539,6 +539,47 @@ static void handle_auth_profile(AsyncWebServerRequest* req) {
   req->send(200, "application/json", j);
 }
 
+// POST /api/auth/profile -- edit body_kg and/or height_cm for the signed-in
+// user. URL-encoded body, both fields optional. Returns the updated profile.
+static void handle_auth_profile_update(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
+  float body_kg = NAN, height_cm = NAN;
+  if (req->hasArg("body_kg"))   body_kg   = req->arg("body_kg").toFloat();
+  if (req->hasArg("height_cm")) height_cm = req->arg("height_cm").toFloat();
+  int rc = auth_update_profile(body_kg, height_cm);
+  if (rc == 0) {
+    String j = "{\"ok\":true,\"username\":\""; j += gSession.username;
+    j += "\",\"body_kg\":";   j += String(gSession.body_kg, 1);
+    j += ",\"height_cm\":";   j += String(gSession.height_cm, 1);
+    j += "}";
+    req->send(200, "application/json", j);
+    return;
+  }
+  const char* err =
+    (rc == -1) ? "Sign in first." :
+    (rc == -2) ? "Nothing to update." :
+    (rc == -3) ? "Body weight must be 25-250 kg." :
+    (rc == -4) ? "Height must be 100-250 cm." :
+    (rc == -5 || rc == -6) ? "Could not save (NVS error). Try again." :
+                 "Invalid input.";
+  String j = "{\"ok\":false,\"error\":\""; j += err; j += "\"}";
+  req->send(400, "application/json", j);
+}
+
+// POST /api/data/clear -- wipe the run-snapshot ring buffer on flash.
+// In-memory peak counters (gMaxTotalPressure, gMaxHeelJerk, ...) reset
+// automatically on the next Start Run.
+static void handle_data_clear(AsyncWebServerRequest* req) {
+  if (!require_auth(req)) return;
+  if (gState != RS_IDLE) {
+    req->send(409, "application/json",
+              "{\"ok\":false,\"error\":\"Stop the current run first.\"}");
+    return;
+  }
+  storage_clear();
+  req->send(200, "application/json", "{\"ok\":true}");
+}
+
 // -- Registration -------------------------------------------------------------
 void http_register_routes(AsyncWebServer& server) {
   server.on("/api/device",         HTTP_GET,  handle_device);
@@ -561,6 +602,8 @@ void http_register_routes(AsyncWebServer& server) {
   server.on("/api/auth/login",     HTTP_POST, handle_auth_login);
   server.on("/api/auth/logout",    HTTP_POST, handle_auth_logout);
   server.on("/api/auth/profile",   HTTP_GET,  handle_auth_profile);
+  server.on("/api/auth/profile",   HTTP_POST, handle_auth_profile_update);
+  server.on("/api/data/clear",     HTTP_POST, handle_data_clear);
 
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }
