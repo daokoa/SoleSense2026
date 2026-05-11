@@ -1,6 +1,6 @@
 # SoleSense
 ### 3D Printed Smart Running Insole -- Biomechanical Analysis System
-**SoleSense team . UCI . Spring 2026**
+**UCI . Spring 2026**
 Built by Dao Doan and the SoleSense team.
 
 ---
@@ -482,4 +482,4 @@ Arduino IDE -> `Cmd+Shift+P` -> **Upload LittleFS** -> Enter
 
 ---
 
-*SoleSense -- SoleSense team, UCI Spring 2026*
+*SoleSense -- UCI Spring 2026*
