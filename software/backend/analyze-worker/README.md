@@ -62,7 +62,7 @@ You should get back:
   "ok": true,
   "analysis": "**What went well**\n- ...",
   "usage": { "total_tokens": 412 },
-  "model": "gpt-4o-mini"
+  "model": "gpt-4.1"
 }
 ```
 
@@ -147,7 +147,7 @@ Status codes: `400` bad payload, `405` wrong method, `429` rate-limited, `502` u
 
 ## Cost guardrails
 
-- `MAX_TOKENS = 700` and `gpt-4o-mini` keep each call  1.
+- `MAX_TOKENS = 800` and `gpt-4.1` keep each call to a predictable, sub-cent cost.
 - Set a hard monthly cap on the OpenAI dashboard (`Settings -> Billing -> Usage limits`).
 - Add the rate-limit KV binding above before exposing the worker URL publicly.
 

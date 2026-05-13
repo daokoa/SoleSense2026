@@ -108,7 +108,7 @@ What's protected, what's not, and how the firmware survives the obvious failure 
 |---|---|---|---|
 | User PINs | NVS namespace `solesense_auth` (`h_<user>` keys) | NVS provides per-page CRC + wear-leveling. Atomic on partial writes -- a power loss mid-write either keeps the old value or rolls back, never half-applied. | SHA-256 with a 16-byte per-user random salt. Pulling the flash chip and dumping NVS reveals only `(salt, hash)` pairs -- recovering the PIN requires brute-forcing the hash, which on a 4-digit PIN is fast unless rate-limited at the auth layer (which it is, see below). |
 | Run data | LittleFS `/run.bin`, 10-slot ring buffer | Each slot is wrapped with a magic header (`0x55EAB001`) + CRC32 + magic trailer (`0xC0DEF00D`). On boot/reconnect we scan all 10 slots and pick the newest with a valid trailer. A power loss mid-flush corrupts at most one slot; the previous valid slot is loaded transparently. | Not encrypted. Anyone with physical USB can read the recorded run. |
-| Calibration offsets (FSR / IMU) | NVS `solesense_main` | NVS-protected | Plaintext (no PII) |
+| Calibration offsets (FSR / IMU) | RAM only (zeroed on boot) | n/a | Re-run `/api/calibrate/zero` and `/api/calibrate/imu` after each reboot. NVS-persist is a v0.3 todo. |
 | Body weight | NVS `solesense_auth` (`w_<user>`) | NVS-protected | Plaintext within NVS -- see PIN row for what that means |
 
 ### Auth attacks
@@ -119,7 +119,7 @@ What's protected, what's not, and how the firmware survives the obvious failure 
 | **Session-token forgery** | 32-byte token from `esp_random()` (hardware TRNG). 256 bits of entropy. Compared with `memcmp` (constant-time enough -- the token's a one-shot, not an HMAC). |
 | **Token replay after expiry** | Every successful auth check compares `expires_ms` against `millis()` and drops the session if past. Idle timeout: 30 minutes. |
 | **Token replay after logout** | Logout clears the slot in RAM. Subsequent requests with that token get 401. |
-| **Walk-up account creation** | Only the first `/api/auth/register` is unrestricted (claim mode). After that, registration requires the existing owner's token. |
+| **Walk-up account creation** | Anyone on the SoleSense AP can register an account (the shared WiFi password is the access gate). Capped at `MAX_USERS = 50` and rate-limited to 3 registrations per 60 seconds per device. The first register call also "claims" the device by writing `owner_user` to NVS. |
 | **Physical USB attacker** | Out of scope. They can re-flash firmware; nothing in software stops that. The `factory_reset` USB-serial command is intentionally available so a legitimate device owner can recover from a forgotten PIN. |
 | **DoS via login flood** | Per-username lockout limits cost. No global rate limiter today; if the device is exposed to a hostile network for long periods, add one in `auth.cpp`. |
 
@@ -171,7 +171,7 @@ Endpoints:
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `GET`  | `/api/auth/state`     | public  | `{ ownerExists, sessionActive, username, userCount, maxUsers }` |
-| `POST` | `/api/auth/register`  | claim-mode -> public; otherwise requires owner token | URL-encoded `username, pin, body_kg` |
+| `POST` | `/api/auth/register`  | public, capped (`MAX_USERS=50`, 3-per-60s) | URL-encoded `username, pin, body_kg, height_cm`. First call also claims the device (`owner_user` written to NVS). |
 | `POST` | `/api/auth/login`     | public  | URL-encoded `username, pin` -> `{ ok, token, body_kg }` |
 | `POST` | `/api/auth/logout`    | session | clear current session |
 | `GET`  | `/api/auth/profile`   | session | current user info |
