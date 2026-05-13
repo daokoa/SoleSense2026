@@ -708,31 +708,58 @@ button{ font-family:inherit; }
 .fix-low   {background:var(--blue-bg);color:#1e40af;border:1.5px solid var(--blue-lt)}
 .fix-label {font-weight:700;display:block;margin-bottom:3px}
 
-/* metrics */
-.metrics-card{
-  background:var(--surface);border:none;
-  border-radius:16px;overflow:hidden;
+/* Detailed-metrics grid: fixed 2-up grid of distinct tiles. Each tile
+   has its own name + large value + description + optional status pill.
+   Apple Fitness / Garmin Connect "stat tile" idiom -- replaces a
+   uniform key:value row list. */
+.metrics-grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:12px;
+}
+.metric-card{
+  background:var(--surface);
+  border-radius:18px;
+  padding:16px 16px 14px;
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
+  display:flex;flex-direction:column;gap:10px;
+  min-height:128px;
 }
-.metrics-row{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
-  padding:14px 18px;
-  border-bottom:1px solid rgba(15,23,42,.06);
+.metric-card-head{
+  display:flex;align-items:center;gap:10px;
 }
-.metrics-row:last-child{border-bottom:none}
-.metrics-keywrap{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-.metrics-key{font-size:14px;color:var(--text);font-weight:600;letter-spacing:-.01em}
-.metrics-sub{font-size:12px;color:var(--text3);line-height:1.4}
-.metrics-valwrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
-.metrics-val{
-  font-size:15px;font-weight:700;color:var(--text);
+.metric-card-name{
+  flex:1;
+  font-size:12px;font-weight:700;
+  color:var(--text2);
+  text-transform:uppercase;letter-spacing:.08em;
+  line-height:1.2;
+  min-width:0;
+  /* If the name is long, ellipsize rather than wrap two lines. */
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.metric-card-value{
+  display:flex;align-items:baseline;gap:6px;
+}
+.metric-card-num{
+  font-size:28px;font-weight:800;color:var(--text);
   font-family:'DM Mono',ui-monospace,monospace;
-  white-space:nowrap;letter-spacing:-.01em;
+  line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
 }
-.unit{font-size:11px;color:var(--text3);font-weight:500;margin-left:2px;font-family:inherit}
+.metric-card-unit{
+  font-size:13px;font-weight:600;color:var(--text2);
+  letter-spacing:.01em;
+}
+.metric-card-desc{
+  font-size:12px;color:var(--text3);
+  line-height:1.5;margin-top:auto;
+}
+
+/* Status pill (in range / watch / high) sits in the card head row. */
 .metric-pill{
-  font-size:11px;font-weight:700;letter-spacing:.04em;
-  padding:3px 9px;border-radius:999px;
+  font-size:10px;font-weight:700;letter-spacing:.06em;
+  padding:3px 8px;border-radius:999px;
   background:transparent;color:var(--text3);
   white-space:nowrap;text-transform:uppercase;
 }
@@ -740,6 +767,10 @@ button{ font-family:inherit; }
 .metric-pill.warn{background:#fef3c7;color:#a16207}
 .metric-pill.high{background:#fee2e2;color:#b91c1c}
 .metric-pill:empty{display:none}
+
+/* Legacy classes kept so old DOM (live-sensor / settings cards) keeps
+   styling consistent. Detailed-metrics no longer uses them. */
+.unit{font-size:11px;color:var(--text3);font-weight:500;margin-left:2px;font-family:inherit}
 
 /* zone legend */
 .zone-legend{
@@ -858,8 +889,9 @@ button{ font-family:inherit; }
 }
 .foot-scale-bar{
   width:220px;height:8px;border-radius:5px;
-  /* Matches the 3-stop heatmap palette (indigo -> amber -> red). */
-  background:linear-gradient(to right, #1e3a8a, #f59e0b, #dc2626);
+  /* Matches the 8-stop thermal heatmap palette. */
+  background:linear-gradient(to right,
+    #312e81, #3730a3, #2563eb, #06b6d4, #10b981, #facc15, #f97316, #ef4444);
   box-shadow:0 1px 2px rgba(15,23,42,.10);
 }
 
@@ -932,39 +964,8 @@ button{ font-family:inherit; }
   font-weight:600;
 }
 
-/* Collapsible technical-details */
-.metrics-details{
-  background:var(--surface);
-  border-radius:16px;
-  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
-  overflow:hidden;
-  /* Matches .section margin so this sits at the same rhythm as the rest
-     of the report (Findings -> AI Coach -> Where you landed -> here). */
-  margin-top:28px;
-}
-.metrics-details > summary{
-  list-style:none;cursor:pointer;
-  padding:15px 18px;
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:14px;font-weight:600;color:var(--text);
-  user-select:none;
-}
-.metrics-details > summary::-webkit-details-marker{display:none}
-.metrics-details > summary::after{
-  content:'';display:inline-block;
-  width:8px;height:8px;
-  border-right:2px solid var(--text3);
-  border-bottom:2px solid var(--text3);
-  transform:rotate(45deg);transition:transform .2s ease;
-  margin-right:2px;margin-top:-3px;
-}
-.metrics-details[open] > summary::after{transform:rotate(-135deg);margin-top:3px}
-.metrics-details > summary:hover{background:rgba(15,23,42,.02)}
-.metrics-details .metrics-card{
-  border:none;border-radius:0;box-shadow:none;
-  border-top:1px solid rgba(15,23,42,.06);
-  background:transparent;
-}
+/* The old collapsible .metrics-details + .metrics-card row pattern was
+   removed in favor of the .metrics-grid stat tiles defined further up. */
 
 /* zone bars */
 .zone-card{
@@ -1446,96 +1447,110 @@ button{ font-family:inherit; }
       <!-- Color scale -- Lower / Higher pressure replaces the colloquial
            "Light / Heavy" which doesn't match plantar-pressure idiom. -->
       <div class="foot-scale">
-        <span>Lower</span>
+        <span>Lower pressure</span>
         <div class="foot-scale-bar"></div>
         <span>Higher pressure</span>
       </div>
       </div>
     </div>
 
-    <details class="metrics-details">
-      <summary>Detailed metrics</summary>
-      <div class="metrics-card">
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Cadence</span>
-            <span class="metrics-sub">How often your feet hit the ground. Healthy distance running: 170-180 spm.</span>
-          </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-cadence">--</span><span class="unit">spm</span></span>
+    <div class="section">
+      <div class="section-title">Detailed metrics</div>
+      <div class="metrics-grid">
+
+        <div class="metric-card" data-metric="cadence">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Cadence</div>
             <span class="metric-pill" id="pill-cadence"></span>
           </div>
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Ground contact time</span>
-            <span class="metrics-sub">How long each foot stays planted. Quicker is generally better; over 300 ms is long.</span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-cadence">--</span>
+            <span class="metric-card-unit">spm</span>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-contact">--</span><span class="unit">ms</span></span>
+          <div class="metric-card-desc">How often your feet hit the ground. Healthy distance running: 170-180 spm.</div>
+        </div>
+
+        <div class="metric-card" data-metric="contact">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Ground contact</div>
             <span class="metric-pill" id="pill-contact"></span>
           </div>
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Impact rate</span>
-            <span class="metrics-sub">How quickly force builds when you land. High impact predicts stress fractures and shin splints.</span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-contact">--</span>
+            <span class="metric-card-unit">ms</span>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-loading">--</span></span>
+          <div class="metric-card-desc">How long each foot stays planted. Quicker is better; over 300 ms is long.</div>
+        </div>
+
+        <div class="metric-card" data-metric="loading">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Impact rate</div>
             <span class="metric-pill" id="pill-loading"></span>
           </div>
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Pronation</span>
-            <span class="metrics-sub">How much your foot rolls inward (positive) or outward (negative) during stance.</span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-loading">--</span>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-pronate">--</span><span class="unit"> deg/s</span></span>
+          <div class="metric-card-desc">How quickly force builds when you land. High values predict stress fractures.</div>
+        </div>
+
+        <div class="metric-card" data-metric="pronate">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Pronation</div>
             <span class="metric-pill" id="pill-pronate"></span>
           </div>
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Inside vs. outside</span>
-            <span class="metrics-sub">Pressure split between the inside (medial) and outside (lateral) edges of your foot.</span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-pronate">--</span>
+            <span class="metric-card-unit">deg/s</span>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-balance">--</span></span>
+          <div class="metric-card-desc">Positive: rolls inward. Negative: rolls outward. Some pronation absorbs impact.</div>
+        </div>
+
+        <div class="metric-card" data-metric="balance">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Inside vs outside</div>
             <span class="metric-pill" id="pill-balance"></span>
           </div>
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Stride length</span>
-            <span class="metrics-sub">Estimated from your height. Distance-running stride averages ~0.42 × height (Cavanagh &amp; Williams, 1982).</span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-balance">--</span>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-stride">--</span><span class="unit">m</span></span>
+          <div class="metric-card-desc">Pressure split between medial (inside) and lateral (outside) edges of the foot.</div>
+        </div>
+
+        <div class="metric-card" data-metric="stride">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Stride length</div>
             <span class="metric-pill" id="pill-stride"></span>
           </div>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-stride">--</span>
+            <span class="metric-card-unit">m</span>
+          </div>
+          <div class="metric-card-desc">Estimated from your height. Distance-running stride averages ~0.42 x height.</div>
         </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Estimated speed</span>
-            <span class="metrics-sub">Cadence × stride length. Approximation for distance running at steady cadence.</span>
+
+        <div class="metric-card" data-metric="speed">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Estimated speed</div>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-speed">--</span><span class="unit">km/h</span></span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-speed">--</span>
+            <span class="metric-card-unit">km/h</span>
           </div>
+          <div class="metric-card-desc">Cadence x stride length. An approximation for steady-cadence distance running.</div>
         </div>
-        <div class="metrics-row">
-          <div class="metrics-keywrap">
-            <span class="metrics-key">Total steps</span>
-            <span class="metrics-sub">Number of foot strikes detected during the run.</span>
+
+        <div class="metric-card" data-metric="steps">
+          <div class="metric-card-head">
+            <div class="metric-card-name">Total steps</div>
           </div>
-          <div class="metrics-valwrap">
-            <span class="metrics-val"><span id="m-steps">--</span></span>
+          <div class="metric-card-value">
+            <span class="metric-card-num" id="m-steps">--</span>
           </div>
+          <div class="metric-card-desc">Foot strikes detected during the run.</div>
         </div>
+
       </div>
-    </details>
+    </div>
 
     <button class="btn-done" onclick="showScreen('home')">Done</button>
 
@@ -2374,17 +2389,22 @@ let hmMaskAlpha = null;   // Uint8Array[RW*RH] - 2x alpha of solesense.png
 let hmLastLoads = null;   // remembered so we can re-render once mask loads
 
 function buildHeatmapPalette() {
-  // 3-stop thermal palette: indigo (cool/low) -> amber (warm/mid) ->
-  // red (hot/high). Same consumer-fitness idiom as Garmin Connect /
-  // Strava overlays. The 8-stop "jet" rainbow we shipped earlier read
-  // as scientific/Matlab -- this is the consumer-app aesthetic.
+  // Full thermal heatmap palette: deep blue -> cyan -> green -> yellow
+  // -> orange -> red. Same gradient family as plantar-pressure software
+  // like F-Scan / Tekscan / NURVV and the reference image we calibrated
+  // against earlier in iteration.
   const c = document.createElement('canvas');
   c.width = 256; c.height = 1;
   const cx = c.getContext('2d');
   const g = cx.createLinearGradient(0, 0, 256, 0);
-  g.addColorStop(0.00, '#1e3a8a');   // indigo-900 (low)
-  g.addColorStop(0.50, '#f59e0b');   // amber-500  (mid)
-  g.addColorStop(1.00, '#dc2626');   // red-600    (high)
+  g.addColorStop(0.00, '#312e81');   // indigo-900
+  g.addColorStop(0.14, '#3730a3');   // indigo-800
+  g.addColorStop(0.28, '#2563eb');   // blue-600
+  g.addColorStop(0.42, '#06b6d4');   // cyan-500
+  g.addColorStop(0.56, '#10b981');   // emerald-500
+  g.addColorStop(0.70, '#facc15');   // yellow-400
+  g.addColorStop(0.84, '#f97316');   // orange-500
+  g.addColorStop(1.00, '#ef4444');   // red-500
   cx.fillStyle = g;
   cx.fillRect(0, 0, 256, 1);
   return cx.getImageData(0, 0, 256, 1).data;
