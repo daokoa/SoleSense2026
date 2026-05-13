@@ -23,6 +23,7 @@ volatile bool gStartRequested   = false;
 volatile bool gStopRequested    = false;
 volatile bool gSleepRequested   = false;
 volatile uint32_t gPauseStartMs = 0;
+volatile bool gResetSampleTracking = false;
 
 volatile uint32_t gStepCount       = 0;
 volatile uint32_t gContactSumMs    = 0;
@@ -122,6 +123,7 @@ static void enter_recording() {
   storage_begin_run();
   gState     = RS_RECORDING;
   gRunActive = WiFi.softAPgetStationNum() > 0;
+  gResetSampleTracking = true;   // first sample after start gets a clean derivative-history
   Serial.println("[Run] started");
 }
 
@@ -158,9 +160,12 @@ void state_tick() {
     gPauseStartMs = now;
     Serial.println("[Run] paused (no clients)");
   } else if (!gRunActive && clients > 0) {
-    // Just regained a client -- resume.
+    // Just regained a client -- resume. Reset the jerk-prev tracking so
+    // the next sample doesn't compute a giant spurious jerk over the
+    // pause-duration gap and falsely fire the high_loading flag.
     gLastActiveMs = now;
     gRunActive    = true;
+    gResetSampleTracking = true;
     Serial.printf("[Run] resumed after %lu ms paused\n",
                   (unsigned long)(now - gPauseStartMs));
     gPauseStartMs = 0;

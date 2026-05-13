@@ -91,6 +91,12 @@ extern volatile bool gSleepRequested;
 // Pause-on-disconnect bookkeeping (state.cpp).
 extern volatile uint32_t gPauseStartMs;     // millis() when last paused, 0 if not paused
 
+// Set by state.cpp on resume (and on /api/start). process_sample() checks
+// this on entry and clears its derivative-tracking statics (jerk-prev,
+// anyZone-prev). Without this, the first sample after a pause computes
+// jerk = (now - hours_old_value) and fires a false high_loading flag.
+extern volatile bool gResetSampleTracking;
+
 // Initialise state globals to known values (call from setup()).
 void state_init();
 

@@ -38,9 +38,13 @@ static void start_sample_timer() {
 static void enter_deep_sleep() {
   Serial.println("[Sleep] entering deep sleep, wake on GPIO9 LOW");
   Serial.flush();
-  delay(150);
-  WiFi.softAPdisconnect(true);
-  LittleFS.end();
+
+  // Drain any in-flight HTTP requests before tearing the chip down. Deep
+  // sleep wipes WiFi / LittleFS / heap atomically, so we deliberately do
+  // NOT call WiFi.softAPdisconnect() or LittleFS.end() ourselves -- those
+  // free resources the AsyncWebServer task can still hold pointers to,
+  // and a poll landing mid-teardown would crash the device on stage.
+  delay(500);
 
   // Hold the wake pin high during sleep so a press-to-GND triggers wake.
   // Using the older esp-idf 4.x API that's available across Arduino-ESP32
@@ -53,14 +57,27 @@ static void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-// Per-sample processing. Vertical IMU jerk is tracked as a fusion signal
-// alongside the FSR-based step detector.
+// Per-sample processing. Vertical IMU jerk and FSR-jerk are tracked as
+// fusion signals alongside the FSR-based step detector. The "has prev"
+// flags must be cleared whenever sampling pauses and resumes (Wi-Fi
+// drop, iOS captive-portal probe, etc.) -- otherwise the next call
+// computes (now - prev) over a seconds-long gap and produces a giant
+// spurious jerk that falsely fires the `high_loading` injury flag.
+// state.cpp sets gResetSampleTracking on resume; we honor it here.
 static float sPrevAccelZ  = 0.0f;
 static bool  sJerkHasPrev = false;
+static float sPrevAny     = 0.0f;
+static bool  sAnyHasPrev  = false;
 
 static void process_sample() {
   sensors_read_all();
   gSampleCount++;
+
+  if (gResetSampleTracking) {
+    sJerkHasPrev = false;
+    sAnyHasPrev  = false;
+    gResetSampleTracking = false;
+  }
 
   // Vertical jerk: |accel_z| / t over the last sample interval.
   if (sJerkHasPrev) {
@@ -123,8 +140,7 @@ static void process_sample() {
 
   // FSR-jerk loading rate: track per-sample d(anyZoneMax)/dt and keep the
   // peak. Same OR-gate: peak rate-of-rise wherever the impact lands counts.
-  static float sPrevAny  = 0.0f;
-  static bool  sAnyHasPrev = false;
+  // sPrevAny/sAnyHasPrev are file-scope so they reset on pause/resume.
   if (sAnyHasPrev) {
     float jerk = (anyZoneMax - sPrevAny) * (float)SAMPLE_RATE_HZ;
     if (jerk > gMaxHeelJerk) gMaxHeelJerk = jerk;
