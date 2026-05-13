@@ -114,17 +114,34 @@ def mock_sensor():
 
 def mock_run_report():
     """Realistic completed-run JSON. Tuned so the heatmap pads colour visibly
-    and at least one finding card renders (per --flags setting)."""
+    and at least one finding card renders (per --flags setting). Per-foot
+    `feet.left` / `feet.right` carry asymmetric dummy zone data so the
+    report-screen heatmap shows visibly different patterns on each foot."""
     # Pull values from real-looking ranges. These match the firmware schema.
     cadence    = 172          # spm — in the healthy 170-180 band
     contactMs  = 245.0        # ms — Quick
     pronation  = 6.4          # deg/s — Neutral
-    medialPct  = 56.0         # mild medial bias
+    medialPct  = 56.0         # mild medial bias (overall)
     lateralPct = 44.0
-    # Heel-dominant strike — drives the heatmap heel pads dark.
+    # Heel-dominant strike (overall).
     zone_heel     = 4200.0
     zone_midfoot  = 1600.0
     zone_forefoot = 2400.0
+
+    # Asymmetric per-foot data: ~10-15% imbalance (realistic running
+    # asymmetry, see Zifchock 2006). Left foot is the "overpronating
+    # heel-striker" -- heavier on heel, more medial weight transfer.
+    # Right foot is closer to neutral with a slightly forward bias.
+    left_foot = {
+        "zoneAvg":    {"heel": 4900.0, "midfoot": 1450.0, "forefoot": 2100.0},
+        "medialPct":  60.0,
+        "lateralPct": 40.0,
+    }
+    right_foot = {
+        "zoneAvg":    {"heel": 3500.0, "midfoot": 1750.0, "forefoot": 2700.0},
+        "medialPct":  52.0,
+        "lateralPct": 48.0,
+    }
 
     # Flag set per --flags.
     flags = []
@@ -163,6 +180,13 @@ def mock_run_report():
             "heel":     zone_heel,
             "midfoot":  zone_midfoot,
             "forefoot": zone_forefoot,
+        },
+        # Per-foot breakdown for the asymmetric heatmap. Real firmware on
+        # a single-insole v0.2 device will omit this; the frontend falls
+        # back to top-level zoneAvg for both feet when `feet` is absent.
+        "feet": {
+            "left":  left_foot,
+            "right": right_foot,
         },
         "flags":           flags,
         "durationMs":      durationMs,
@@ -241,6 +265,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f"  {self.command:5} {self.path:35} -> {args[1]}\n")
+
+    def end_headers(self):
+        # Mock-server is for live iteration on the SPA -- always serve fresh.
+        # Otherwise browsers cache index.html and edits don't show up without
+        # a manual hard-refresh.
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma",        "no-cache")
+        self.send_header("Expires",       "0")
+        super().end_headers()
 
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
