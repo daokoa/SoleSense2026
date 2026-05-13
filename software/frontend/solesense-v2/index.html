@@ -729,7 +729,9 @@ button{ font-family:inherit; }
 .foot-side-label{
   font-size:10px;font-weight:700;
   text-transform:uppercase;letter-spacing:.12em;
-  color:var(--text3);
+  /* --text2 (#475569) on the gradient card meets WCAG AA at 4.5:1.
+     --text3 (#94a3b8) only hits ~3.2:1 -- fails for 10-11px text. */
+  color:var(--text2);
 }
 .foot-svg-report{
   width:150px;height:auto;display:block;
@@ -767,6 +769,7 @@ button{ font-family:inherit; }
 .zone-name{
   font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:.12em;
+  /* Already --text2 -- meets WCAG AA at 4.5:1 on the card gradient. */
   color:var(--text2);
   line-height:1;
 }
@@ -778,7 +781,7 @@ button{ font-family:inherit; }
   font-variant-numeric:tabular-nums;
 }
 .zone-side-tag{
-  font-size:10px;font-weight:700;color:var(--text3);
+  font-size:10px;font-weight:700;color:var(--text2);
   letter-spacing:.06em;
 }
 .zone-side-value{
@@ -787,7 +790,7 @@ button{ font-family:inherit; }
 }
 .foot-scale{
   display:flex;align-items:center;justify-content:center;gap:14px;
-  font-size:11px;color:var(--text3);
+  font-size:11px;color:var(--text2);
   text-transform:uppercase;letter-spacing:.10em;font-weight:600;
   padding-top:4px;
 }
@@ -1300,44 +1303,32 @@ button{ font-family:inherit; }
              feet. Each label shows zone name + L value + R value so the
              user can directly compare loading per zone. Labels are evenly
              spaced (14% / 50% / 86%) so they don't visually touch. -->
-        <div class="zone-labels" aria-hidden="true">
-          <div class="zone-label" data-zone="forefoot">
+        <div class="zone-labels" role="group" aria-label="Per-zone pressure breakdown, left and right foot">
+          <div class="zone-label" data-zone="forefoot" id="zone-label-forefoot">
             <div class="zone-name">Forefoot</div>
-            <div class="zone-values">
-              <span class="zone-side">
-                <span class="zone-side-tag">L</span>
-                <span class="zone-side-value" id="zone-val-l-forefoot">--</span>
-              </span>
-              <span class="zone-side">
-                <span class="zone-side-tag">R</span>
-                <span class="zone-side-value" id="zone-val-r-forefoot">--</span>
-              </span>
+            <div class="zone-values" aria-describedby="zone-label-forefoot">
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">L</span>
+                <span class="zone-side-value" id="zone-val-l-forefoot" aria-label="Left forefoot">--</span></span>
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">R</span>
+                <span class="zone-side-value" id="zone-val-r-forefoot" aria-label="Right forefoot">--</span></span>
             </div>
           </div>
-          <div class="zone-label" data-zone="midfoot">
+          <div class="zone-label" data-zone="midfoot" id="zone-label-midfoot">
             <div class="zone-name">Midfoot</div>
-            <div class="zone-values">
-              <span class="zone-side">
-                <span class="zone-side-tag">L</span>
-                <span class="zone-side-value" id="zone-val-l-midfoot">--</span>
-              </span>
-              <span class="zone-side">
-                <span class="zone-side-tag">R</span>
-                <span class="zone-side-value" id="zone-val-r-midfoot">--</span>
-              </span>
+            <div class="zone-values" aria-describedby="zone-label-midfoot">
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">L</span>
+                <span class="zone-side-value" id="zone-val-l-midfoot" aria-label="Left midfoot">--</span></span>
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">R</span>
+                <span class="zone-side-value" id="zone-val-r-midfoot" aria-label="Right midfoot">--</span></span>
             </div>
           </div>
-          <div class="zone-label" data-zone="heel">
+          <div class="zone-label" data-zone="heel" id="zone-label-heel">
             <div class="zone-name">Heel</div>
-            <div class="zone-values">
-              <span class="zone-side">
-                <span class="zone-side-tag">L</span>
-                <span class="zone-side-value" id="zone-val-l-heel">--</span>
-              </span>
-              <span class="zone-side">
-                <span class="zone-side-tag">R</span>
-                <span class="zone-side-value" id="zone-val-r-heel">--</span>
-              </span>
+            <div class="zone-values" aria-describedby="zone-label-heel">
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">L</span>
+                <span class="zone-side-value" id="zone-val-l-heel" aria-label="Left heel">--</span></span>
+              <span class="zone-side"><span class="zone-side-tag" aria-hidden="true">R</span>
+                <span class="zone-side-value" id="zone-val-r-heel" aria-label="Right heel">--</span></span>
             </div>
           </div>
         </div>
