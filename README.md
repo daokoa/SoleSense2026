@@ -118,8 +118,10 @@ The firmware time-multiplexes which set is active. Only one FSR is ever in the d
 | `POST` | `/api/auth/login`        | rate-limited | `username, pin → token, body_kg` |
 | `POST` | `/api/auth/logout`       | session | Clear active session |
 | `GET`  | `/api/auth/profile`      | session | Current user info |
+| `POST` | `/api/auth/profile`      | session | Update body_kg / height_cm for the current user |
 | `POST` | `/api/start`             | session | Begin recording |
 | `POST` | `/api/stop`              | session | End recording, flush state |
+| `POST` | `/api/data/clear`        | session | Wipe all `/run_slot_*.bin` files (resets Last Report) |
 | `POST` | `/api/calibrate/zero`    | session | Zero the 6 FSRs (insole unloaded) |
 | `POST` | `/api/calibrate/imu`     | session | Zero accel + gyro (insole flat) |
 | `POST` | `/api/sleep`             | session | Enter deep sleep; wake on GPIO9 LOW |

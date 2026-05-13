@@ -40,7 +40,7 @@ The matrix-scan wiring (2 power sets x 3 ADC pins) is unchanged -- only the phys
 | Total-pressure aggregate (peak `SUM(ch0..5)`) | `SoleSenseV2.ino` | [x] done -- exposed via `/api/run-report.maxTotalPressure` for diagnostics |
 | HTTP routes (full set) | `http_routes.cpp` | [x] done |
 | FSR-jerk loading rate (BW/s) -- uses logged-in user's body weight | `http_routes.cpp` + `SoleSenseV2.ino` | [x] done |
-| Cadence sanity clamp (60-240 spm) | `http_routes.cpp` | [x] done |
+| Cadence sanity clamp (20-300 spm) | `http_routes.cpp` | [x] done |
 | FSR-saturation injury flag | `http_routes.cpp` | [x] done |
 | **Auth / profile system** | `auth.h` / `auth.cpp` | [x] done -- NVS-backed users, SHA-256 + salt, owner-claim model, 30-min idle session, 3-failures-->30-s lockout |
 | Deep sleep + GPIO9 wake | `SoleSenseV2.ino` | [x] done (older esp-idf API for portability) |

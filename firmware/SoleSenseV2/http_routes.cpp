@@ -187,8 +187,11 @@ static void handle_run_spectrum(AsyncWebServerRequest* req) {
     j += FFT_BIN_FREQS_HZ[b]; if (b < FFT_BINS_PER_CHAN-1) j += ",";
   }
   j += "],\"channels\":[";
+  // Canonical 3-zone medial/lateral layout (Choi 2024), matching the
+  // channel ordering in sensors.cpp::read_set_a/read_set_b and the foot
+  // diagram in the SPA's heatmap renderer.
   static const char* CH_NAMES[N_CHANNELS_TOTAL] = {
-    "heel","lat_mid","med_mid","ball_lat","ball_med","toe",
+    "heel_med","heel_lat","mid_med","mid_lat","fore_med","fore_lat",
     "ax","ay","az","gx","gy","gz"
   };
   for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
