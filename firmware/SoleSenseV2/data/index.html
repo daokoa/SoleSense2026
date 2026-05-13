@@ -157,10 +157,12 @@ button{ font-family:inherit; }
 .home-nav-link{
   font-size:13px;color:var(--text2);
   background:none;border:none;font-family:inherit;
-  padding:7px 14px;border-radius:var(--r-full);cursor:pointer;
+  padding:10px 16px;border-radius:var(--r-full);cursor:pointer;
+  min-height:44px;display:inline-flex;align-items:center;
   transition:background var(--d-fast),color var(--d-fast);font-weight:500;
 }
 .home-nav-link:hover{background:var(--blue-bg);color:var(--blue)}
+.home-nav-link:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
 
 .home-hero{
   display:flex;
@@ -268,7 +270,19 @@ button{ font-family:inherit; }
 }
 .modal-title{ font-size:20px; font-weight:700; color:var(--text); margin-bottom:6px; }
 .modal-sub{   font-size:14px; color:var(--text2); line-height:1.5; margin-bottom:18px; }
-.modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+.modal-actions{ display:flex; gap:12px; justify-content:flex-end; margin-top:8px; }
+.modal-btn{
+  min-height:44px; padding:0 18px; border-radius:12px;
+  font-size:15px; font-weight:600; cursor:pointer;
+  border:none; background:transparent; color:var(--text);
+  transition:background var(--d-base), transform .12s var(--ease-out);
+}
+.modal-btn:active{ transform:scale(.97); }
+.modal-btn-secondary{ background:rgba(15,23,42,.06); color:var(--text); }
+.modal-btn-secondary:hover{ background:rgba(15,23,42,.10); }
+.modal-btn-destructive{ background:var(--red); color:#fff; }
+.modal-btn-destructive:hover{ background:#dc2626; }
+.modal-btn:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
 
 /* Recording-screen disconnect warning */
 .rec-disconnect-badge{
@@ -282,9 +296,11 @@ button{ font-family:inherit; }
 /* AI-coach panel on the report screen */
 .ai-title{ display:flex; align-items:center; gap:8px; }
 .ai-badge{
-  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  /* Smaller, all-caps pill -- consumer-app idiom (Apple/Strava). */
+  font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
   background:linear-gradient(135deg,#3b82f6,var(--blue2));
-  color:white; padding:2px 8px; border-radius:8px;
+  color:white; padding:3px 8px; border-radius:999px;
+  line-height:1;
 }
 .ai-card{
   background:linear-gradient(135deg,#f5f8ff 0%,#eaf0ff 100%);
@@ -293,17 +309,24 @@ button{ font-family:inherit; }
 .ai-empty{ text-align:center; padding:8px 4px; }
 .ai-empty-text{ color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:14px; }
 .btn-ai{
+  /* Secondary CTA: outline on white, not a competing gradient.
+     .btn-start (home screen) remains the primary CTA. */
   display:inline-flex; align-items:center; gap:8px;
-  background:linear-gradient(135deg,#3b82f6,var(--blue2));
-  color:white; border:none; border-radius:24px;
-  padding:11px 22px; font-size:14px; font-weight:700;
+  background:#fff;
+  color:var(--blue);
+  border:1.5px solid var(--blue-lt);
+  border-radius:999px;
+  padding:11px 22px;
+  min-height:44px;
+  font-size:14px; font-weight:700;
   font-family:inherit; cursor:pointer;
-  box-shadow:0 4px 14px rgba(37,99,235,.3);
-  transition:transform .15s, box-shadow .15s;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+  transition:background var(--d-base), border-color var(--d-base), transform .12s var(--ease-out);
 }
-.btn-ai:hover{ transform:scale(1.03); box-shadow:0 6px 18px rgba(37,99,235,.4); }
+.btn-ai:hover{ background:var(--blue-lt); border-color:var(--blue); }
 .btn-ai:active{ transform:scale(.97); }
-.btn-ai svg{ flex-shrink:0; }
+.btn-ai:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+.btn-ai svg{ flex-shrink:0; color:var(--blue); }
 .ai-loading{
   display:flex; align-items:center; gap:10px; justify-content:center;
   color:var(--blue); font-size:14px; padding:12px 0;
@@ -314,7 +337,7 @@ button{ font-family:inherit; }
   animation:spin 0.7s linear infinite;
 }
 @keyframes spin{ to{ transform:rotate(360deg); } }
-.ai-result{ font-size:14.5px; line-height:1.6; color:var(--text); }
+.ai-result{ font-size:14px; line-height:1.6; color:var(--text); }
 .ai-result:empty{ display:none; }
 .ai-result h3{
   display:block; margin:14px 0 6px;
@@ -348,7 +371,7 @@ button{ font-family:inherit; }
 }
 .auth-field{ display:flex; flex-direction:column; gap:7px; text-align:left; }
 .auth-label{
-  font-size:11.5px; font-weight:700; letter-spacing:.1em;
+  font-size:11px; font-weight:700; letter-spacing:.1em;
   text-transform:uppercase; color:var(--text3);
 }
 .auth-field input{
@@ -369,6 +392,20 @@ button{ font-family:inherit; }
   border-color:var(--blue);
   box-shadow:0 0 0 4px var(--accent-glow), var(--shadow-1);
 }
+/* PIN show/hide toggle. Positions an eye-icon button absolutely inside
+   the input box without affecting the input's normal layout. */
+.pin-wrap{ position:relative; }
+.pin-wrap input{ padding-right:48px; }
+.pin-toggle{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  width:36px; height:36px; min-width:44px; min-height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; cursor:pointer;
+  color:var(--text2); border-radius:8px;
+  transition:background var(--d-fast), color var(--d-fast);
+}
+.pin-toggle:hover{ background:rgba(15,23,42,.06); color:var(--text); }
+.pin-toggle:focus-visible{ outline:2px solid var(--blue); outline-offset:1px; }
 .auth-submit{
   width:100%; justify-content:center; margin-top:10px;
   font-size:16px; padding:16px 32px;
@@ -440,7 +477,7 @@ button{ font-family:inherit; }
 .home-card-icon svg{width:20px;height:20px;stroke:var(--blue);fill:none;stroke-width:1.8;transition:stroke var(--d-base);}
 .home-card:hover .home-card-icon svg{ stroke:#fff; }
 .home-card-label{font-size:15px;font-weight:600;color:var(--text);letter-spacing:var(--tracking-tight)}
-.home-card-sub{font-size:12.5px;color:var(--text3);margin-top:2px}
+.home-card-sub{font-size:12px;color:var(--text3);margin-top:2px}
 
 /* 
    RECORDING
@@ -487,11 +524,15 @@ button{ font-family:inherit; }
 
 .rec-paused-badge{
   display:inline-block;
-  background:var(--amber-bg);
-  color:var(--amber);
-  font-size:11.5px;font-weight:700;
+  /* Stronger amber contrast: low-saturation amber-on-amber failed
+     visibility when the device was paused. Now: white pill, amber text,
+     amber border. Reads at >=4.5:1 contrast on the recording screen. */
+  background:#fff;
+  color:#92400e;
+  border:1.5px solid var(--amber);
+  font-size:11px;font-weight:700;
   padding:6px 14px;border-radius:var(--r-full);
-  letter-spacing:.08em;text-transform:uppercase;
+  letter-spacing:.10em;text-transform:uppercase;
   margin-bottom:14px;
 }
 .rec-timer{
@@ -525,7 +566,7 @@ button{ font-family:inherit; }
   font-variant-numeric:tabular-nums;
   transition:color var(--d-base);
 }
-.rec-chip-label{font-size:10.5px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.rec-chip-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
 
 /* -- Foot diagrams (recording screen) -- */
 .feet-wrap{
@@ -632,12 +673,16 @@ button{ font-family:inherit; }
 .all-clear-sub{font-size:14px;color:var(--text2)}
 
 .flag-card{
-  background:var(--surface);border:none;
+  /* Reset browser-button defaults so the <button> looks like a card. */
+  display:block;width:100%;text-align:left;font:inherit;color:inherit;
+  background:var(--surface);border:none;cursor:pointer;
+  padding:0;
   border-radius:16px;overflow:hidden;margin-bottom:10px;
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
   transition:box-shadow .2s ease, transform .15s ease;
 }
 .flag-card:hover{box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.08)}
+.flag-card:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
 .flag-header{
   display:flex;align-items:center;gap:12px;
   padding:14px 18px;cursor:pointer;user-select:none;
@@ -686,7 +731,7 @@ button{ font-family:inherit; }
 }
 .unit{font-size:11px;color:var(--text3);font-weight:500;margin-left:2px;font-family:inherit}
 .metric-pill{
-  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  font-size:11px;font-weight:700;letter-spacing:.04em;
   padding:3px 9px;border-radius:999px;
   background:transparent;color:var(--text3);
   white-space:nowrap;text-transform:uppercase;
@@ -740,6 +785,18 @@ button{ font-family:inherit; }
   /* Single tight contact shadow -- doubled drop-shadow made the feet
      look like floating stickers on top of the card. */
   filter:drop-shadow(0 2px 6px rgba(15,23,42,.10));
+}
+/* Heatmap image fades in once the data URL is set so it doesn't pop. */
+#rp-heatmap-l, #rp-heatmap-r{
+  opacity:0;
+  transition:opacity .35s var(--ease-out);
+}
+#rp-heatmap-l[href]:not([href=""]),
+#rp-heatmap-r[href]:not([href=""]){
+  opacity:1;
+}
+@media (prefers-reduced-motion: reduce){
+  #rp-heatmap-l, #rp-heatmap-r{ transition:none; }
 }
 .zone-divider{
   /* Black at low alpha reads on every palette stop including the warm
@@ -806,11 +863,13 @@ button{ font-family:inherit; }
   box-shadow:0 1px 2px rgba(15,23,42,.10);
 }
 
-/* report hero (verdict + KPI strip) */
+/* Report hero (verdict + dominant primary stat + 3-stat support strip).
+   Apple Activity idiom: one DOMINANT number, supporting stats demoted.
+   Cadence is the singular hero number on this screen. */
 .report-hero{
   background:var(--surface);
   border-radius:20px;
-  padding:24px 22px 22px;
+  padding:24px 24px 20px;
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
 }
 .hero-verdict{
@@ -821,37 +880,55 @@ button{ font-family:inherit; }
 .hero-icon{
   width:48px;height:48px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:22px;font-weight:700;flex-shrink:0;
+  flex-shrink:0;
   background:#d1fae5;color:#047857;
-  letter-spacing:-.02em;
 }
 .hero-icon.warn{background:#fef3c7;color:#a16207}
 .hero-icon.high{background:#fee2e2;color:#b91c1c}
+.hero-icon svg{ display:block; }
 .hero-title{
-  font-size:20px;font-weight:700;color:var(--text);
+  font-size:22px;font-weight:700;color:var(--text);
   line-height:1.2;letter-spacing:-.02em;
 }
 .hero-sub{
-  font-size:13px;color:var(--text2);
+  font-size:14px;color:var(--text2);
   line-height:1.45;margin-top:4px;
 }
 
+/* Dominant cadence number -- the singular headline of the run report. */
+.hero-primary-stat{
+  display:flex;flex-direction:column;align-items:center;
+  padding:24px 0 20px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+.hero-primary-val{
+  font-size:64px;font-weight:800;color:var(--text);
+  font-family:'DM Mono',ui-monospace,monospace;
+  line-height:1;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;
+}
+.hero-primary-label{
+  font-size:12px;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.12em;
+  font-weight:600;margin-top:8px;
+}
+
 .hero-stats{
-  display:flex;align-items:baseline;justify-content:space-around;
-  gap:8px;padding-top:18px;
+  display:flex;align-items:flex-start;justify-content:space-around;
+  gap:8px;padding-top:16px;
 }
 .hero-stat{
-  display:flex;flex-direction:column;align-items:center;gap:2px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
   flex:1;min-width:0;
 }
 .hero-stat-val{
-  font-size:26px;font-weight:800;color:var(--text);
+  font-size:20px;font-weight:700;color:var(--text);
   font-family:'DM Mono',ui-monospace,monospace;line-height:1;
-  letter-spacing:-.02em;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;
 }
 .hero-stat-label{
-  font-size:10.5px;color:var(--text3);
-  text-transform:uppercase;letter-spacing:.08em;
+  font-size:11px;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.10em;
   font-weight:600;
 }
 
@@ -1051,8 +1128,14 @@ button{ font-family:inherit; }
       </label>
       <label class="auth-field">
         <span class="auth-label">PIN</span>
-        <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
-               autocomplete="new-password" name="sspin" placeholder="4-16 digits">
+        <div class="pin-wrap">
+          <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
+                 autocomplete="new-password" name="sspin" placeholder="4-16 digits">
+          <button type="button" class="pin-toggle" id="auth-pin-toggle"
+                  aria-label="Show PIN" onclick="togglePinVisibility()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" id="auth-pin-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </label>
       <label class="auth-field" id="auth-bodykg-field" style="display:none;">
         <span class="auth-label">Body weight (kg)</span>
@@ -1192,8 +1275,8 @@ button{ font-family:inherit; }
 
       <!-- Right foot -- original PNG orientation (anatomically a right foot),
            no mirror, greyed out via .disabled. -->
-      <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
-        <div class="foot-card-label">Right (offline)</div>
+      <div class="foot-card disabled" id="foot-right" title="Add a second insole for full bilateral analysis">
+        <div class="foot-card-label">Right (v0.2 ships single insole)</div>
         <svg class="foot-svg" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet">
           <image href="solesense.png" x="0" y="0" width="185" height="511"/>
           <circle class="foot-sensor" cx="110" cy="70"  r="18"/>
@@ -1236,47 +1319,56 @@ button{ font-family:inherit; }
 
   <div class="report-body">
 
-    <!-- Hero: verdict + inline stat strip. The first thing a new user sees
-         is whether their run was clean and the three numbers that matter
-         most -- cadence, impact, duration. Everything else flows below. -->
+    <!-- Hero: verdict + cadence as the dominant headline number. The two
+         supporting stats (impact category + duration) sit below the
+         cadence at smaller weight. Apple Activity / Strava idiom: ONE
+         dominant number, everything else demoted. -->
     <div class="report-hero">
       <div class="hero-verdict">
-        <div class="hero-icon" id="hero-icon">[x]</div>
+        <div class="hero-icon" id="hero-icon" aria-hidden="true"></div>
         <div>
           <div class="hero-title" id="hero-title">Run complete</div>
-          <div class="hero-sub" id="hero-sub">Scroll down for findings, pressure breakdown, and AI coach.</div>
+          <div class="hero-sub" id="hero-sub">Personalized AI breakdown and pressure map below.</div>
         </div>
       </div>
+      <div class="hero-primary-stat">
+        <span class="hero-primary-val" id="s-cadence">--</span>
+        <span class="hero-primary-label">steps per minute</span>
+      </div>
       <div class="hero-stats">
-        <div class="hero-stat"><span class="hero-stat-val" id="s-cadence">--</span><span class="hero-stat-label">spm</span></div>
-        <div class="hero-stat"><span class="hero-stat-val" id="s-impact">--</span><span class="hero-stat-label">impact</span></div>
-        <div class="hero-stat"><span class="hero-stat-val" id="s-duration">--</span><span class="hero-stat-label">duration</span></div>
+        <div class="hero-stat">
+          <span class="hero-stat-val" id="s-impact">--</span>
+          <span class="hero-stat-label">Impact</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-val" id="s-duration">--</span>
+          <span class="hero-stat-label">Duration</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-val" id="s-speed">--</span>
+          <span class="hero-stat-label">Est. pace</span>
+        </div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">What we noticed</div>
-      <div id="flags-container"></div>
-    </div>
-
-    <!-- LLM-personalized analysis. Hits the Cloudflare worker which holds
-         the OpenAI key. Falls back to the rule-based flags above when
-         offline / worker unreachable. -->
+    <!-- AI Coach -- promoted above the rule-based flags. This is the most
+         differentiated feature in the product and used to be buried at
+         the bottom; now it's the second card the reviewer sees. -->
     <div class="section ai-section">
       <div class="section-title ai-title">
         <span>AI Coach</span>
-        <span class="ai-badge">beta</span>
+        <span class="ai-badge">BETA</span>
       </div>
       <div class="ai-card">
         <div id="ai-empty" class="ai-empty">
-          <div class="ai-empty-text">Get a personalized breakdown of this run, calibrated to your body weight and gait.</div>
-          <button class="btn-ai" onclick="runAiAnalysis()">
-            <svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 2 L11.5 7 L17 8 L13 11.5 L14 17 L10 14 L6 17 L7 11.5 L3 8 L8.5 7 Z" fill="currentColor"/></svg>
+          <div class="ai-empty-text">A personalized breakdown of this run, tuned to your body weight and gait.</div>
+          <button class="btn-ai" type="button" onclick="runAiAnalysis()">
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2 L11.5 7 L17 8 L13 11.5 L14 17 L10 14 L6 17 L7 11.5 L3 8 L8.5 7 Z" fill="currentColor"/></svg>
             Analyze with AI
           </button>
         </div>
         <div id="ai-loading" class="ai-loading" style="display:none;">
-          <div class="spinner-sm"></div>
+          <div class="spinner-sm" aria-hidden="true"></div>
           <span>Analyzing your run...</span>
         </div>
         <div id="ai-result" class="ai-result"></div>
@@ -1285,16 +1377,22 @@ button{ font-family:inherit; }
     </div>
 
     <div class="section">
-      <div class="section-title">Where you landed</div>
+      <div class="section-title">Findings</div>
+      <div id="flags-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Pressure map</div>
       <div class="foot-report-card">
       <div class="zone-legend">
-        How pressure spread across each foot during your run. Warmer colors mark heavier landing zones. Compare left and right to spot asymmetric loading.
+        Warmer colors mark heavier landing zones. Compare left and right for asymmetric loading.
       </div>
       <div class="foot-report-wrap">
         <!-- Left foot: mirrored so it reads as a left foot on screen (the
-             source PNG is anatomically a right foot). -->
+             source PNG is anatomically a right foot). The "Left/Right"
+             captions are removed; mirroring + anatomical orientation
+             already convey handedness. -->
         <div class="foot-side">
-          <div class="foot-side-label">Left</div>
           <svg class="foot-svg-report" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet" aria-label="Left foot pressure heatmap">
             <g transform="translate(185 0) scale(-1 1)">
               <image id="rp-heatmap-l" href="" x="0" y="0" width="185" height="511"/>
@@ -1338,7 +1436,6 @@ button{ font-family:inherit; }
         </div>
         <!-- Right foot: source PNG orientation (anatomically right). -->
         <div class="foot-side">
-          <div class="foot-side-label">Right</div>
           <svg class="foot-svg-report" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet" aria-label="Right foot pressure heatmap">
             <image id="rp-heatmap-r" href="" x="0" y="0" width="185" height="511"/>
             <line x1="6" y1="100" x2="179" y2="100" class="zone-divider"/>
@@ -1346,18 +1443,18 @@ button{ font-family:inherit; }
           </svg>
         </div>
       </div>
-      <!-- Legend lives in its own row below the heatmap so it can center
-           cleanly without being treated as a flex sibling of the feet. -->
+      <!-- Color scale -- Lower / Higher pressure replaces the colloquial
+           "Light / Heavy" which doesn't match plantar-pressure idiom. -->
       <div class="foot-scale">
-        <span>Light</span>
+        <span>Lower</span>
         <div class="foot-scale-bar"></div>
-        <span>Heavy</span>
+        <span>Higher pressure</span>
       </div>
       </div>
     </div>
 
     <details class="metrics-details">
-      <summary>All technical metrics</summary>
+      <summary>Detailed metrics</summary>
       <div class="metrics-card">
         <div class="metrics-row">
           <div class="metrics-keywrap">
@@ -1540,6 +1637,20 @@ button{ font-family:inherit; }
 <div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run...</span></div>
 <div id="toast"></div>
 
+<!-- Custom confirmation modal: replaces the native confirm() dialog
+     (which looked like 1998 inside the app). Used by clearData() and
+     any other destructive action via the confirmDialog() helper. -->
+<div id="confirm-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+  <div class="modal-card">
+    <div class="modal-title" id="confirm-modal-title">Confirm</div>
+    <div class="modal-sub" id="confirm-modal-sub"></div>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn modal-btn-secondary" id="confirm-modal-cancel">Cancel</button>
+      <button type="button" class="modal-btn modal-btn-destructive" id="confirm-modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* -- AUTH -------------------------------------------------------------------
  * Single-session model. Token + body_kg cached in localStorage so a reload
@@ -1601,6 +1712,14 @@ function toggleAuthMode(){
   if (authForced) return;
   authMode = (authMode === 'login') ? 'signup' : 'login';
   applyAuthMode();
+}
+
+function togglePinVisibility(){
+  const input = document.getElementById('auth-pin');
+  const btn   = document.getElementById('auth-pin-toggle');
+  const isPwd = input.type === 'password';
+  input.type = isPwd ? 'text' : 'password';
+  btn.setAttribute('aria-label', isPwd ? 'Hide PIN' : 'Show PIN');
 }
 
 async function refreshAuthScreen(){
@@ -1696,13 +1815,15 @@ async function logout(){
   refreshAuthScreen();
 }
 
-function confirmLogout(){
+async function confirmLogout(){
   const u = localStorage.getItem(AUTH_USERNAME_KEY) || '';
-  const msg = u
-    ? `Log out of "${u}"? You will need your username and PIN to sign back in.`
-    : 'Log out? You will need your username and PIN to sign back in.';
-  if(!confirm(msg)) return;
-  logout();
+  const ok = await confirmDialog({
+    title: u ? `Log out of "${u}"?` : 'Log out?',
+    body: 'You will need your username and PIN to sign back in.',
+    confirmLabel: 'Log out',
+    destructive: true,
+  });
+  if (ok) logout();
 }
 
 
@@ -1784,6 +1905,8 @@ let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 function startRun(){
   stateFetchFailures = 0;
   setDisconnectBadge(false);
+  // Haptic feedback on supported browsers (ignored everywhere else).
+  if (navigator.vibrate) navigator.vibrate(20);
   authFetch('/api/start',{method:'POST'}).catch(()=>{});
   recSeconds=0;
   document.getElementById('rec-timer').textContent='0:00';
@@ -2000,19 +2123,25 @@ function setPill(id, band){
 
 /* Hero verdict: one rounded icon + headline + sub, derived from the flag list.
  * Returns { icon, tone, title, sub } for render() to paint. */
+// Stroke-only SF-Symbols-style verdict icons. Drop-in 24x24 viewBox so
+// the hero-icon circle scales them cleanly. Text glyphs (✓ / !) were the
+// single biggest "engineer-made" tell on the report screen.
+const VERDICT_ICON_OK = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>';
+const VERDICT_ICON_ALERT = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L22 20 H2 Z"/><line x1="12" y1="10" x2="12" y2="14"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>';
+
 function computeVerdict(flags){
   const n = flags ? flags.length : 0;
   if (n === 0) {
-    return { icon: '✓', tone: '', title: 'Looks clean.',
-             sub: 'Your run is in the healthy range across all biomechanical checks.' };
+    return { icon: VERDICT_ICON_OK, tone: '', title: 'Great run.',
+             sub: 'Every biomechanical check came back in the healthy range.' };
   }
   const rank = { high: 2, medium: 1, low: 0 };
   const maxSev = flags.reduce((m, f) => Math.max(m, rank[FLAG_DEFS[f.key]?.severity || 'low']), 0);
   return {
-    icon: '!',
+    icon: VERDICT_ICON_ALERT,
     tone: maxSev >= 2 ? 'high' : 'warn',
-    title: n === 1 ? '1 thing to look at' : `${n} things to look at`,
-    sub: 'Scroll down for the specifics and a personalized AI breakdown.',
+    title: n === 1 ? 'One thing to review.' : `${n} things to review.`,
+    sub: 'See your AI Coach breakdown and the detailed findings below.',
   };
 }
 
@@ -2208,12 +2337,12 @@ function refreshHomeCards(){
 
 /* -- FLAG DEFS -- */
 const FLAG_DEFS={
-  heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot. This creates a braking force with every step that sends a shock wave up through your knee and hip.',fix:'Try landing with your foot closer under your hips. A slight forward lean from the ankles naturally encourages a midfoot landing. Shorter, quicker steps help more than consciously changing foot placement.'},
-  high_loading:{name:'High Impact Rate',severity:'high',what:"Force is building through your foot very quickly when you land. A high impact rate is one of the strongest predictors of stress fractures and shin splints -- your muscles aren't absorbing the landing gradually enough.",fix:'Focus on landing softly -- imagine running quietly. Increasing your cadence by 5-10 % is the most reliable way to reduce impact rate. A slightly more bent knee at landing also helps.'},
-  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5-10% -- don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
-  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy -- it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
-  supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
-  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other side. On a single insole this is medial vs lateral pressure imbalance -- not left foot vs right foot. Persistent asymmetry can lead to overuse injuries on the overloaded side.',fix:'Stretching the underloaded side and strengthening hip stabilisers tends to help. Single-leg exercises -- deadlifts, step-ups, calf raises -- even out strength differences. (Detecting true left vs right asymmetry needs a second insole.)'},
+  heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot, creating a braking force each step.',fix:'Land closer under your hips; shorter, quicker steps help more than consciously changing foot placement.'},
+  high_loading:{name:'High Impact Rate',severity:'high',what:"Force builds through your foot very quickly on landing -- one of the strongest predictors of stress fractures.",fix:'Land softer (imagine running quietly) and increase cadence by 5-10% to spread the impact over more steps.'},
+  low_cadence:{name:'Low Cadence',severity:'medium',what:'Step rate is below 160 spm, meaning longer strides and harder landings on your knees and hips.',fix:'Increase cadence by 5-10% (not straight to 180); a metronome app set to your target BPM helps.'},
+  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot rolls inward too much after landing, straining the ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats) is the most reliable long-term fix.'},
+  supination:{name:'Supination',severity:'low',what:"Your foot stays rolled outward, reducing natural shock absorption.",fix:'Neutral or cushioned shoes suit supinators better; stretch your calves and peroneal muscles.'},
+  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other, raising overuse-injury risk on the loaded side.',fix:'Single-leg work (deadlifts, step-ups, calf raises) evens out strength differences and rebalances loading.'},
 };
 
 /* -- HEATMAP RENDERER (canvas-based, IDW + foot mask, 2x retina) --
@@ -2377,22 +2506,39 @@ function render(r){
   const C = render._cache;
 
   const v = computeVerdict(r.flags);
-  C.heroIcon.textContent = v.icon;
+  C.heroIcon.innerHTML = v.icon;
   C.heroIcon.classList.remove('warn','high');
   if (v.tone) C.heroIcon.classList.add(v.tone);
   C.heroTitle.textContent = v.title;
   C.heroSub.textContent   = v.sub;
 
+  // Re-animate when the cadence value changes so the wow-moment fires
+  // again on Last-Report re-entry or new-data refresh, not only once
+  // per session.
   const cad = Math.round(r.cadence || 0);
-  if (cad > 0 && !render._heroAnimated) {
+  if (cad > 0 && render._lastCadence !== cad) {
     countUp('s-cadence', cad);
-    render._heroAnimated = true;
+    render._lastCadence = cad;
   } else {
     set('s-cadence', cad > 0 ? cad : '--');
   }
   set('s-impact',  ic.label);
   const m = Math.floor(r.durSec/60), s = Math.round(r.durSec%60);
   set('s-duration', m > 0 ? m+'m '+String(s).padStart(2,'0')+'s' : s+'s');
+
+  // Estimated pace from cadence + height-derived stride length.
+  // Stride length (m) ~= 0.413 * height_m (Macfarlane 2006 normative).
+  // Speed (m/s) = stride * cadence/60 / 2 (cadence is 2 steps per stride).
+  const heroHeightCm = r.profile?.height_cm || 170;
+  const strideM = 0.413 * (heroHeightCm / 100);
+  const speedMs = cad > 0 ? strideM * (cad / 60) / 2 : 0;
+  if (speedMs > 0) {
+    const paceSecPerKm = 1000 / speedMs;
+    const pm = Math.floor(paceSecPerKm / 60), ps = Math.round(paceSecPerKm % 60);
+    set('s-speed', `${pm}:${String(ps).padStart(2,'0')}/km`);
+  } else {
+    set('s-speed', '--');
+  }
 
   set('m-cadence', dashIfZero(r.cadence));
   setPill('pill-cadence', cadenceBand(r.cadence));
@@ -2484,12 +2630,19 @@ function render(r){
     setPct('zone-val-r-heel',     Rf.zH, rTotal);
   }
   const container=document.getElementById('flags-container');
-  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">[x]</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across every biomechanical check.</div></div>';return;}
+  if(!r.flags.length){
+    container.innerHTML = `<div class="all-clear">
+      <div class="all-clear-check">${VERDICT_ICON_OK}</div>
+      <div class="all-clear-title">No issues detected</div>
+      <div class="all-clear-sub">Every biomechanical check came back in the healthy range.</div>
+    </div>`;
+    return;
+  }
   const order={high:0,medium:1,low:2};
   const sorted=[...r.flags].sort((a,b)=>order[FLAG_DEFS[a.key]?.severity||'low']-order[FLAG_DEFS[b.key]?.severity||'low']);
   container.innerHTML=sorted.map(f=>{
     const def=FLAG_DEFS[f.key];if(!def)return'';const sev=def.severity;
-    return`<div class="flag-card" onclick="this.classList.toggle('open')">
+    return`<button type="button" class="flag-card" onclick="this.classList.toggle('open');this.setAttribute('aria-expanded', this.classList.contains('open'))" aria-expanded="false">
       <div class="flag-header">
         <span class="flag-pill pill-${sev}">${sev}</span>
         <div class="flag-name">${def.name}</div>
@@ -2500,7 +2653,7 @@ function render(r){
         <p class="flag-what">${def.what}</p>
         <div class="flag-fix fix-${sev}"><span class="fix-label">What to do</span>${def.fix}</div>
       </div>
-    </div>`;
+    </button>`;
   }).join('');
 }
 
@@ -2514,7 +2667,13 @@ async function zeroIMU(){
   catch { toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.'); }
 }
 async function clearData(){
-  if(!confirm('Clear all run data? "Last Report" will be empty until you record a new run.')) return;
+  const ok = await confirmDialog({
+    title: 'Clear all run data?',
+    body: 'Your Last Report will be empty until you record a new run. This cannot be undone.',
+    confirmLabel: 'Clear data',
+    destructive: true,
+  });
+  if (!ok) return;
   // Wipe the client cache first; if the device call succeeds we also wipe
   // the on-flash slot files. The Last Report gate depends on the client
   // cache, so the UX is correct either way.
@@ -2587,6 +2746,41 @@ function showLoading(msg){document.getElementById('loading-msg').textContent=msg
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
+
+/* Custom confirmation dialog: returns a Promise<boolean>. Replaces the
+   native confirm() which looked like a 1998 browser dialog inside the
+   app. Used by destructive actions (log out, clear data). */
+function confirmDialog({title, body, confirmLabel = 'Confirm', cancelLabel = 'Cancel', destructive = true}){
+  return new Promise(resolve => {
+    const modal      = document.getElementById('confirm-modal');
+    const titleEl    = document.getElementById('confirm-modal-title');
+    const subEl      = document.getElementById('confirm-modal-sub');
+    const confirmBtn = document.getElementById('confirm-modal-confirm');
+    const cancelBtn  = document.getElementById('confirm-modal-cancel');
+    titleEl.textContent = title;
+    subEl.textContent   = body;
+    confirmBtn.textContent = confirmLabel;
+    cancelBtn.textContent  = cancelLabel;
+    confirmBtn.classList.toggle('modal-btn-destructive', destructive);
+    confirmBtn.classList.toggle('modal-btn-primary',     !destructive);
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => confirmBtn.focus());
+    const cleanup = (result) => {
+      modal.style.display = 'none';
+      confirmBtn.onclick = cancelBtn.onclick = modal.onclick = null;
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape')   cleanup(false);
+      if (e.key === 'Enter')    cleanup(true);
+    };
+    confirmBtn.onclick = () => cleanup(true);
+    cancelBtn.onclick  = () => cleanup(false);
+    modal.onclick = (e) => { if (e.target === modal) cleanup(false); };  // click-out
+    document.addEventListener('keydown', onKey);
+  });
+}
 
 /* -- CONNECTIVITY PING -----------------------------------------------------
  * Periodically pokes /api/device. Any HTTP response -> connected (green).
