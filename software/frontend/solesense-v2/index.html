@@ -487,18 +487,39 @@ button{ font-family:inherit; }
   background:var(--surface);
 }
 
-.rec-top{
-  width:100%;display:flex;align-items:center;justify-content:space-between;
-  padding:16px 20px;border-bottom:1.5px solid var(--border);
+/* Unified brand nav shared by Recording and Run Report screens. Mirrors
+   the home-nav frosted-bar so the SoleSense wordmark (with the gradient
+   on "Sense") threads through every screen consistently. The "Sole" is
+   black, "Sense" is the brand blue->indigo gradient. */
+.screen-nav{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;
+  padding:14px 18px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+  background:rgba(255,255,255,.82);
+  backdrop-filter:saturate(180%) blur(16px);
+  -webkit-backdrop-filter:saturate(180%) blur(16px);
+  position:sticky;top:0;z-index:10;
 }
-.rec-back{
-  display:flex;align-items:center;gap:6px;
-  font-size:14px;color:var(--text2);cursor:pointer;
-  background:none;border:none;font-family:inherit;padding:6px 0;
+.screen-nav-left{ display:flex;align-items:center;gap:10px; }
+.screen-nav-back{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;cursor:pointer;
+  color:var(--text2);
+  transition:background var(--d-fast),color var(--d-fast);
 }
-.rec-back:hover{color:var(--blue)}
-.rec-title{font-size:16px;font-weight:700;color:var(--text)}
-.rec-spacer{width:60px}
+.screen-nav-back:hover{ background:rgba(15,23,42,.06);color:var(--text); }
+.screen-nav-back:focus-visible{ outline:2px solid var(--blue);outline-offset:2px; }
+.screen-nav-context{
+  font-size:12px;font-weight:700;
+  color:var(--text2);
+  letter-spacing:.10em;text-transform:uppercase;
+}
+
+/* Legacy classes kept as fallback aliases. */
+.rec-top, .rec-back, .rec-title, .rec-spacer { /* see .screen-nav */ }
 
 .rec-mid{
   display:flex;flex-direction:column;align-items:center;gap:0;
@@ -536,11 +557,17 @@ button{ font-family:inherit; }
   margin-bottom:14px;
 }
 .rec-timer{
-  font-size:108px;font-weight:200;color:var(--text);
+  font-size:108px;font-weight:200;
   letter-spacing:-.04em;line-height:1;
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum" 1, "ss01" 1;
   margin-bottom:10px;
+  /* Brand gradient text fill -- echoes the "Sense" wordmark gradient
+     for cross-screen brand continuity. */
+  background:linear-gradient(135deg, var(--text) 0%, var(--blue) 60%, #6366f1 100%);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
 }
 
 .rec-steps{font-size:15px;color:var(--text2);margin-bottom:32px;letter-spacing:var(--tracking-tight)}
@@ -640,21 +667,7 @@ button{ font-family:inherit; }
  */
 #screen-report{flex-direction:column;padding:0 0 100px;background:#f5f7fb}
 
-.report-header{
-  background:rgba(255,255,255,.86);
-  backdrop-filter:saturate(180%) blur(20px);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-bottom:1px solid rgba(60,60,67,.08);
-  padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:10;
-}
-.report-back{
-  display:flex;align-items:center;gap:6px;
-  font-size:14px;color:var(--blue);cursor:pointer;font-weight:500;
-  background:none;border:none;font-family:inherit;padding:6px 0;
-}
-.report-back:hover{opacity:.75}
-.report-header-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+/* .report-header etc. are now styled via .screen-nav (defined above). */
 
 .report-body{padding:18px 16px 0}
 .section{margin-top:28px}
@@ -847,45 +860,54 @@ button{ font-family:inherit; }
   vector-effect:non-scaling-stroke;
 }
 /* Center column sitting between the two feet. Labels are absolutely
-   positioned at 14% / 50% / 86% of the foot-SVG height -- evenly spaced
-   so the three labels can never visually touch regardless of font size.
-   Foot height: 150 * 511/185 = 414px; container matches it, no top
-   margin (the Left/Right side-labels were removed). */
+   positioned at the ANATOMICAL y-position of each zone (where the
+   actual sensors sit in the 185x511 viewBox), so the Midfoot label
+   visually lands beside the midfoot region of the heatmap -- not in
+   the middle of the arch where it has no relation to any data.
+   Foot height: 150 * 511/185 = 414px; container matches it. */
 .zone-labels{
   position:relative;
-  width:120px;
+  width:110px;
   height:414px;
   flex:0 0 auto;
+  text-align:center;
 }
 .zone-label{
   position:absolute;
   left:0;right:0;
   transform:translateY(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:6px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  text-align:center;
 }
-.zone-label[data-zone="forefoot"]{ top:14%; }
-.zone-label[data-zone="midfoot"]{  top:50%; }
-.zone-label[data-zone="heel"]{     top:86%; }
+/* Anatomical y-positions:
+     Forefoot sensors at viewBox y~70-75   -> 14.7%
+     Midfoot sensors  at viewBox y~120-135 -> 24.9%
+     Heel sensors     at viewBox y~450-455 -> 88.5%
+   With compact labels (~26px tall) the forefoot/midfoot pair has
+   ~42px between centers, leaving ~16px clearance. */
+.zone-label[data-zone="forefoot"]{ top:14.7%; }
+.zone-label[data-zone="midfoot"]{  top:24.9%; }
+.zone-label[data-zone="heel"]{     top:88.5%; }
 .zone-name{
-  font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.12em;
-  /* Already --text2 -- meets WCAG AA at 4.5:1 on the card gradient. */
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.10em;
   color:var(--text2);
   line-height:1;
 }
 .zone-values{
-  display:flex;gap:14px;align-items:baseline;
+  display:flex;gap:10px;align-items:baseline;
+  justify-content:center;
 }
 .zone-side{
-  display:flex;align-items:baseline;gap:4px;
+  display:flex;align-items:baseline;gap:3px;
   font-variant-numeric:tabular-nums;
 }
 .zone-side-tag{
-  font-size:10px;font-weight:700;color:var(--text2);
-  letter-spacing:.06em;
+  font-size:9px;font-weight:700;color:var(--text2);
+  letter-spacing:.04em;
 }
 .zone-side-value{
-  font-size:17px;font-weight:700;color:var(--text);
+  font-size:14px;font-weight:700;color:var(--text);
   line-height:1;letter-spacing:-.01em;
 }
 .foot-scale{
@@ -903,31 +925,64 @@ button{ font-family:inherit; }
 }
 
 /* Report hero (verdict + dominant primary stat + 3-stat support strip).
-   Apple Activity idiom: one DOMINANT number, supporting stats demoted.
-   Cadence is the singular hero number on this screen. */
+   The hero is visually distinguished from the supporting cards via:
+     - a 6px BRAND-COLORED stripe at the top (blue->indigo, matches the
+       SoleSense wordmark). Switches to amber/red only when a finding
+       needs the runner's attention -- semantic, not decorative.
+     - a brand-blue glow ring above the icon
+     - the cadence number rendered in the brand gradient text fill,
+       so it visually echoes the "Sense" in the wordmark.
+   No tonal background wash -- the previous green/amber/red card-tint
+   fought the SoleSense brand. */
 .report-hero{
+  position:relative;
   background:var(--surface);
   border-radius:20px;
-  padding:24px 24px 20px;
+  padding:32px 24px 20px;
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+  overflow:hidden;
 }
+.report-hero::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:6px;
+  background:linear-gradient(90deg, var(--blue) 0%, #6366f1 100%);
+}
+.report-hero.warn::before{
+  background:linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+.report-hero.high::before{
+  background:linear-gradient(90deg, #dc2626 0%, #f87171 100%);
+}
+
 .hero-verdict{
-  display:flex;align-items:center;gap:16px;
+  display:flex;align-items:center;gap:18px;
   padding-bottom:20px;
   border-bottom:1px solid rgba(15,23,42,.06);
 }
 .hero-icon{
-  width:48px;height:48px;border-radius:50%;
+  width:56px;height:56px;border-radius:16px;   /* squircle, not circle */
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
-  background:#d1fae5;color:#047857;
+  background:linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color:#047857;
+  box-shadow:inset 0 0 0 1px rgba(16,185,129,.18);
 }
-.hero-icon.warn{background:#fef3c7;color:#a16207}
-.hero-icon.high{background:#fee2e2;color:#b91c1c}
-.hero-icon svg{ display:block; }
+.hero-icon.warn{
+  background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color:#a16207;
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.20);
+}
+.hero-icon.high{
+  background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color:#b91c1c;
+  box-shadow:inset 0 0 0 1px rgba(220,38,38,.20);
+}
+.hero-icon svg{ display:block; width:30px; height:30px; }
 .hero-title{
-  font-size:22px;font-weight:700;color:var(--text);
-  line-height:1.2;letter-spacing:-.02em;
+  font-size:24px;font-weight:800;color:var(--text);
+  line-height:1.15;letter-spacing:-.025em;
 }
 .hero-sub{
   font-size:14px;color:var(--text2);
@@ -941,10 +996,17 @@ button{ font-family:inherit; }
   border-bottom:1px solid rgba(15,23,42,.06);
 }
 .hero-primary-val{
-  font-size:64px;font-weight:800;color:var(--text);
+  font-size:64px;font-weight:800;
   font-family:'DM Mono',ui-monospace,monospace;
   line-height:1;letter-spacing:-.03em;
   font-variant-numeric:tabular-nums;
+  /* Brand-gradient text fill -- same blue->indigo as "Sense" in the
+     SoleSense wordmark on every nav. Visually ties the hero number
+     to the brand. */
+  background:linear-gradient(135deg, var(--blue) 0%, #4f46e5 50%, #6366f1 100%);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
 }
 .hero-primary-label{
   font-size:12px;color:var(--text2);
@@ -1225,14 +1287,15 @@ button{ font-family:inherit; }
 <!--  RECORDING  -->
 <div class="screen" id="screen-recording">
 
-  <div class="rec-top">
-    <button class="rec-back" onclick="cancelRun()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Cancel
-    </button>
-    <div class="rec-title">Recording</div>
-    <div class="rec-spacer"></div>
-  </div>
+  <nav class="screen-nav">
+    <div class="screen-nav-left">
+      <button class="screen-nav-back" type="button" onclick="cancelRun()" aria-label="Cancel run">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="home-wordmark">Sole<span>Sense</span></div>
+    </div>
+    <div class="screen-nav-context">Recording</div>
+  </nav>
 
   <div class="rec-mid">
     <div class="rec-badge"><div class="rec-dot"></div>Live</div>
@@ -1316,14 +1379,15 @@ button{ font-family:inherit; }
 <!--  REPORT  -->
 <div class="screen" id="screen-report">
 
-  <div class="report-header">
-    <button class="report-back" onclick="showScreen('home')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Home
-    </button>
-    <div class="report-header-title">Run Report</div>
-    <div style="width:56px"></div>
-  </div>
+  <nav class="screen-nav">
+    <div class="screen-nav-left">
+      <button class="screen-nav-back" type="button" onclick="showScreen('home')" aria-label="Back to home">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="home-wordmark">Sole<span>Sense</span></div>
+    </div>
+    <div class="screen-nav-context">Run Report</div>
+  </nav>
 
   <div class="report-body">
 
@@ -2532,6 +2596,7 @@ function render(r){
   // change after page load, so /api/run-report polling can skip the lookups.
   if (!render._cache) {
     render._cache = {
+      heroCard:  document.querySelector('.report-hero'),
       heroIcon:  document.getElementById('hero-icon'),
       heroTitle: document.getElementById('hero-title'),
       heroSub:   document.getElementById('hero-sub'),
@@ -2542,7 +2607,11 @@ function render(r){
   const v = computeVerdict(r.flags);
   C.heroIcon.innerHTML = v.icon;
   C.heroIcon.classList.remove('warn','high');
-  if (v.tone) C.heroIcon.classList.add(v.tone);
+  C.heroCard.classList.remove('warn','high');
+  if (v.tone) {
+    C.heroIcon.classList.add(v.tone);
+    C.heroCard.classList.add(v.tone);
+  }
   C.heroTitle.textContent = v.title;
   C.heroSub.textContent   = v.sub;
 
