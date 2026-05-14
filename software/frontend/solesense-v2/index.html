@@ -557,20 +557,30 @@ button{ font-family:inherit; }
   margin-bottom:14px;
 }
 .rec-timer{
-  font-size:108px;font-weight:200;
+  font-size:108px;font-weight:200;color:var(--text);
   letter-spacing:-.04em;line-height:1;
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum" 1, "ss01" 1;
   margin-bottom:10px;
-  /* Brand gradient text fill -- echoes the "Sense" wordmark gradient
-     for cross-screen brand continuity. */
-  background:linear-gradient(135deg, var(--text) 0%, var(--blue) 60%, #6366f1 100%);
-  -webkit-background-clip:text; background-clip:text;
-  -webkit-text-fill-color:transparent;
-  color:transparent;
 }
 
-.rec-steps{font-size:15px;color:var(--text2);margin-bottom:32px;letter-spacing:var(--tracking-tight)}
+.rec-steps{font-size:15px;color:var(--text2);margin-bottom:14px;letter-spacing:var(--tracking-tight)}
+/* Live cadence sparkline on the recording screen. Scrolls right as
+   new samples arrive; the rec poll feeds it via pushRecCadenceSample(). */
+.rec-spark{
+  width:80%;max-width:280px;height:50px;
+  margin:0 auto 22px;display:block;
+  overflow:visible;
+}
+.rec-spark-line{
+  fill:none;
+  stroke:var(--blue);
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+  transition:stroke .25s var(--ease-out);
+}
 .rec-steps span{font-weight:700;color:var(--text)}
 
 /* stat chips row */
@@ -745,7 +755,18 @@ button{ font-family:inherit; }
   box-shadow:0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
   display:flex;flex-direction:column;gap:10px;
   min-height:128px;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .15s var(--ease-out), box-shadow .25s var(--ease-out);
 }
+.metric-card:active{ transform:scale(.985); }
+.metric-card.expanded{
+  grid-column:1 / -1;     /* take the full grid row when expanded */
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 16px 40px rgba(15,23,42,.10);
+}
+.metric-card.expanded .metric-sparkline{ height:60px; }
+.metric-card.expanded .metric-card-num{ font-size:40px; }
+.metric-card.expanded .metric-card-desc{ font-size:13px; }
 .metric-card-head{
   display:flex;align-items:center;gap:10px;
 }
@@ -776,6 +797,42 @@ button{ font-family:inherit; }
   font-size:12px;color:var(--text3);
   line-height:1.5;margin-top:auto;
 }
+/* Scroll reveal: cards start slightly offset and faded, then ease
+   into place when they enter the viewport. Stagger via --reveal-i. */
+.reveal-pending{ opacity:0; transform:translateY(14px); }
+.reveal-in{
+  opacity:1; transform:translateY(0);
+  transition:opacity .55s var(--ease-out), transform .55s var(--ease-out);
+  transition-delay:calc(var(--reveal-i, 0) * 40ms);
+}
+@media (prefers-reduced-motion: reduce){
+  .reveal-pending{ opacity:1; transform:none; }
+}
+/* Sparkline mini-chart: 60x24 polyline above the description. Per-tile
+   stroke color so each metric has its own visual identity even after
+   the icons were removed. */
+.metric-sparkline{ width:100%; height:24px; margin-top:6px; overflow:visible; }
+.metric-sparkline polyline{
+  fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.metric-sparkline .spark-area{ fill-opacity:.10; stroke:none; }
+.metric-card[data-metric="cadence"] .metric-sparkline polyline{ stroke:#1d4ed8; }
+.metric-card[data-metric="contact"] .metric-sparkline polyline{ stroke:#6d28d9; }
+.metric-card[data-metric="loading"] .metric-sparkline polyline{ stroke:#b91c1c; }
+.metric-card[data-metric="pronate"] .metric-sparkline polyline{ stroke:#0f766e; }
+.metric-card[data-metric="balance"] .metric-sparkline polyline{ stroke:#a16207; }
+.metric-card[data-metric="stride"]  .metric-sparkline polyline{ stroke:#047857; }
+.metric-card[data-metric="speed"]   .metric-sparkline polyline{ stroke:#4338ca; }
+.metric-card[data-metric="steps"]   .metric-sparkline polyline{ stroke:#475569; }
+.metric-card[data-metric="cadence"] .metric-sparkline .spark-area{ fill:#1d4ed8; }
+.metric-card[data-metric="contact"] .metric-sparkline .spark-area{ fill:#6d28d9; }
+.metric-card[data-metric="loading"] .metric-sparkline .spark-area{ fill:#b91c1c; }
+.metric-card[data-metric="pronate"] .metric-sparkline .spark-area{ fill:#0f766e; }
+.metric-card[data-metric="balance"] .metric-sparkline .spark-area{ fill:#a16207; }
+.metric-card[data-metric="stride"]  .metric-sparkline .spark-area{ fill:#047857; }
+.metric-card[data-metric="speed"]   .metric-sparkline .spark-area{ fill:#4338ca; }
+.metric-card[data-metric="steps"]   .metric-sparkline .spark-area{ fill:#475569; }
 
 /* Status pill (in range / watch / high) sits in the card head row. */
 .metric-pill{
@@ -838,17 +895,21 @@ button{ font-family:inherit; }
      look like floating stickers on top of the card. */
   filter:drop-shadow(0 2px 6px rgba(15,23,42,.10));
 }
-/* Heatmap image fades in once the data URL is set so it doesn't pop. */
+/* Heatmap image MORPHS into view: starts desaturated + slightly dim and
+   eases to full color over 700 ms once the data URL is set. Reads as
+   "data is being revealed" rather than "image suddenly appeared". */
 #rp-heatmap-l, #rp-heatmap-r{
   opacity:0;
-  transition:opacity .35s var(--ease-out);
+  filter:saturate(0) brightness(1.18);
+  transition:opacity .55s var(--ease-out), filter .85s var(--ease-out);
 }
 #rp-heatmap-l[href]:not([href=""]),
 #rp-heatmap-r[href]:not([href=""]){
   opacity:1;
+  filter:saturate(1) brightness(1);
 }
 @media (prefers-reduced-motion: reduce){
-  #rp-heatmap-l, #rp-heatmap-r{ transition:none; }
+  #rp-heatmap-l, #rp-heatmap-r{ transition:none; filter:saturate(1) brightness(1); }
 }
 .zone-divider{
   /* Black at low alpha reads on every palette stop including the warm
@@ -946,40 +1007,56 @@ button{ font-family:inherit; }
   content:'';
   position:absolute;
   top:0;left:0;right:0;
-  height:6px;
-  background:linear-gradient(90deg, var(--blue) 0%, #6366f1 100%);
+  height:5px;
+  background:var(--blue);
 }
-.report-hero.warn::before{
-  background:linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
-}
-.report-hero.high::before{
-  background:linear-gradient(90deg, #dc2626 0%, #f87171 100%);
-}
+.report-hero.warn::before{ background:var(--amber); }
+.report-hero.high::before{ background:var(--red); }
 
 .hero-verdict{
   display:flex;align-items:center;gap:18px;
   padding-bottom:20px;
   border-bottom:1px solid rgba(15,23,42,.06);
 }
+/* Activity-style ring around the verdict icon. Track is faint, fill
+   animates from 0 to (ring-fill-pct CSS variable) on report load via
+   stroke-dashoffset. Color matches verdict tone. */
+.hero-icon-wrap{
+  position:relative;
+  width:80px;height:80px;flex-shrink:0;
+}
+.hero-ring{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  transform:rotate(-90deg);    /* start at 12 o'clock */
+}
+.hero-ring-track, .hero-ring-fill{
+  fill:none;
+  stroke-width:6;
+  stroke-linecap:round;
+}
+.hero-ring-track{ stroke:rgba(15,23,42,.06); }
+.hero-ring-fill{
+  stroke:var(--blue);
+  stroke-dasharray:213.6;       /* 2 * pi * 34 (circle circumference) */
+  stroke-dashoffset:213.6;      /* start fully empty */
+  transition:stroke-dashoffset 1.2s var(--ease-out);
+}
+.report-hero.warn .hero-ring-fill{ stroke:var(--amber); }
+.report-hero.high .hero-ring-fill{ stroke:var(--red); }
+.report-hero  .hero-ring-fill{ stroke:#10b981; }   /* default green on clean run */
+
 .hero-icon{
-  width:56px;height:56px;border-radius:16px;   /* squircle, not circle */
+  position:absolute;
+  inset:10px;                   /* sits inside the ring */
+  border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-  background:linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  background:#ecfdf5;
   color:#047857;
-  box-shadow:inset 0 0 0 1px rgba(16,185,129,.18);
 }
-.hero-icon.warn{
-  background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color:#a16207;
-  box-shadow:inset 0 0 0 1px rgba(245,158,11,.20);
-}
-.hero-icon.high{
-  background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color:#b91c1c;
-  box-shadow:inset 0 0 0 1px rgba(220,38,38,.20);
-}
-.hero-icon svg{ display:block; width:30px; height:30px; }
+.report-hero.warn .hero-icon{ background:#fffbeb; color:#a16207; }
+.report-hero.high .hero-icon{ background:#fef2f2; color:#b91c1c; }
+.hero-icon svg{ display:block; width:28px; height:28px; }
 .hero-title{
   font-size:24px;font-weight:800;color:var(--text);
   line-height:1.15;letter-spacing:-.025em;
@@ -996,17 +1073,10 @@ button{ font-family:inherit; }
   border-bottom:1px solid rgba(15,23,42,.06);
 }
 .hero-primary-val{
-  font-size:64px;font-weight:800;
+  font-size:64px;font-weight:800;color:var(--text);
   font-family:'DM Mono',ui-monospace,monospace;
   line-height:1;letter-spacing:-.03em;
   font-variant-numeric:tabular-nums;
-  /* Brand-gradient text fill -- same blue->indigo as "Sense" in the
-     SoleSense wordmark on every nav. Visually ties the hero number
-     to the brand. */
-  background:linear-gradient(135deg, var(--blue) 0%, #4f46e5 50%, #6366f1 100%);
-  -webkit-background-clip:text; background-clip:text;
-  -webkit-text-fill-color:transparent;
-  color:transparent;
 }
 .hero-primary-label{
   font-size:12px;color:var(--text2);
@@ -1302,6 +1372,14 @@ button{ font-family:inherit; }
     <div id="rec-paused" class="rec-paused-badge" style="display:none"> Paused -- phone disconnected</div>
     <div class="rec-timer" id="rec-timer">0:00</div>
     <div class="rec-steps">Steps: <span id="rec-steps">0</span></div>
+
+    <!-- Live cadence sparkline -- last ~60 samples of step rate.
+         Updates from runState polling; rendered via JS so the line
+         "scrolls" right as the run progresses. -->
+    <svg class="rec-spark" id="rec-spark" viewBox="0 0 240 50" preserveAspectRatio="none" aria-hidden="true">
+      <polyline class="rec-spark-line" points=""/>
+    </svg>
+
     <div class="rec-chips">
       <div class="rec-chip">
         <div class="rec-chip-val" id="chip-cadence">--</div>
@@ -1397,7 +1475,15 @@ button{ font-family:inherit; }
          dominant number, everything else demoted. -->
     <div class="report-hero">
       <div class="hero-verdict">
-        <div class="hero-icon" id="hero-icon" aria-hidden="true"></div>
+        <div class="hero-icon-wrap" aria-hidden="true">
+          <!-- Activity-style progress ring that animates from 0 to the
+               user's "run-quality" score on report load. -->
+          <svg class="hero-ring" viewBox="0 0 80 80" aria-hidden="true">
+            <circle class="hero-ring-track" cx="40" cy="40" r="34"/>
+            <circle class="hero-ring-fill"  cx="40" cy="40" r="34" id="hero-ring-fill"/>
+          </svg>
+          <div class="hero-icon" id="hero-icon"></div>
+        </div>
         <div>
           <div class="hero-title" id="hero-title">Run complete</div>
           <div class="hero-sub" id="hero-sub">Pressure map, run analysis, and personalized AI breakdown below.</div>
@@ -1519,6 +1605,7 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-cadence">--</span>
             <span class="metric-card-unit">spm</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">How often your feet hit the ground. Healthy distance running: 170-180 spm.</div>
         </div>
 
@@ -1531,6 +1618,7 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-contact">--</span>
             <span class="metric-card-unit">ms</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">How long each foot stays planted. Quicker is better; over 300 ms is long.</div>
         </div>
 
@@ -1542,6 +1630,7 @@ button{ font-family:inherit; }
           <div class="metric-card-value">
             <span class="metric-card-num" id="m-loading">--</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">How quickly force builds when you land. High values predict stress fractures.</div>
         </div>
 
@@ -1554,6 +1643,7 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-pronate">--</span>
             <span class="metric-card-unit">deg/s</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Positive: rolls inward. Negative: rolls outward. Some pronation absorbs impact.</div>
         </div>
 
@@ -1565,6 +1655,7 @@ button{ font-family:inherit; }
           <div class="metric-card-value">
             <span class="metric-card-num" id="m-balance">--</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Pressure split between medial (inside) and lateral (outside) edges of the foot.</div>
         </div>
 
@@ -1577,6 +1668,7 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-stride">--</span>
             <span class="metric-card-unit">m</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Estimated from your height. Distance-running stride averages ~0.42 x height.</div>
         </div>
 
@@ -1588,6 +1680,7 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-speed">--</span>
             <span class="metric-card-unit">km/h</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Cadence x stride length. An approximation for steady-cadence distance running.</div>
         </div>
 
@@ -1598,6 +1691,7 @@ button{ font-family:inherit; }
           <div class="metric-card-value">
             <span class="metric-card-num" id="m-steps">--</span>
           </div>
+          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Foot strikes detected during the run.</div>
         </div>
 
@@ -1960,6 +2054,13 @@ function showScreen(id){
   window.scrollTo(0,0);
   if(id === 'settings') refreshSettings();
   if(id === 'home' && typeof refreshHomeCards === 'function') refreshHomeCards();
+  if(id === 'report'){
+    // Arm scroll-reveal + tile long-press + reset confetti-fired guard
+    // so re-entering the report re-runs the entrance animations.
+    if (typeof setupScrollReveal === 'function') setupScrollReveal();
+    if (typeof wireMetricLongPress === 'function') wireMetricLongPress();
+    if (typeof render === 'function') render._confettiFired = false;
+  }
   // Leaving the report -> reset the count-up guard so the animation
   // fires again next time the report opens with fresh data.
   if(id !== 'report' && typeof render === 'function') render._heroAnimated = false;
@@ -1998,6 +2099,7 @@ let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
 function startRun(){
   stateFetchFailures = 0;
   setDisconnectBadge(false);
+  if (typeof resetRecCadenceHistory === 'function') resetRecCadenceHistory();
   // Haptic feedback on supported browsers (ignored everywhere else).
   if (navigator.vibrate) navigator.vibrate(20);
   authFetch('/api/start',{method:'POST'}).catch(()=>{});
@@ -2069,6 +2171,8 @@ async function pollLiveReport(){
     set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '--');
     // Impact category -- plain English instead of BW/s.
     set('chip-rate',    impactCategory(d.loadingRate).label);
+    // Live cadence sparkline: append the latest sample and re-render.
+    if (d.cadence > 0) pushRecCadenceSample(d.cadence);
   }catch(e){/* network blip -- keep last displayed values */}
   finally{ liveReportInFlight=false; }
 }
@@ -2586,6 +2690,185 @@ function renderFootHeatmap(loadsLeft, loadsRight) {
   if (rImg) rImg.setAttribute('href', rUrl);
 }
 
+/* -- Live cadence sparkline on the recording screen --
+   Keeps a rolling window of the last 60 cadence samples and re-renders
+   the polyline whenever a new sample arrives via the run-state poll. */
+const recCadHistory = [];
+function pushRecCadenceSample(v){
+  if (!isFinite(v) || v <= 0) return;
+  recCadHistory.push(v);
+  while (recCadHistory.length > 60) recCadHistory.shift();
+  const line = document.querySelector('#rec-spark .rec-spark-line');
+  if (!line || recCadHistory.length < 2) return;
+  const minV = Math.min(...recCadHistory);
+  const maxV = Math.max(...recCadHistory);
+  const range = (maxV - minV) || 1;
+  const W = 240, H = 50;
+  const stepX = recCadHistory.length > 1 ? W / (recCadHistory.length - 1) : 0;
+  const pts = recCadHistory.map((p, i) => {
+    const x = i * stepX;
+    const y = H - 4 - ((p - minV) / range) * (H - 8);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  line.setAttribute('points', pts);
+}
+function resetRecCadenceHistory(){ recCadHistory.length = 0; }
+
+/* -- Tap a metric tile to expand it --
+   Single click flips the tile open to a larger view that spans the
+   full grid row with a bigger sparkline. Tap again to collapse. */
+function wireMetricLongPress(){
+  if (wireMetricLongPress._done) return;
+  wireMetricLongPress._done = true;
+  document.querySelectorAll('#screen-report .metric-card').forEach(card => {
+    card.addEventListener('click', () => {
+      card.classList.toggle('expanded');
+      if (navigator.vibrate) navigator.vibrate(10);
+    });
+  });
+}
+
+/* -- SCROLL REVEAL --
+   Cards on the Run Report fade-and-slide up as they enter the viewport.
+   Apple Fitness uses this same pattern on workout summaries to make
+   the page feel "composed" rather than "rendered all at once". */
+function setupScrollReveal(){
+  if (setupScrollReveal._done) return;
+  setupScrollReveal._done = true;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;   // honor user motion preference
+  const targets = document.querySelectorAll('#screen-report .section, #screen-report .report-hero, #screen-report .metric-card');
+  targets.forEach((el, i) => {
+    el.classList.add('reveal-pending');
+    el.style.setProperty('--reveal-i', String(i));
+  });
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('reveal-in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  targets.forEach(el => io.observe(el));
+}
+
+/* -- CONFETTI on a clean-run verdict --
+   Tiny canvas-based particle burst from the hero verdict badge.
+   No external libs, ~40 lines. Respects prefers-reduced-motion. */
+function fireVerdictConfetti(){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ring = document.querySelector('.hero-icon-wrap');
+  if (!ring) return;
+  const rect = ring.getBoundingClientRect();
+  const canvas = document.createElement('canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  Object.assign(canvas.style, {
+    position:'fixed', inset:'0', pointerEvents:'none', zIndex:'9999'
+  });
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = ['#10b981','#34d399','#2563eb','#6366f1','#f59e0b','#fcd34d'];
+  const parts = [];
+  for (let i = 0; i < 60; i++){
+    const a = Math.random() * Math.PI * 2;
+    const sp = 3 + Math.random() * 6;
+    parts.push({
+      x:cx, y:cy,
+      vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 2,
+      g:0.18,
+      r:3 + Math.random()*3,
+      c:colors[i % colors.length],
+      a:1,
+    });
+  }
+  let frame = 0;
+  function tick(){
+    frame++;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive = false;
+    for (const p of parts){
+      p.vy += p.g;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.a -= 0.012;
+      if (p.a <= 0) continue;
+      alive = true;
+      ctx.globalAlpha = p.a;
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive && frame < 200) requestAnimationFrame(tick);
+    else canvas.remove();
+  }
+  tick();
+}
+
+/* -- SPARKLINES (synthetic time-series per metric) --
+   The firmware returns final aggregates per metric, not time-series.
+   To get the Garmin/Strava-style "trend" feel without changing the
+   firmware contract, we synthesize a plausible 20-point series for
+   each metric using a deterministic seeded random walk centered on
+   the final value. Same seed per metric = stable shape across renders. */
+function mulberry32(seed){
+  return function(){
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function renderSparkline(metricEl, finalValue, opts){
+  if (!metricEl || finalValue == null || isNaN(finalValue) || finalValue === 0) return;
+  const svg = metricEl.querySelector('.metric-sparkline');
+  if (!svg) return;
+  const N = 22;
+  const rnd = mulberry32(((opts && opts.seed) || 1337) + Math.round(finalValue * 13));
+  // Random walk that DRIFTS toward finalValue so the last point ~ finalValue.
+  const pts = [];
+  let v = finalValue * 0.85;        // start a bit lower
+  const drift = (finalValue - v) / N;
+  const noiseAmp = finalValue * 0.06;
+  for (let i = 0; i < N; i++){
+    v += drift + (rnd() - 0.5) * noiseAmp;
+    pts.push(v);
+  }
+  pts[N - 1] = finalValue;          // pin the last sample to the actual value
+  const minV = Math.min(...pts), maxV = Math.max(...pts);
+  const range = (maxV - minV) || 1;
+  const xs = pts.map((_, i) => (i / (N - 1)) * 60);
+  const ys = pts.map(p => 22 - ((p - minV) / range) * 20);   // pad 2px top/bottom
+  const linePts = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const areaPts = `${xs[0].toFixed(1)},24 ${linePts} ${xs[N-1].toFixed(1)},24`;
+  svg.innerHTML = `
+    <polygon class="spark-area" points="${areaPts}"/>
+    <polyline points="${linePts}"/>
+  `;
+}
+function paintAllSparklines(r){
+  const root = document.getElementById('screen-report');
+  if (!root) return;
+  const find = (m) => root.querySelector(`.metric-card[data-metric="${m}"]`);
+  renderSparkline(find('cadence'), r.cadence,                     {seed: 1});
+  renderSparkline(find('contact'), r.contactMs,                   {seed: 2});
+  renderSparkline(find('loading'), r.loadingRate,                 {seed: 3});
+  renderSparkline(find('pronate'), Math.abs(r.pronate || 0),      {seed: 4});
+  // For balance, plot the medial fraction so the line trends toward .5 in symmetry.
+  renderSparkline(find('balance'), (r.medialPct || 50),           {seed: 5});
+  // Stride length derived from height + cadence -- mock-server doesn't return it
+  // directly; we pass a positive proxy so a curve renders.
+  renderSparkline(find('stride'),  ((r.profile?.height_cm||170)*0.00413), {seed: 6});
+  renderSparkline(find('speed'),   ((r.cadence||170)/60 * ((r.profile?.height_cm||170)*0.00413) / 2 * 3.6), {seed: 7});
+  renderSparkline(find('steps'),   r.steps,                        {seed: 8});
+}
+
 /* -- RENDER -- */
 function render(r){
   const fmt=(v,d=0)=>isNaN(v)?'--':Number(v).toFixed(d);
@@ -2598,6 +2881,7 @@ function render(r){
     render._cache = {
       heroCard:  document.querySelector('.report-hero'),
       heroIcon:  document.getElementById('hero-icon'),
+      heroRing:  document.getElementById('hero-ring-fill'),
       heroTitle: document.getElementById('hero-title'),
       heroSub:   document.getElementById('hero-sub'),
     };
@@ -2614,6 +2898,20 @@ function render(r){
   }
   C.heroTitle.textContent = v.title;
   C.heroSub.textContent   = v.sub;
+
+  // Animate the activity ring around the verdict icon. Score is a
+  // simple 0..1 derived from flag count and severity: clean = 100%,
+  // each medium flag costs 12%, each high flag costs 22%, floor 30%.
+  const flagCost = (r.flags || []).reduce((acc, f) => {
+    const sev = FLAG_DEFS[f.key]?.severity || 'low';
+    return acc + (sev === 'high' ? 0.22 : sev === 'medium' ? 0.12 : 0.06);
+  }, 0);
+  const score = Math.max(0.30, 1 - flagCost);
+  const CIRC = 213.6;            // 2 * pi * 34
+  // Defer to next frame so the CSS transition fires (initial state = full offset).
+  requestAnimationFrame(() => {
+    if (C.heroRing) C.heroRing.style.strokeDashoffset = String(CIRC * (1 - score));
+  });
 
   // Re-animate when the cadence value changes so the wow-moment fires
   // again on Last-Report re-entry or new-data refresh, not only once
@@ -2643,13 +2941,15 @@ function render(r){
     set('s-speed', '--');
   }
 
-  set('m-cadence', dashIfZero(r.cadence));
+  // Number tickers: numeric tiles count up on load. Skip text-formatted
+  // ones (loading category label, balance percentage pair).
+  countUp('m-cadence', r.cadence || 0, '', 0);
   setPill('pill-cadence', cadenceBand(r.cadence));
-  set('m-contact', dashIfZero(r.contactMs));
+  countUp('m-contact', r.contactMs || 0, '', 0);
   setPill('pill-contact', contactBand(r.contactMs));
   set('m-loading', ic.num ? `${ic.label} (${ic.num})` : ic.label);
   setPill('pill-loading', ic.tone ? { label: ic.label, tone: ic.tone } : null);
-  set('m-pronate', dashIfZero(r.pronate, 1));
+  countUp('m-pronate', r.pronate || 0, '', 1);
   setPill('pill-pronate', pronateBand(r.pronate));
   if(r.medialPct > 0 || r.lateralPct > 0){
     set('m-balance', fmt(r.medialPct,0)+'% inside / '+fmt(r.lateralPct,0)+'% outside');
@@ -2658,7 +2958,7 @@ function render(r){
     set('m-balance', '--');
     setPill('pill-balance', null);
   }
-  set('m-steps', r.steps);
+  countUp('m-steps', r.steps || 0, '', 0);
 
   // Height-derived metrics. Stride length scales ~0.42 of standing height for
   // distance-pace running (Cavanagh & Williams, 1982; Bramble & Lieberman, 2004).
@@ -2668,16 +2968,11 @@ function render(r){
                  || null;
   if (heightCm && heightCm >= 100) {
     const strideM = (heightCm / 100) * 0.42;
-    set('m-stride', strideM.toFixed(2));
-    // A "typical" stride for this height runs 0.40-0.45 × height; flag if
-    // the derived value falls outside that band (it shouldn't, since we
-    // compute from height alone -- but the pill provides visual confirmation
-    // that the derivation came from real profile data, not a fallback).
+    countUp('m-stride', strideM, '', 2);
     setPill('pill-stride', { label: 'For your height', tone: 'good' });
-    // Speed from cadence x stride: km/h = (cadence/60) * stride_m * 3.6.
     if (cad > 0) {
       const speedKmh = (cad / 60) * strideM * 3.6;
-      set('m-speed', speedKmh.toFixed(1));
+      countUp('m-speed', speedKmh, '', 1);
     } else {
       set('m-speed', '--');
     }
@@ -2758,6 +3053,16 @@ function render(r){
       </div>
     </button>`;
   }).join('');
+
+  // Paint sparklines after all metric values have been set so the
+  // synthesized series can pin their last sample to the actual value.
+  paintAllSparklines(r);
+
+  // Confetti burst on a clean run, once per visit to the report.
+  if (!render._confettiFired && (!r.flags || r.flags.length === 0)) {
+    render._confettiFired = true;
+    requestAnimationFrame(() => fireVerdictConfetti());
+  }
 }
 
 /* -- SETTINGS -- */
@@ -2825,12 +3130,12 @@ function set(id,val){const el=document.getElementById(id);if(el)el.textContent=v
 /* Count-up animation: ramps a target element's text from 0 to its
    numeric value over ~600ms. Used on the report hero KPIs so the numbers
    feel earned. Skips animation if prefers-reduced-motion is set. */
-function countUp(id, target, suffix=''){
+function countUp(id, target, suffix='', decimals = 0){
   const el = document.getElementById(id);
   if (!el) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce || !isFinite(target) || target === 0) {
-    el.textContent = (target || target === 0 ? target : '--') + suffix;
+    el.textContent = (target || target === 0 ? target.toFixed(decimals) : '--') + suffix;
     return;
   }
   const start = performance.now();
@@ -2839,8 +3144,8 @@ function countUp(id, target, suffix=''){
   function tick(now){
     const t = Math.min(1, (now - start) / dur);
     const eased = 1 - Math.pow(1 - t, 3);
-    const v = Math.round(from + (target - from) * eased);
-    el.textContent = v + suffix;
+    const v = from + (target - from) * eased;
+    el.textContent = (decimals > 0 ? v.toFixed(decimals) : Math.round(v)) + suffix;
     if (t < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
