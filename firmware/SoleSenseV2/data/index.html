@@ -821,18 +821,72 @@ button{ font-family:inherit; }
 .metric-card[data-metric="contact"] .metric-sparkline polyline{ stroke:#6d28d9; }
 .metric-card[data-metric="loading"] .metric-sparkline polyline{ stroke:#b91c1c; }
 .metric-card[data-metric="pronate"] .metric-sparkline polyline{ stroke:#0f766e; }
-.metric-card[data-metric="balance"] .metric-sparkline polyline{ stroke:#a16207; }
-.metric-card[data-metric="stride"]  .metric-sparkline polyline{ stroke:#047857; }
 .metric-card[data-metric="speed"]   .metric-sparkline polyline{ stroke:#4338ca; }
-.metric-card[data-metric="steps"]   .metric-sparkline polyline{ stroke:#475569; }
 .metric-card[data-metric="cadence"] .metric-sparkline .spark-area{ fill:#1d4ed8; }
 .metric-card[data-metric="contact"] .metric-sparkline .spark-area{ fill:#6d28d9; }
 .metric-card[data-metric="loading"] .metric-sparkline .spark-area{ fill:#b91c1c; }
 .metric-card[data-metric="pronate"] .metric-sparkline .spark-area{ fill:#0f766e; }
-.metric-card[data-metric="balance"] .metric-sparkline .spark-area{ fill:#a16207; }
-.metric-card[data-metric="stride"]  .metric-sparkline .spark-area{ fill:#047857; }
 .metric-card[data-metric="speed"]   .metric-sparkline .spark-area{ fill:#4338ca; }
-.metric-card[data-metric="steps"]   .metric-sparkline .spark-area{ fill:#475569; }
+
+/* Balance bar (Inside vs outside): two-segment horizontal bar, medial
+   on the left in amber, lateral on the right in slate. Widths animate
+   on load. Replaces a meaningless sparkline -- balance is a split,
+   not a time-series. */
+.metric-balance{ margin-top:6px; }
+.balance-bar{
+  display:flex;width:100%;height:8px;
+  border-radius:999px;overflow:hidden;
+  background:rgba(15,23,42,.06);
+}
+.balance-fill{
+  height:100%;
+  transition:width .8s var(--ease-out);
+}
+.balance-med{ background:#d97706; width:50%; }
+.balance-lat{ background:#475569; width:50%; }
+.balance-axis{
+  display:flex;justify-content:space-between;
+  margin-top:6px;
+  font-size:10px;font-weight:600;
+  color:var(--text2);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+
+/* Range indicator (Stride length): horizontal track with a green
+   "typical" zone and a draggable-looking marker showing the user's
+   stride length relative to the 0.40 - 0.45 x height band. */
+.metric-range{ margin-top:6px; }
+.range-track{
+  position:relative;
+  width:100%;height:8px;
+  border-radius:999px;
+  background:rgba(15,23,42,.06);
+}
+.range-zone{
+  position:absolute;top:0;bottom:0;
+  /* Typical band sits at 30% - 70% of the track width. */
+  left:30%;right:30%;
+  background:rgba(4,120,87,.18);     /* emerald-700 at 18% */
+  border-radius:999px;
+}
+.range-marker{
+  position:absolute;
+  top:50%;left:50%;
+  width:14px;height:14px;
+  background:#047857;
+  border:2px solid #fff;
+  border-radius:50%;
+  transform:translate(-50%, -50%);
+  box-shadow:0 1px 3px rgba(15,23,42,.20);
+  transition:left .8s var(--ease-out);
+}
+.range-axis{
+  display:flex;justify-content:space-between;
+  margin-top:6px;
+  font-size:10px;font-weight:600;
+  color:var(--text2);
+  text-transform:uppercase;letter-spacing:.06em;
+}
 
 /* Status pill (in range / watch / high) sits in the card head row. */
 .metric-pill{
@@ -1655,7 +1709,19 @@ button{ font-family:inherit; }
           <div class="metric-card-value">
             <span class="metric-card-num" id="m-balance">--</span>
           </div>
-          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <!-- Balance bar: a two-segment horizontal bar showing the
+               medial / lateral split. Replaces a sparkline that didn't
+               apply (balance is a single split, not a time-series). -->
+          <div class="metric-balance" aria-hidden="true">
+            <div class="balance-bar">
+              <div class="balance-fill balance-med" id="balance-med-fill"></div>
+              <div class="balance-fill balance-lat" id="balance-lat-fill"></div>
+            </div>
+            <div class="balance-axis">
+              <span>Inside</span>
+              <span>Outside</span>
+            </div>
+          </div>
           <div class="metric-card-desc">Pressure split between medial (inside) and lateral (outside) edges of the foot.</div>
         </div>
 
@@ -1668,7 +1734,22 @@ button{ font-family:inherit; }
             <span class="metric-card-num" id="m-stride">--</span>
             <span class="metric-card-unit">m</span>
           </div>
-          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <!-- Range indicator: the typical distance-running band is
+               0.40 - 0.45 x height. A marker dot shows where the
+               user's stride sits relative to that band. Replaces a
+               sparkline that didn't apply (stride is derived from
+               height + cadence, not a time-series). -->
+          <div class="metric-range" aria-hidden="true">
+            <div class="range-track">
+              <div class="range-zone"></div>
+              <div class="range-marker" id="stride-marker"></div>
+            </div>
+            <div class="range-axis">
+              <span>Short</span>
+              <span>Typical</span>
+              <span>Long</span>
+            </div>
+          </div>
           <div class="metric-card-desc">Estimated from your height. Distance-running stride averages ~0.42 x height.</div>
         </div>
 
@@ -1691,7 +1772,8 @@ button{ font-family:inherit; }
           <div class="metric-card-value">
             <span class="metric-card-num" id="m-steps">--</span>
           </div>
-          <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <!-- No chart: total steps is a single cumulative count, not a
+               time-series. The big number is the entire story. -->
           <div class="metric-card-desc">Foot strikes detected during the run.</div>
         </div>
 
@@ -2856,17 +2938,35 @@ function paintAllSparklines(r){
   const root = document.getElementById('screen-report');
   if (!root) return;
   const find = (m) => root.querySelector(`.metric-card[data-metric="${m}"]`);
-  renderSparkline(find('cadence'), r.cadence,                     {seed: 1});
-  renderSparkline(find('contact'), r.contactMs,                   {seed: 2});
-  renderSparkline(find('loading'), r.loadingRate,                 {seed: 3});
-  renderSparkline(find('pronate'), Math.abs(r.pronate || 0),      {seed: 4});
-  // For balance, plot the medial fraction so the line trends toward .5 in symmetry.
-  renderSparkline(find('balance'), (r.medialPct || 50),           {seed: 5});
-  // Stride length derived from height + cadence -- mock-server doesn't return it
-  // directly; we pass a positive proxy so a curve renders.
-  renderSparkline(find('stride'),  ((r.profile?.height_cm||170)*0.00413), {seed: 6});
-  renderSparkline(find('speed'),   ((r.cadence||170)/60 * ((r.profile?.height_cm||170)*0.00413) / 2 * 3.6), {seed: 7});
-  renderSparkline(find('steps'),   r.steps,                        {seed: 8});
+  // Sparklines only on the metrics that genuinely vary over the run.
+  renderSparkline(find('cadence'), r.cadence,                {seed: 1});
+  renderSparkline(find('contact'), r.contactMs,              {seed: 2});
+  renderSparkline(find('loading'), r.loadingRate,            {seed: 3});
+  renderSparkline(find('pronate'), Math.abs(r.pronate || 0), {seed: 4});
+  const heightCm = (r.profile && r.profile.height_cm) || 170;
+  const strideM  = (heightCm / 100) * 0.42;
+  const speedKmh = ((r.cadence || 0) / 60) * strideM * 3.6;
+  renderSparkline(find('speed'),   speedKmh,                 {seed: 7});
+
+  // Balance bar: medial / lateral split as two segments of a single bar.
+  const med = r.medialPct  || 50;
+  const lat = r.lateralPct || 50;
+  const medFill = document.getElementById('balance-med-fill');
+  const latFill = document.getElementById('balance-lat-fill');
+  if (medFill) medFill.style.width = med + '%';
+  if (latFill) latFill.style.width = lat + '%';
+
+  // Stride-length range marker. Typical distance-running stride is
+  // 0.40-0.45 x height. Map the actual stride to a 0-100% position
+  // on the track, clamping outside the visible band to 5% / 95%.
+  const marker = document.getElementById('stride-marker');
+  if (marker && heightCm >= 100) {
+    const ratio = strideM / (heightCm / 100);           // 0.40 - 0.45 expected
+    // Visible band [0.36 .. 0.49]; clamp marker into 5%..95% of track.
+    const lo = 0.36, hi = 0.49;
+    const pct = Math.max(0.05, Math.min(0.95, (ratio - lo) / (hi - lo)));
+    marker.style.left = (pct * 100) + '%';
+  }
 }
 
 /* -- RENDER -- */
