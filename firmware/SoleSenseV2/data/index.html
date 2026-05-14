@@ -717,6 +717,14 @@ button{ font-family:inherit; }
   grid-template-columns:repeat(2, 1fr);
   gap:12px;
 }
+/* Findings live at the top of the grid as full-width cards, above the
+   2-up metric tiles. The flags container itself spans both columns
+   and behaves like a vertical stack of its own. */
+.metrics-grid > #flags-container{
+  grid-column:1 / -1;
+  display:flex;flex-direction:column;gap:10px;
+}
+.metrics-grid > #flags-container:empty{ display:none; }
 .metric-card{
   background:var(--surface);
   border-radius:18px;
@@ -841,13 +849,12 @@ button{ font-family:inherit; }
 /* Center column sitting between the two feet. Labels are absolutely
    positioned at 14% / 50% / 86% of the foot-SVG height -- evenly spaced
    so the three labels can never visually touch regardless of font size.
-   Foot height: 150 * 511/185 ≈ 414px, plus 8px gap + ~14px "Left/Right"
-   label row above = 436px container height. */
+   Foot height: 150 * 511/185 = 414px; container matches it, no top
+   margin (the Left/Right side-labels were removed). */
 .zone-labels{
   position:relative;
   width:120px;
   height:414px;
-  margin-top:22px;       /* aligns with the foot SVG top (after side label) */
   flex:0 0 auto;
 }
 .zone-label{
@@ -1378,11 +1385,6 @@ button{ font-family:inherit; }
     </div>
 
     <div class="section">
-      <div class="section-title">Findings</div>
-      <div id="flags-container"></div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Pressure map</div>
       <div class="foot-report-card">
       <div class="zone-legend">
@@ -1455,8 +1457,15 @@ button{ font-family:inherit; }
     </div>
 
     <div class="section">
-      <div class="section-title">Detailed metrics</div>
+      <div class="section-title">Run analysis</div>
       <div class="metrics-grid">
+
+        <!-- Findings (rule-based injury flags) live at the top of the
+             grid as full-width cards, then the all-stats metric tiles
+             flow below in a 2-up grid. Combining the two sections
+             eliminates the "where do I look first?" confusion of
+             having them as separate sibling sections. -->
+        <div id="flags-container"></div>
 
         <div class="metric-card" data-metric="cadence">
           <div class="metric-card-head">
