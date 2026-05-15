@@ -293,7 +293,46 @@ button{ font-family:inherit; }
   max-width:90%;
 }
 
-/* AI-coach panel on the report screen */
+/* AI-coach panel on the report screen.
+   Sits directly below the verdict hero and is styled to read as an
+   attached "drawer" rather than a freestanding section: tight gap,
+   matching radius/shadow, header lives INSIDE the card. */
+.ai-section--attached{ margin-top:8px; }
+.ai-card{
+  position:relative;
+  background:linear-gradient(180deg,#f5f8ff 0%,#eaf0ff 100%);
+  border:1px solid var(--blue-lt);
+  border-radius:18px;
+  padding:13px 14px 14px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.05);
+  overflow:hidden;
+}
+/* Mirror the hero's top brand stripe so the two cards read as a pair. */
+.ai-card::before{
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,#3b82f6,var(--blue2));
+  opacity:.9;
+}
+/* In-card header (replaces the external .section-title). */
+.ai-card-head{
+  display:flex; align-items:center; gap:8px;
+  padding-bottom:10px; margin-bottom:10px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+.ai-card-head-icon{
+  width:22px; height:22px; flex-shrink:0;
+  border-radius:7px;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 1px 2px rgba(59,130,246,.25);
+}
+.ai-card-head-icon svg{ width:13px; height:13px; display:block; }
+.ai-card-head-title{
+  font-size:13.5px; font-weight:800; color:var(--text);
+  letter-spacing:-.01em; line-height:1;
+}
 .ai-title{ display:flex; align-items:center; gap:8px; }
 .ai-badge{
   /* Smaller, all-caps pill -- consumer-app idiom (Apple/Strava). */
@@ -302,12 +341,8 @@ button{ font-family:inherit; }
   color:white; padding:3px 8px; border-radius:999px;
   line-height:1;
 }
-.ai-card{
-  background:linear-gradient(135deg,#f5f8ff 0%,#eaf0ff 100%);
-  border:1px solid var(--blue-lt); border-radius:14px; padding:16px;
-}
-.ai-empty{ text-align:center; padding:8px 4px; }
-.ai-empty-text{ color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:14px; }
+.ai-empty{ text-align:center; padding:4px 4px 2px; }
+.ai-empty-text{ color:var(--text2); font-size:13.5px; line-height:1.5; margin:0; }
 .btn-ai{
   /* Secondary CTA: outline on white, not a competing gradient.
      .btn-start (home screen) remains the primary CTA. */
@@ -1106,38 +1141,34 @@ button{ font-family:inherit; }
 }
 .hero-ring-track{ stroke:rgba(15,23,42,.06); }
 .hero-ring-fill{
-  stroke:#10b981;              /* default green for a clean run */
+  /* Stroke color follows the Run Score band: emerald >=80, amber
+     60-79, red <60. JS sets the className on the .report-hero based
+     on score; this rule selector inherits from there. */
+  stroke:#10b981;               /* default emerald (clean run) */
   stroke-dasharray:565.5;       /* 2 * pi * 90 */
   stroke-dashoffset:565.5;      /* start fully empty */
-  transition:stroke-dashoffset 1.4s var(--ease-out);
+  transition:stroke-dashoffset 1.4s var(--ease-out), stroke .4s var(--ease-out);
 }
-.report-hero.warn .hero-ring-fill{ stroke:var(--amber); }
-.report-hero.high .hero-ring-fill{ stroke:var(--red); }
+.report-hero.score-warn .hero-ring-fill{ stroke:var(--amber); }
+.report-hero.score-high .hero-ring-fill{ stroke:var(--red); }
 
-/* The content stacked inside the ring -- a small verdict icon, the
-   cadence number as the central headline, and a tiny caption. */
+/* Inside the ring: just the Run Score number + a short caption.
+   Inner padding keeps content well clear of the curved ring stroke. */
 .hero-ring-inner{
-  position:absolute;inset:0;
+  position:absolute;inset:24px;
   display:flex;flex-direction:column;
   align-items:center;justify-content:center;
-  gap:2px;
+  gap:4px;
 }
-.hero-icon{
-  width:32px;height:32px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  background:#ecfdf5;color:#047857;
-  margin-bottom:4px;
-}
-.report-hero.warn .hero-icon{ background:#fffbeb; color:#a16207; }
-.report-hero.high .hero-icon{ background:#fef2f2; color:#b91c1c; }
-.hero-icon svg{ display:block; width:18px; height:18px; }
 .hero-ring-num{
-  font-size:56px;font-weight:800;
+  font-size:64px;font-weight:800;
   font-family:'DM Mono', ui-monospace, monospace;
-  line-height:1;letter-spacing:-.03em;
+  line-height:1;letter-spacing:-.04em;
   color:var(--text);
   font-variant-numeric:tabular-nums;
 }
+.report-hero.score-warn .hero-ring-num{ color:#a16207; }
+.report-hero.score-high .hero-ring-num{ color:#b91c1c; }
 .hero-ring-caption{
   font-size:10px;font-weight:700;
   text-transform:uppercase;letter-spacing:.12em;
@@ -1598,20 +1629,25 @@ button{ font-family:inherit; }
         <div class="hero-sub" id="hero-sub">Pressure map and run analysis below.</div>
       </div>
       <!-- DOMINANT activity ring (200x200 viewBox, ~180px on screen).
-           Cadence number lives INSIDE the ring as the central readout,
-           with a small verdict icon above it and a "steps per minute"
-           caption below. Ring stroke color follows verdict tone. -->
+           The 0-100 RUN SCORE sits inside the ring (Oura idiom). Score
+           is computed from flag count + severity; the ring fills to
+           that percentage and its stroke color is tied to the score
+           band (green >=80, amber 60-79, red <60). This way the ring
+           color and the number inside it tell the SAME story. -->
       <div class="hero-ring-wrap" aria-hidden="true">
         <svg class="hero-ring" viewBox="0 0 200 200" aria-hidden="true">
           <circle class="hero-ring-track" cx="100" cy="100" r="90"/>
           <circle class="hero-ring-fill"  cx="100" cy="100" r="90" id="hero-ring-fill"/>
         </svg>
         <div class="hero-ring-inner">
-          <div class="hero-icon" id="hero-icon"></div>
-          <div class="hero-ring-num" id="s-cadence">--</div>
-          <div class="hero-ring-caption">steps per minute</div>
+          <div class="hero-ring-num" id="hero-score">--</div>
+          <div class="hero-ring-caption">Run Score</div>
         </div>
       </div>
+      <!-- Off-ring hidden cadence target so the existing render() code
+           that count-ups to #s-cadence still resolves. The visible
+           cadence value lives in the Run analysis tile below. -->
+      <span id="s-cadence" style="display:none;">--</span>
       <!-- AI Coach CTA below the ring -- the visual reward for finishing
            a run. Tap launches the analysis + scrolls to the result. -->
       <button class="btn-ai-hero" id="hero-ai-btn" type="button"
@@ -3149,19 +3185,31 @@ function render(r){
   C.heroTitle.textContent = v.title;
   C.heroSub.textContent   = v.sub;
 
-  // Animate the activity ring around the verdict icon. Score is a
-  // simple 0..1 derived from flag count and severity: clean = 100%,
-  // each medium flag costs 12%, each high flag costs 22%, floor 30%.
+  // Compute the 0-100 RUN SCORE (Oura-style composite verdict).
+  // Score is derived from flag count and severity: clean = 100,
+  // each low flag costs 6, each medium 12, each high 22, floor 30.
   const flagCost = (r.flags || []).reduce((acc, f) => {
     const sev = FLAG_DEFS[f.key]?.severity || 'low';
     return acc + (sev === 'high' ? 0.22 : sev === 'medium' ? 0.12 : 0.06);
   }, 0);
-  const score = Math.max(0.30, 1 - flagCost);
+  const scoreFrac = Math.max(0.30, 1 - flagCost);
+  const scoreInt  = Math.round(scoreFrac * 100);
   const CIRC = 565.5;            // 2 * pi * 90 (matches the big hero ring viewBox)
-  // Defer to next frame so the CSS transition fires (initial state = full offset).
+
+  // Score band -> ring stroke + number color (>=80 emerald, >=60 amber, <60 red).
+  C.heroCard.classList.remove('score-warn','score-high');
+  if      (scoreInt < 60) C.heroCard.classList.add('score-high');
+  else if (scoreInt < 80) C.heroCard.classList.add('score-warn');
+
+  // Animate ring fill + count the number up on render. Defer to next
+  // frame so the CSS transition fires (initial state = full offset).
   requestAnimationFrame(() => {
-    if (C.heroRing) C.heroRing.style.strokeDashoffset = String(CIRC * (1 - score));
+    if (C.heroRing) C.heroRing.style.strokeDashoffset = String(CIRC * (1 - scoreFrac));
   });
+  if (render._lastScore !== scoreInt) {
+    countUp('hero-score', scoreInt, '', 0);
+    render._lastScore = scoreInt;
+  }
 
   // Re-animate when the cadence value changes so the wow-moment fires
   // again on Last-Report re-entry or new-data refresh, not only once
