@@ -797,6 +797,25 @@ button{ font-family:inherit; }
   font-size:12px;color:var(--text3);
   line-height:1.5;margin-top:auto;
 }
+/* "What it means / What to do" detail block. Hidden until the tile is
+   expanded -- keeps the default dashboard scannable but gives first-
+   time users a real explainer one tap away. */
+.metric-card-detail{ display:none; }
+.metric-card.expanded .metric-card-detail{
+  display:block;
+  margin-top:10px;
+  padding-top:12px;
+  border-top:1px solid rgba(15,23,42,.06);
+}
+.metric-card-detail p{
+  font-size:13px;color:var(--text2);
+  line-height:1.55;
+  margin:0 0 10px 0;
+}
+.metric-card-detail p:last-child{ margin-bottom:0; }
+.metric-card-detail strong{
+  color:var(--text);font-weight:700;
+}
 /* Scroll reveal: cards start slightly offset and faded, then ease
    into place when they enter the viewport. Stagger via --reveal-i. */
 .reveal-pending{ opacity:0; transform:translateY(14px); }
@@ -1680,6 +1699,10 @@ button{ font-family:inherit; }
             <div class="range-axis"><span>Low</span><span>Typical</span><span>High</span></div>
           </div>
           <div class="metric-card-desc">How often your feet hit the ground. Healthy distance running: 170-180 spm.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> Higher cadence means each step covers less distance and lands more softly. Distance runners in the 170-180 spm range tend to have shorter strides and lower impact rates. Below 160 usually means you're overstriding -- landing too far in front of your hips, which puts more stress on the knees.</p>
+            <p><strong>What to do.</strong> If you're low, increase by 5-10 % at a time, not straight to 180. A metronome app set to your target BPM is the simplest training aid. Shorter, quicker steps feel awkward for a week and then become automatic.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="contact">
@@ -1699,6 +1722,10 @@ button{ font-family:inherit; }
             <div class="range-axis"><span>Quick</span><span>Typical</span><span>Long</span></div>
           </div>
           <div class="metric-card-desc">How long each foot stays planted. Quicker is better; over 300 ms is long.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> How long your foot stays on the ground per step. Faster ground contact means the elastic energy stored in your Achilles and arch returns more efficiently -- you "bounce" off the ground instead of "sinking" into it. Sustained contact over 300 ms is often a sign of overstriding.</p>
+            <p><strong>What to do.</strong> You don't train this directly. It improves as cadence rises and your foot lands closer to under your hips. Sprinters drop below 100 ms; steady distance pace is typically 200-280 ms.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="loading">
@@ -1717,6 +1744,10 @@ button{ font-family:inherit; }
             <div class="range-axis"><span>Healthy</span><span>Watch</span><span>High</span></div>
           </div>
           <div class="metric-card-desc">How quickly force builds when you land. High values predict stress fractures.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> How fast the force comes through your leg on landing -- measured in body-weights per second. It's the single strongest biomechanical predictor of running stress fractures: Milner (2006) found female runners above 80 BW/s had roughly twice the injury risk.</p>
+            <p><strong>What to do.</strong> Land softer. Imagine running quietly. The simplest path: raise your cadence 5-10 % so the same load spreads across more steps. A slightly bent knee at landing helps too.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="pronate">
@@ -1736,6 +1767,10 @@ button{ font-family:inherit; }
             <div class="range-axis"><span>Supinated</span><span>Neutral</span><span>Overpronated</span></div>
           </div>
           <div class="metric-card-desc">Positive: rolls inward. Negative: rolls outward. Some pronation absorbs impact.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> How fast your foot rolls inward (positive) or outward (negative) after landing. Some pronation is healthy -- that's how your arch absorbs impact. Too much (over 15 deg/s) strains the ankle, knee, and shin. Too little (under -8 deg/s) reduces shock absorption and is linked to IT-band syndrome.</p>
+            <p><strong>What to do.</strong> Hip and glute strengthening (clamshells, single-leg squats, bridges) is the most reliable long-term fix. Stability shoes can help short-term but treat the symptom, not the cause.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="balance">
@@ -1760,6 +1795,10 @@ button{ font-family:inherit; }
             </div>
           </div>
           <div class="metric-card-desc">Pressure split between medial (inside) and lateral (outside) edges of the foot.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> How load is split between the inside (medial) and outside (lateral) of your foot through the stride. A small split (under 10 %) is normal -- nobody is perfectly even. A consistent 60/40 over many runs is what predicts overuse injury on the loaded side.</p>
+            <p><strong>What to do.</strong> Single-leg work (deadlifts, step-ups, calf raises) is the standard rebalancing fix. Stretching the underloaded side and strengthening hip stabilizers tends to help. One asymmetric run is not a problem -- look for the pattern over weeks.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="stride">
@@ -1788,6 +1827,10 @@ button{ font-family:inherit; }
             </div>
           </div>
           <div class="metric-card-desc">Estimated from your height. Distance-running stride averages ~0.42 x height.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> How much ground you cover per step. We estimate it from your height because measuring it directly would need GPS or motion capture. Cavanagh &amp; Williams (1982) showed distance runners' stride averages 0.42 x standing height at steady pace.</p>
+            <p><strong>What to do.</strong> Longer is not better. Overstriding -- landing far in front of your hips -- is one of the most consistent injury predictors. The right stride for you is set by your hip extension range, not by trying to "reach further."</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="speed">
@@ -1800,6 +1843,10 @@ button{ font-family:inherit; }
           </div>
           <svg class="metric-sparkline" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="metric-card-desc">Cadence x stride length. An approximation for steady-cadence distance running.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> Derived from cadence x stride length. It's an approximation for steady-cadence distance running, not a precise pace measurement. Walking breaks, intervals, hills, and turning are all averaged in.</p>
+            <p><strong>What to do.</strong> Treat this as a rough overall average. For accurate per-mile pace use a GPS watch or phone. SoleSense only sees the foot -- it can't see distance.</p>
+          </div>
         </div>
 
         <div class="metric-card" data-metric="steps">
@@ -1812,6 +1859,10 @@ button{ font-family:inherit; }
           <!-- No chart: total steps is a single cumulative count, not a
                time-series. The big number is the entire story. -->
           <div class="metric-card-desc">Foot strikes detected during the run.</div>
+          <div class="metric-card-detail">
+            <p><strong>What it tells you.</strong> Foot strikes counted by the on-device step detector: any of the 6 FSRs crossing a load threshold, then releasing past a refractory window (200 ms). This counts a heel-to-toe roll as one step, not three.</p>
+            <p><strong>What to do.</strong> Compare against your watch or treadmill -- they should be close. A significant mismatch usually means the FSRs need re-zeroing; run "Zero sensors" in Settings with the insole unloaded.</p>
+          </div>
         </div>
 
       </div>
@@ -1887,7 +1938,7 @@ button{ font-family:inherit; }
 
     <div class="settings-group">
       <div class="settings-group-title">Account</div>
-      <div class="settings-card">
+      <div class="settings-card"> 
         <div class="settings-row">
           <div>
             <div class="settings-label">Signed in as</div>
@@ -2398,9 +2449,8 @@ async function animateBars(){
 function impactCategory(bws){
   if (!bws || bws < 1) return { label: '--',       num: '', tone: null };
   const num = Math.round(bws).toString();
-  if (bws < 60) return { label: 'Healthy',  num, tone: 'good' };
-  if (bws < 80) return { label: 'Elevated', num, tone: 'warn' };
-  return              { label: 'High',     num, tone: 'high' };
+  if (bws < 60) return { label: 'In range', num, tone: 'good' };
+  return              { label: 'Elevated', num, tone: 'high' };
 }
 
 /* Per-metric health bands. Each returns { label, tone } in the
