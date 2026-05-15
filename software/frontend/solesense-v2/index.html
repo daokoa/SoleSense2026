@@ -1162,7 +1162,7 @@ button{ font-family:inherit; }
 }
 .hero-ring-num{
   font-size:64px;font-weight:800;
-  font-family:'DM Mono', ui-monospace, monospace;
+  font-family:var(--font-display);
   line-height:1;letter-spacing:-.04em;
   color:var(--text);
   font-variant-numeric:tabular-nums;
@@ -2981,7 +2981,7 @@ function setupScrollReveal(){
    No external libs, ~40 lines. Respects prefers-reduced-motion. */
 function fireVerdictConfetti(){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const ring = document.querySelector('.hero-icon-wrap');
+  const ring = document.querySelector('.hero-ring-wrap');
   if (!ring) return;
   const rect = ring.getBoundingClientRect();
   const canvas = document.createElement('canvas');
@@ -3166,7 +3166,6 @@ function render(r){
   if (!render._cache) {
     render._cache = {
       heroCard:  document.querySelector('.report-hero'),
-      heroIcon:  document.getElementById('hero-icon'),
       heroRing:  document.getElementById('hero-ring-fill'),
       heroTitle: document.getElementById('hero-title'),
       heroSub:   document.getElementById('hero-sub'),
@@ -3174,14 +3173,13 @@ function render(r){
   }
   const C = render._cache;
 
+  // Verdict text only -- the icon was removed when the Run Score moved
+  // into the ring. Tone classes still applied to the card for the
+  // top stripe color (warn/high). Score band classes added separately
+  // below for the ring stroke + number color.
   const v = computeVerdict(r.flags);
-  C.heroIcon.innerHTML = v.icon;
-  C.heroIcon.classList.remove('warn','high');
   C.heroCard.classList.remove('warn','high');
-  if (v.tone) {
-    C.heroIcon.classList.add(v.tone);
-    C.heroCard.classList.add(v.tone);
-  }
+  if (v.tone) C.heroCard.classList.add(v.tone);
   C.heroTitle.textContent = v.title;
   C.heroSub.textContent   = v.sub;
 
