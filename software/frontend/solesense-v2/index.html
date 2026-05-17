@@ -164,6 +164,19 @@ button{ font-family:inherit; }
 .home-nav-link:hover{background:var(--blue-bg);color:var(--blue)}
 .home-nav-link:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
 
+.btn-power{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:38px;padding:0 14px;border-radius:var(--r-full);
+  background:#fff1f1;border:1.5px solid #fca5a5;
+  color:#ef4444;font-size:13px;font-weight:600;font-family:inherit;
+  cursor:pointer;transition:background var(--d-fast),border-color var(--d-fast),box-shadow var(--d-fast);
+  letter-spacing:var(--tracking-tight);
+}
+.btn-power:hover{background:#fee2e2;border-color:#f87171;box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+.btn-power:active{transform:scale(.97);}
+.btn-power:focus-visible{outline:2px solid #ef4444;outline-offset:2px;}
+.btn-power svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+
 .home-hero{
   display:flex;
   flex-direction:column;
@@ -191,10 +204,20 @@ button{ font-family:inherit; }
   width:7px;height:7px;border-radius:50%;background:var(--green);
   box-shadow:0 0 0 4px rgba(4,120,87,0.15);
   animation:pulse-dot 2s var(--ease-out) infinite;
+  transition:background .3s;
 }
 @keyframes pulse-dot{
   0%,100% { opacity:1; box-shadow:0 0 0 4px rgba(4,120,87,0.18); }
   50%     { opacity:.75; box-shadow:0 0 0 7px rgba(4,120,87,0); }
+}
+.home-eyebrow-dot.disconnected{
+  background:#ef4444;
+  box-shadow:0 0 0 4px rgba(239,68,68,0.18);
+  animation:pulse-dot-red 1.5s ease-in-out infinite;
+}
+@keyframes pulse-dot-red{
+  0%,100% { box-shadow:0 0 0 4px rgba(239,68,68,0.20); }
+  50%     { box-shadow:0 0 0 7px rgba(239,68,68,0); }
 }
 
 .home-headline{
@@ -1235,19 +1258,26 @@ button{ font-family:inherit; }
   background:currentColor;
 }
 
-/* Quiet footer: duration + pace as a single small line. */
+/* Duration + pace footer -- two stat tiles side by side. */
 .hero-footer{
-  display:flex;justify-content:center;align-items:baseline;gap:6px;
-  padding-top:9px;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  padding-top:14px;
   border-top:1px solid rgba(15,23,42,.06);
-  font-size:12px;color:var(--text2);
+  width:100%;
+}
+.hero-footer-tile{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:var(--surface2);border-radius:10px;padding:8px 10px;
 }
 .hero-footer-stat{
-  font-weight:700;color:var(--text);
-  font-variant-numeric:tabular-nums;
+  font-size:17px;font-weight:700;color:var(--text);
+  font-variant-numeric:tabular-nums;letter-spacing:var(--tracking-tighter);
+  line-height:1;
 }
-.hero-footer-sep{ color:var(--text3); }
-.hero-footer-tail{ color:var(--text2); }
+.hero-footer-tail{
+  font-size:11px;font-weight:600;color:var(--text3);
+  letter-spacing:.08em;text-transform:uppercase;
+}
 
 /* The old collapsible .metrics-details + .metrics-card row pattern was
    removed in favor of the .metrics-grid stat tiles defined further up. */
@@ -1449,11 +1479,15 @@ button{ font-family:inherit; }
 
   <nav class="home-nav">
     <div class="home-wordmark">Sole<span>Sense</span></div>
+    <button class="btn-power" onclick="confirmPowerOff()" aria-label="Power off insole">
+      <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+      Power Off
+    </button>
   </nav>
 
   <div class="home-hero">
     <div class="home-eyebrow">
-      <div class="home-eyebrow-dot"></div>
+      <div class="home-eyebrow-dot" id="eyebrow-dot"></div>
       <span id="conn-text">Ready</span>
     </div>
 
@@ -1469,7 +1503,7 @@ button{ font-family:inherit; }
     </button>
 
     <div class="home-status">
-      <div class="status-dot" id="conn-dot"></div>
+      <div class="status-dot off" id="conn-dot"></div>
       <span>SoleSense insole</span>
     </div>
   </div>
@@ -1666,10 +1700,14 @@ button{ font-family:inherit; }
            vertical space for two values the user can see in the
            detailed metrics anyway. -->
       <div class="hero-footer">
-        <span class="hero-footer-stat" id="s-duration">--</span>
-        <span class="hero-footer-sep">&middot;</span>
-        <span class="hero-footer-stat" id="s-speed">--</span>
-        <span class="hero-footer-tail">est. pace</span>
+        <div class="hero-footer-tile">
+          <span class="hero-footer-stat" id="s-duration">--</span>
+          <span class="hero-footer-tail">Duration</span>
+        </div>
+        <div class="hero-footer-tile">
+          <span class="hero-footer-stat" id="s-speed">--</span>
+          <span class="hero-footer-tail">Est. Pace</span>
+        </div>
       </div>
     </div>
 
@@ -1978,7 +2016,7 @@ button{ font-family:inherit; }
         <div class="settings-row">
           <div>
             <div class="settings-label">Calibrate IMU</div>
-            <div class="settings-desc">Place insole flat on a level surface, then tap</div>
+            <div class="settings-desc">Resets the motion sensor's zero point. Set the insole flat on a table, then tap to zero — do this if step count or cadence seems off.</div>
           </div>
           <button class="btn-cal" onclick="zeroIMU()">Zero IMU</button>
         </div>
@@ -2007,7 +2045,7 @@ button{ font-family:inherit; }
         <div class="settings-row">
           <div>
             <div class="settings-label">Height</div>
-            <div class="settings-desc">Used for stride length + estimated speed (Cavanagh &amp; Williams 1982)</div>
+            <div class="settings-desc">Used for stride length + estimated speed</div>
           </div>
           <div class="profile-edit-cell">
             <input id="set-height" class="num-input" type="number" step="0.5" min="100" max="250" placeholder="cm">
@@ -2232,6 +2270,24 @@ async function confirmLogout(){
   if (ok) logout();
 }
 
+async function confirmPowerOff(){
+  const ok = await confirmDialog({
+    title: 'Power off insole?',
+    body: 'The SoleSense insole will enter deep sleep. It will wake automatically once movement is detected.',
+    confirmLabel: 'Power off',
+    destructive: true,
+  });
+  if (!ok) return;
+  try {
+    await authFetch('/api/sleep', { method: 'POST' });
+  } catch { /* device disconnects immediately on sleep */ }
+  const dot = document.getElementById('conn-dot');
+  if (dot) dot.className = 'status-dot danger';
+  const eyebrow = document.getElementById('eyebrow-dot');
+  if (eyebrow) eyebrow.classList.add('disconnected');
+  set('conn-text', 'Disconnected -- rejoin SoleSense WiFi');
+}
+
 
 /* Populate the settings screen with the current user's profile + the
  * device-info fields. Called when the settings screen is shown. */
@@ -2242,11 +2298,7 @@ async function refreshSettings(){
     if(r.ok){
       const d = await r.json();
       const el = document.getElementById('settings-username');
-      if (el) {
-        const kgPart = d.body_kg   ? ` · ${d.body_kg} kg`   : '';
-        const cmPart = d.height_cm ? ` · ${d.height_cm} cm` : '';
-        el.textContent = d.username + kgPart + cmPart;
-      }
+      if (el) el.textContent = `Username: ${d.username || '--'}`;
       // Mirror the server's source-of-truth into the localStorage cache.
       if (d.username)  localStorage.setItem(AUTH_USERNAME_KEY, d.username);
       if (d.body_kg)   localStorage.setItem(AUTH_BODYKG_KEY,   String(d.body_kg));
@@ -3511,6 +3563,7 @@ function confirmDialog({title, body, confirmLabel = 'Confirm', cancelLabel = 'Ca
  * don't hang the UI on a slow disconnect. */
 async function pingDevice(){
   const dot = document.getElementById('conn-dot');
+  const eyebrow = document.getElementById('eyebrow-dot');
   if (!dot) return;
   try {
     const ctrl = new AbortController();
@@ -3518,9 +3571,11 @@ async function pingDevice(){
     await fetch('/api/device', { signal: ctrl.signal });
     clearTimeout(t);
     dot.className = 'status-dot';
+    if (eyebrow) eyebrow.classList.remove('disconnected');
     set('conn-text', 'Connected');
   } catch {
     dot.className = 'status-dot danger';
+    if (eyebrow) eyebrow.classList.add('disconnected');
     set('conn-text', 'Disconnected -- rejoin SoleSense WiFi');
   }
 }
