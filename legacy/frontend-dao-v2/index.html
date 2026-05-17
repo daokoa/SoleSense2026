@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoleSense</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+
+:root{
+  --bg:       #f0f4ff;
+  --surface:  #ffffff;
+  --surface2: #e8eeff;
+  --border:   #dde4f5;
+  --text:     #0f1a3a;
+  --text2:    #4a5578;
+  --text3:    #8e99bb;
+  --blue:     #2563eb;
+  --blue2:    #1d4ed8;
+  --blue-bg:  #eff3ff;
+  --blue-lt:  #bfceff;
+  --amber:    #d97706;
+  --amber-bg: #fffbeb;
+  --red:      #dc2626;
+  --red-bg:   #fff1f1;
+  --green:    #16a34a;
+  --green-bg: #f0fdf4;
+  --radius:   18px;
+  --radius-sm:12px;
+  --shadow:   0 2px 8px rgba(37,99,235,.07), 0 8px 24px rgba(37,99,235,.06);
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  line-height:1.6;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ══════════════════════════════════════
+   HOME
+══════════════════════════════════════ */
+#screen-home{
+  background:#ffffff;
+  align-items:center;
+  justify-content:space-between;
+  padding:0;
+}
+
+.home-nav{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 24px;
+  border-bottom:1px solid #f0f0f0;
+}
+.home-wordmark{
+  font-size:17px;
+  font-weight:700;
+  letter-spacing:-.02em;
+  color:var(--text);
+}
+.home-wordmark span{color:var(--blue)}
+.home-nav-links{
+  display:flex;gap:6px;
+}
+.home-nav-link{
+  font-size:13px;color:var(--text2);
+  background:none;border:none;font-family:inherit;
+  padding:7px 14px;border-radius:20px;cursor:pointer;
+  transition:background .15s,color .15s;font-weight:500;
+}
+.home-nav-link:hover{background:var(--blue-bg);color:var(--blue)}
+
+.home-hero{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:48px 28px 36px;
+  flex:1;
+  justify-content:center;
+  gap:0;
+}
+
+.home-eyebrow{
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--blue);
+  margin-bottom:20px;
+  display:flex;align-items:center;gap:8px;
+}
+.home-eyebrow-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--green);
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+.home-headline{
+  font-size:52px;
+  font-weight:800;
+  color:var(--text);
+  letter-spacing:-.04em;
+  line-height:1.05;
+  margin-bottom:18px;
+}
+.home-headline em{
+  font-style:normal;
+  color:var(--blue);
+}
+
+.home-desc{
+  font-size:16px;
+  color:var(--text2);
+  line-height:1.65;
+  max-width:320px;
+  margin-bottom:36px;
+}
+
+.btn-start{
+  display:inline-flex;
+  align-items:center;gap:12px;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  border:none;border-radius:40px;cursor:pointer;
+  padding:20px 48px;
+  font-size:18px;font-weight:700;color:white;
+  font-family:inherit;letter-spacing:-.01em;
+  box-shadow:0 6px 28px rgba(37,99,235,.38);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s;
+  margin-bottom:18px;
+}
+.btn-start:hover{transform:scale(1.04);box-shadow:0 10px 36px rgba(37,99,235,.44)}
+.btn-start:active{transform:scale(.97)}
+.btn-start svg{width:20px;height:20px;fill:white;margin-left:-2px}
+
+/* Modal — used by the "Add user" flow in Settings. */
+.modal{
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(15,26,58,0.55); backdrop-filter:blur(4px);
+  padding:24px;
+}
+.modal-card{
+  background:var(--surface); border-radius:18px;
+  padding:24px; max-width:360px; width:100%;
+  box-shadow:0 20px 60px rgba(15,26,58,.3);
+}
+.modal-title{ font-size:20px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.modal-sub{   font-size:14px; color:var(--text2); line-height:1.5; margin-bottom:18px; }
+.modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+
+/* Recording-screen disconnect warning */
+.rec-disconnect-badge{
+  display:inline-block; margin-top:10px;
+  background:#fef2f2; color:#991b1b;
+  border:1px solid #fecaca; border-radius:8px;
+  padding:8px 12px; font-size:13px; line-height:1.4;
+  max-width:90%;
+}
+
+/* AI-coach panel on the report screen */
+.ai-title{ display:flex; align-items:center; gap:8px; }
+.ai-badge{
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  color:white; padding:2px 8px; border-radius:8px;
+}
+.ai-card{
+  background:linear-gradient(135deg,#f5f8ff 0%,#eaf0ff 100%);
+  border:1px solid var(--blue-lt); border-radius:14px; padding:16px;
+}
+.ai-empty{ text-align:center; padding:8px 4px; }
+.ai-empty-text{ color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:14px; }
+.btn-ai{
+  display:inline-flex; align-items:center; gap:8px;
+  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  color:white; border:none; border-radius:24px;
+  padding:11px 22px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 14px rgba(37,99,235,.3);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-ai:hover{ transform:scale(1.03); box-shadow:0 6px 18px rgba(37,99,235,.4); }
+.btn-ai:active{ transform:scale(.97); }
+.btn-ai svg{ flex-shrink:0; }
+.ai-loading{
+  display:flex; align-items:center; gap:10px; justify-content:center;
+  color:var(--blue); font-size:14px; padding:12px 0;
+}
+.spinner-sm{
+  width:18px; height:18px; border-radius:50%;
+  border:2.5px solid var(--blue-lt); border-top-color:var(--blue);
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.ai-result{ font-size:14.5px; line-height:1.6; color:var(--text); }
+.ai-result:empty{ display:none; }
+.ai-result h3{
+  display:block; margin:14px 0 6px;
+  font-size:13px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em;
+  color:var(--blue2);
+}
+.ai-result h3:first-child{ margin-top:0; }
+.ai-result p{ margin:8px 0; }
+.ai-result strong{ font-weight:700; color:var(--blue2); }
+.ai-result ul{ margin:6px 0 12px; padding-left:20px; }
+.ai-result li{ margin:4px 0; }
+.ai-result em{ color:var(--text2); }
+.ai-error{
+  background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+  padding:12px; border-radius:10px; font-size:13px; line-height:1.5;
+}
+.ai-error a{ color:#991b1b; text-decoration:underline; }
+
+/* Auth screen — same visual language as the home hero. */
+.auth-hero{
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:32px 24px 48px; flex:1; justify-content:flex-start; gap:0;
+  max-width:400px; margin:0 auto; width:100%;
+}
+.auth-hero .home-headline{ font-size:42px; margin-bottom:14px; }
+.auth-hero .home-desc{ margin-bottom:28px; }
+.auth-form{
+  display:flex; flex-direction:column; gap:14px;
+  width:100%; max-width:320px; margin:0 auto;
+}
+.auth-field{ display:flex; flex-direction:column; gap:6px; text-align:left; }
+.auth-label{
+  font-size:12px; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--text2);
+}
+.auth-field input{
+  font-family:inherit; font-size:16px; color:var(--text);
+  padding:14px 16px; border:1.5px solid var(--blue-lt); border-radius:12px;
+  background:var(--surface); outline:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+.auth-field input:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+.auth-submit{
+  width:100%; justify-content:center; margin-top:6px;
+  font-size:16px; padding:16px 32px; box-shadow:0 4px 18px rgba(37,99,235,.32);
+}
+.auth-error{
+  color:#dc2626; font-size:13px; min-height:20px; text-align:center; margin-top:4px;
+}
+.auth-toggle{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  margin-top:6px; font-size:13.5px; color:var(--text2);
+}
+.auth-toggle-btn{
+  background:none; border:none; padding:0; cursor:pointer;
+  font:inherit; color:var(--blue); font-weight:600;
+}
+.auth-toggle-btn:hover{ text-decoration:underline; }
+
+.home-status{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:14px;color:var(--text3);
+}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;
+  transition:background .3s; box-shadow:0 0 0 3px rgba(34,197,94,.18);}
+.status-dot.warn{background:var(--amber); box-shadow:0 0 0 3px rgba(245,158,11,.18);}
+.status-dot.off{background:var(--text3); box-shadow:0 0 0 3px rgba(142,153,187,.18);}
+.status-dot.danger{background:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.20);
+  animation:pulse-danger 1.5s ease-in-out infinite;}
+@keyframes pulse-danger{ 0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.20)}
+                          50%{box-shadow:0 0 0 6px rgba(220,38,38,.10)} }
+
+.home-bottom{
+  width:100%;
+  padding:0 16px 28px;
+  border-top:1px solid #f0f0f0;
+}
+
+.home-bottom-label{
+  font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text3);padding:16px 4px 12px;
+}
+
+.home-nav-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.home-card{
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 16px;
+  cursor:pointer;
+  transition:transform .15s, box-shadow .15s;
+  display:flex;align-items:center;gap:14px;
+}
+.home-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(37,99,235,.1)}
+.home-card:active{transform:translateY(0)}
+.home-card-icon{
+  width:44px;height:44px;border-radius:14px;
+  background:var(--blue-bg);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.home-card-icon svg{width:20px;height:20px;stroke:var(--blue);fill:none;stroke-width:1.8}
+.home-card-label{font-size:15px;font-weight:600;color:var(--text)}
+.home-card-sub{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* ══════════════════════════════════════
+   RECORDING
+══════════════════════════════════════ */
+#screen-recording{
+  align-items:center;justify-content:space-between;
+  background:var(--surface);
+}
+
+.rec-top{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1.5px solid var(--border);
+}
+.rec-back{
+  display:flex;align-items:center;gap:6px;
+  font-size:14px;color:var(--text2);cursor:pointer;
+  background:none;border:none;font-family:inherit;padding:6px 0;
+}
+.rec-back:hover{color:var(--blue)}
+.rec-title{font-size:16px;font-weight:700;color:var(--text)}
+.rec-spacer{width:60px}
+
+.rec-mid{
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  flex:1;justify-content:center;padding:20px 24px;width:100%;
+}
+
+.rec-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--red-bg);border:1.5px solid #fecaca;
+  border-radius:24px;padding:8px 20px;
+  font-size:13px;font-weight:700;color:var(--red);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;
+}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+.rec-paused-badge{
+  display:inline-block;
+  background:var(--amber-bg);
+  color:var(--amber);
+  font-size:12px;font-weight:600;
+  padding:6px 12px;border-radius:14px;
+  border:1px solid var(--amber);
+  margin-bottom:12px;
+}
+.rec-timer{
+  font-size:108px;font-weight:200;color:var(--text);
+  letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;
+  margin-bottom:8px;
+}
+
+.rec-steps{font-size:17px;color:var(--text2);margin-bottom:28px}
+.rec-steps span{font-weight:700;color:var(--text)}
+
+/* stat chips row */
+.rec-chips{
+  display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;justify-content:center;
+}
+.rec-chip{
+  background:var(--blue-bg);border:1.5px solid var(--blue-lt);
+  border-radius:14px;padding:12px 18px;text-align:center;min-width:80px;
+}
+.rec-chip-val{font-size:20px;font-weight:700;color:var(--blue);line-height:1}
+.rec-chip-label{font-size:11px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Foot diagrams (recording screen) ── */
+.feet-wrap{
+  display:flex; gap:16px; justify-content:center; align-items:flex-start;
+  margin-top:14px;
+}
+.foot-card{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:8px 10px; border-radius:14px;
+  background:var(--surface2); border:1px solid var(--border);
+}
+.foot-card.disabled{ opacity:0.45; }
+.foot-card-label{
+  font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.06em; color:var(--text2);
+}
+.foot-card.disabled .foot-card-label{ color:var(--text3); }
+.foot-svg{ width:60px; height:166px; display:block; }
+.foot-outline{
+  fill:#f7f9ff; stroke:#cbd5ff; stroke-width:1.5;
+}
+.foot-card.disabled .foot-outline{ fill:#f4f4f4; stroke:#d0d0d0; }
+.foot-sensor{
+  fill:rgba(37,99,235,0.10);
+  stroke:rgba(37,99,235,0.35); stroke-width:1.2;
+  transition:fill 0.18s linear;
+}
+.foot-card.disabled .foot-sensor{
+  fill:#e0e0e0; stroke:#bdbdbd;
+}
+.foot-sensor.label{
+  font-size:7px; fill:var(--text3); pointer-events:none;
+}
+.foot-legend{
+  display:flex; align-items:center; gap:10px; justify-content:center;
+  margin-top:10px; font-size:11px; color:var(--text3);
+}
+.foot-legend-bar{
+  width:120px; height:6px; border-radius:3px;
+  background:linear-gradient(to right, rgba(37,99,235,0.10), rgba(37,99,235,1));
+}
+.rec-bars{
+  width:100%;max-width:340px;
+  display:flex;gap:5px;height:80px;align-items:flex-end;
+}
+.rec-bar{
+  flex:1;background:var(--blue-lt);
+  border-radius:6px 6px 0 0;
+  transition:height .18s ease;min-height:5px;
+}
+
+.rec-bottom{
+  width:100%;padding:0 24px 48px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+
+.btn-stop{
+  width:88px;height:88px;border-radius:50%;
+  background:var(--red);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 24px rgba(220,38,38,.36);
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .15s;
+}
+.btn-stop:hover{transform:scale(1.06);box-shadow:0 8px 28px rgba(220,38,38,.42)}
+.btn-stop:active{transform:scale(.93)}
+.btn-stop svg{width:28px;height:28px;fill:white}
+.btn-stop-label{font-size:14px;color:var(--text3)}
+
+/* ══════════════════════════════════════
+   REPORT
+══════════════════════════════════════ */
+#screen-report{flex-direction:column;padding:0 0 80px;background:var(--bg)}
+
+.report-header{
+  background:var(--surface);border-bottom:1.5px solid var(--border);
+  padding:13px 16px;display:flex;align-items:center;justify-content:space-between;
+}
+.report-back{
+  display:flex;align-items:center;gap:6px;
+  font-size:13px;color:var(--text2);cursor:pointer;
+  background:none;border:none;font-family:inherit;padding:6px 0;
+}
+.report-back:hover{color:var(--blue)}
+.report-header-title{font-size:15px;font-weight:700;color:var(--text)}
+
+/* summary cards row */
+.summary{padding:12px 12px 4px}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.summary-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:11px 10px;text-align:center;
+  box-shadow:var(--shadow);
+}
+.summary-val{font-size:24px;font-weight:700;color:var(--blue);line-height:1.1}
+.summary-unit{font-size:11px;color:var(--text2);font-weight:400;margin-left:1px}
+.summary-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
+
+.report-body{padding:0 12px}
+.section{margin-top:16px}
+.section-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--text3);margin-bottom:8px;
+}
+
+/* all clear */
+.all-clear{
+  background:var(--green-bg);border:1.5px solid #bbf7d0;
+  border-radius:var(--radius);padding:24px;text-align:center;
+}
+.all-clear-check{font-size:36px;margin-bottom:8px}
+.all-clear-title{font-size:17px;font-weight:700;color:var(--green);margin-bottom:4px}
+.all-clear-sub{font-size:14px;color:var(--text2)}
+
+.flag-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;margin-bottom:8px;
+  box-shadow:var(--shadow);transition:box-shadow .15s;
+}
+.flag-card:hover{box-shadow:0 4px 16px rgba(37,99,235,.1)}
+.flag-header{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;cursor:pointer;user-select:none;
+}
+.flag-header:hover{background:var(--blue-bg)}
+.flag-pill{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+  flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;
+}
+.pill-high  {background:#fee2e2;color:var(--red)}
+.pill-medium{background:#fef3c7;color:var(--amber)}
+.pill-low   {background:var(--blue-bg);color:var(--blue)}
+.flag-name{font-size:14px;font-weight:600;color:var(--text);flex:1}
+.flag-val{font-size:12px;color:var(--text2);white-space:nowrap}
+.flag-chevron{font-size:10px;color:var(--text3);transition:transform .2s;margin-left:4px}
+.flag-card.open .flag-chevron{transform:rotate(180deg)}
+.flag-body{display:none;padding:0 14px 14px;border-top:1.5px solid var(--border)}
+.flag-card.open .flag-body{display:block}
+.flag-what{font-size:13px;color:var(--text2);margin-top:12px;line-height:1.65}
+.flag-fix{margin-top:10px;padding:11px 13px;border-radius:10px;font-size:12px;line-height:1.6}
+.fix-high  {background:#fff1f1;color:#991b1b;border:1.5px solid #fecaca}
+.fix-medium{background:#fffbeb;color:#92400e;border:1.5px solid #fde68a}
+.fix-low   {background:var(--blue-bg);color:#1e40af;border:1.5px solid var(--blue-lt)}
+.fix-label {font-weight:700;display:block;margin-bottom:3px}
+
+/* metrics */
+.metrics-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+}
+.metrics-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;border-bottom:1.5px solid var(--border);
+}
+.metrics-row:last-child{border-bottom:none}
+.metrics-key{font-size:13px;color:var(--text2)}
+.metrics-val{font-size:14px;font-weight:600;color:var(--text)}
+.unit{font-size:11px;color:var(--text3);font-weight:400;margin-left:2px}
+
+/* zone bars */
+.zone-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+}
+.zone-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-bottom:1.5px solid var(--border);
+}
+.zone-row:last-child{border-bottom:none}
+.zone-label{font-size:13px;color:var(--text2);width:64px;flex-shrink:0}
+.zone-track{flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.zone-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#60a5fa,var(--blue));transition:width .6s ease}
+.zone-pct{font-size:13px;color:var(--text3);width:34px;text-align:right;flex-shrink:0}
+
+/* done btn */
+.btn-done{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;padding:16px;border-radius:var(--radius);
+  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
+  border:none;background:linear-gradient(135deg,#3b82f6,var(--blue2));color:white;
+  box-shadow:0 4px 14px rgba(37,99,235,.3);transition:opacity .15s,transform .12s;
+  margin-top:16px;
+}
+.btn-done:hover{opacity:.92;transform:translateY(-1px)}
+.btn-done:active{opacity:.82;transform:translateY(0)}
+
+/* ══════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════ */
+#screen-settings{flex-direction:column;padding:0 0 60px;background:var(--bg)}
+
+.settings-header{
+  background:var(--surface);border-bottom:1.5px solid var(--border);
+  padding:13px 16px;display:flex;align-items:center;gap:14px;
+}
+.settings-back{
+  display:flex;align-items:center;gap:6px;
+  font-size:13px;color:var(--text2);cursor:pointer;
+  background:none;border:none;font-family:inherit;padding:6px 0;
+}
+.settings-back:hover{color:var(--blue)}
+.settings-header-title{font-size:15px;font-weight:700;color:var(--text)}
+
+.settings-body{padding:0 12px}
+.settings-group{margin-top:16px}
+.settings-group-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--text3);margin-bottom:8px;
+}
+.settings-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;border-bottom:1.5px solid var(--border);gap:12px;
+}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:14px;font-weight:600;color:var(--text)}
+.settings-desc{font-size:11px;color:var(--text3);margin-top:1px}
+.settings-val{font-size:13px;color:var(--text2);flex-shrink:0}
+
+/* toggle */
+.toggle{position:relative;width:44px;height:26px;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:13px;cursor:pointer;transition:background .2s}
+.toggle input:checked+.toggle-track{background:var(--blue)}
+.toggle-thumb{
+  position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:white;transition:transform .2s;pointer-events:none;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+.toggle input:checked~.toggle-thumb{transform:translateX(18px)}
+
+/* number input */
+.num-input{
+  width:66px;background:var(--blue-bg);
+  border:1.5px solid var(--blue-lt);border-radius:10px;
+  color:var(--text);font-family:inherit;font-size:14px;
+  padding:7px 10px;text-align:center;outline:none;font-weight:600;
+}
+.num-input:focus{border-color:var(--blue)}
+
+/* cal/action btns */
+.btn-cal{
+  padding:9px 18px;border-radius:24px;font-size:13px;font-weight:700;
+  font-family:inherit;cursor:pointer;border:none;
+  background:var(--blue);color:white;
+  box-shadow:0 2px 8px rgba(37,99,235,.25);
+  transition:opacity .15s;white-space:nowrap;
+}
+.btn-cal:hover{opacity:.88}
+
+.btn-danger{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;padding:14px;border-radius:var(--radius);
+  font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;
+  background:transparent;border:2px solid var(--red);color:var(--red);
+  transition:background .15s;margin-top:12px;
+}
+.btn-danger:hover{background:#fff1f1}
+
+/* ── LOADING ── */
+#loading-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(240,244,255,.92);z-index:100;
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;font-size:15px;color:var(--text2);
+}
+#loading-overlay.active{display:flex}
+.spinner{
+  width:38px;height:38px;
+  border:3px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .85s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);
+  background:var(--text);color:white;
+  font-size:13px;font-weight:500;
+  padding:11px 22px;border-radius:24px;
+  opacity:0;transition:all .24s ease;pointer-events:none;
+  white-space:nowrap;z-index:200;
+  box-shadow:0 4px 16px rgba(15,26,58,.22);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ HOME ══════════════════════════════════════ -->
+<!-- Auth screen: shown first if no token in localStorage. Two modes — login
+     (when an owner already exists) and claim (first-ever registration).
+     Visual language matches the home hero (eyebrow + headline + form). -->
+<div class="screen active" id="screen-auth">
+  <nav class="home-nav">
+    <div class="home-wordmark">Sole<span>Sense</span></div>
+  </nav>
+
+  <div class="auth-hero">
+    <div class="home-eyebrow">
+      <div class="home-eyebrow-dot"></div>
+      <span id="auth-eyebrow">Welcome</span>
+    </div>
+
+    <div class="home-headline" id="auth-headline">Sign in.</div>
+
+    <div class="home-desc" id="auth-subtitle">Loading…</div>
+
+    <form class="auth-form" autocomplete="off" onsubmit="event.preventDefault();submitAuth();">
+      <label class="auth-field">
+        <span class="auth-label">Username</span>
+        <input id="auth-username" type="text" autocomplete="off"
+               name="ssu" maxlength="13" placeholder="4–13 letters, digits, or _">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">PIN</span>
+        <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*"
+               autocomplete="new-password" name="sspin" placeholder="4–16 digits">
+      </label>
+      <label class="auth-field" id="auth-bodykg-field" style="display:none;">
+        <span class="auth-label">Body weight (kg)</span>
+        <input id="auth-bodykg" type="number" step="0.1" autocomplete="off" placeholder="e.g. 70.0">
+      </label>
+      <button id="auth-submit-btn" type="submit" class="btn-start auth-submit">
+        <span id="auth-submit-label">Log in</span>
+      </button>
+      <div id="auth-error" class="auth-error"></div>
+      <div class="auth-toggle" id="auth-toggle-row">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <button type="button" class="auth-toggle-btn" onclick="toggleAuthMode()">
+          <span id="auth-toggle-action">Create one</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="screen" id="screen-home">
+
+  <nav class="home-nav">
+    <div class="home-wordmark">Sole<span>Sense</span></div>
+  </nav>
+
+  <div class="home-hero">
+    <div class="home-eyebrow">
+      <div class="home-eyebrow-dot"></div>
+      <span id="conn-text">Ready</span>
+    </div>
+
+    <div class="home-headline">Run smarter.<br><em>Recover faster.</em></div>
+
+    <div class="home-desc">
+      Insert the insole, lace up, and tap Start. SoleSense records your biomechanics and flags injury risk after every run.
+    </div>
+
+    <button class="btn-start" onclick="startRun()">
+      <svg viewBox="0 0 20 20"><polygon points="5,3 17,10 5,17"/></svg>
+      Start Run
+    </button>
+
+    <div class="home-status">
+      <div class="status-dot" id="conn-dot"></div>
+      <span>SoleSense insole</span>
+    </div>
+  </div>
+
+  <div class="home-bottom">
+    <div class="home-bottom-label">Quick access</div>
+    <div class="home-nav-row">
+      <div class="home-card" onclick="viewLastReport()">
+        <div class="home-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h4"/></svg>
+        </div>
+        <div>
+          <div class="home-card-label">Last Report</div>
+          <div class="home-card-sub" id="last-report-sub">No runs yet</div>
+        </div>
+      </div>
+      <div class="home-card" onclick="showScreen('settings')">
+        <div class="home-card-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </div>
+        <div>
+          <div class="home-card-label">Settings</div>
+          <div class="home-card-sub">Calibrate &amp; configure</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════ RECORDING ══════════════════════════════════════ -->
+<div class="screen" id="screen-recording">
+
+  <div class="rec-top">
+    <button class="rec-back" onclick="cancelRun()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Cancel
+    </button>
+    <div class="rec-title">Recording</div>
+    <div class="rec-spacer"></div>
+  </div>
+
+  <div class="rec-mid">
+    <div class="rec-badge"><div class="rec-dot"></div>Live</div>
+    <div id="rec-paused" class="rec-paused-badge" style="display:none">⏸ Paused — phone disconnected</div>
+    <div class="rec-timer" id="rec-timer">0:00</div>
+    <div class="rec-steps">Steps: <span id="rec-steps">0</span></div>
+    <div class="rec-chips">
+      <div class="rec-chip">
+        <div class="rec-chip-val" id="chip-cadence">—</div>
+        <div class="rec-chip-label">Cadence</div>
+      </div>
+      <div class="rec-chip">
+        <div class="rec-chip-val" id="chip-contact">—</div>
+        <div class="rec-chip-label">Contact</div>
+      </div>
+      <div class="rec-chip">
+        <div class="rec-chip-val" id="chip-rate">—</div>
+        <div class="rec-chip-label">Impact</div>
+      </div>
+    </div>
+
+    <div class="feet-wrap" id="feet-wrap">
+      <!-- Left foot — the source PNG is anatomically a RIGHT foot, so the
+           Left-foot card mirrors it horizontally via SVG transform so it
+           reads as a left foot on screen. Sensor circles inside the
+           transformed group are mirrored along with the image; channel
+           IDs stay correct because circle coords ride the same transform. -->
+      <div class="foot-card" id="foot-left">
+        <div class="foot-card-label">Left foot</div>
+        <svg class="foot-svg" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet">
+          <g transform="translate(185 0) scale(-1 1)">
+            <image href="solesense.png" x="0" y="0" width="185" height="511"/>
+            <!-- ch5 forefoot lateral (top-left displayed) -->
+            <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="110" cy="70"  r="18"/>
+            <!-- ch4 forefoot medial (top-right displayed) -->
+            <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="55"  cy="75"  r="18"/>
+            <!-- ch3 midfoot lateral (left-most displayed) -->
+            <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="140" cy="120" r="18"/>
+            <!-- ch2 midfoot medial (right-most displayed) -->
+            <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="40"  cy="135" r="18"/>
+            <!-- ch1 heel lateral (heel-left displayed; aligned with ch3 left-most) -->
+            <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="140" cy="450" r="20"/>
+            <!-- ch0 heel medial (heel-right displayed) — pinned, perfect -->
+            <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="65"  cy="455" r="20"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right foot — original PNG orientation (anatomically a right foot),
+           no mirror, greyed out via .disabled. -->
+      <div class="foot-card disabled" id="foot-right" title="Right insole not connected">
+        <div class="foot-card-label">Right (offline)</div>
+        <svg class="foot-svg" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet">
+          <image href="solesense.png" x="0" y="0" width="185" height="511"/>
+          <circle class="foot-sensor" cx="110" cy="70"  r="18"/>
+          <circle class="foot-sensor" cx="55"  cy="75"  r="18"/>
+          <circle class="foot-sensor" cx="140" cy="120" r="18"/>
+          <circle class="foot-sensor" cx="40"  cy="135" r="18"/>
+          <circle class="foot-sensor" cx="140" cy="450" r="20"/>
+          <circle class="foot-sensor" cx="65"  cy="455" r="20"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="foot-legend">
+      <span>no pressure</span>
+      <span class="foot-legend-bar"></span>
+      <span>full pressure</span>
+    </div>
+  </div>
+
+  <div class="rec-bottom">
+    <button class="btn-stop" onclick="stopRun()">
+      <svg viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="2.5"/></svg>
+    </button>
+    <div class="btn-stop-label">Tap to stop</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════ REPORT ══════════════════════════════════════ -->
+<div class="screen" id="screen-report">
+
+  <div class="report-header">
+    <button class="report-back" onclick="showScreen('home')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Home
+    </button>
+    <div class="report-header-title">Run Report</div>
+    <div style="width:56px"></div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-val" id="s-steps">—</div>
+        <div class="summary-label">Steps</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val"><span id="s-cadence">—</span><span class="summary-unit">spm</span></div>
+        <div class="summary-label">Cadence</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="s-duration">—</div>
+        <div class="summary-label">Duration</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="report-body">
+
+    <div class="section">
+      <div class="section-title">Injury Risk Findings</div>
+      <div id="flags-container"></div>
+    </div>
+
+    <!-- LLM-personalized analysis. Hits the Cloudflare worker which holds
+         the OpenAI key. Falls back to the rule-based flags above when
+         offline / worker unreachable. -->
+    <div class="section ai-section">
+      <div class="section-title ai-title">
+        <span>AI Coach</span>
+        <span class="ai-badge">beta</span>
+      </div>
+      <div class="ai-card">
+        <div id="ai-empty" class="ai-empty">
+          <div class="ai-empty-text">Get a personalized breakdown of this run, calibrated to your body weight and gait.</div>
+          <button class="btn-ai" onclick="runAiAnalysis()">
+            <svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 2 L11.5 7 L17 8 L13 11.5 L14 17 L10 14 L6 17 L7 11.5 L3 8 L8.5 7 Z" fill="currentColor"/></svg>
+            Analyze with AI
+          </button>
+        </div>
+        <div id="ai-loading" class="ai-loading" style="display:none;">
+          <div class="spinner-sm"></div>
+          <span>Analyzing your run…</span>
+        </div>
+        <div id="ai-result" class="ai-result"></div>
+        <div id="ai-error" class="ai-error" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Run Metrics</div>
+      <div class="metrics-card">
+        <div class="metrics-row"><span class="metrics-key">Average cadence</span><span class="metrics-val"><span id="m-cadence">—</span><span class="unit">steps/min</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Ground contact time</span><span class="metrics-val"><span id="m-contact">—</span><span class="unit">ms</span></span></div>
+        <div class="metrics-row"><span class="metrics-key" title="How quickly force builds when your foot hits the ground. Healthy / Elevated / High.">Impact rate</span><span class="metrics-val"><span id="m-loading">—</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Pronation</span><span class="metrics-val"><span id="m-pronate">—</span><span class="unit">°/s</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Medial / Lateral</span><span class="metrics-val"><span id="m-balance">—</span></span></div>
+        <div class="metrics-row"><span class="metrics-key">Total steps</span><span class="metrics-val"><span id="m-steps">—</span></span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Pressure Distribution by Zone</div>
+      <div class="zone-card" id="zone-bars"></div>
+    </div>
+
+    <button class="btn-done" onclick="showScreen('home')">Done</button>
+
+    <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--text3)">
+      SoleSense · UCI · Spring 2026
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ SETTINGS ══════════════════════════════════════ -->
+<div class="screen" id="screen-settings">
+
+  <div class="settings-header">
+    <button class="settings-back" onclick="showScreen('home')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Home
+    </button>
+    <div class="settings-header-title">Settings</div>
+  </div>
+
+  <div class="settings-body">
+
+    <div class="settings-group">
+      <div class="settings-group-title">Calibration</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Zero FSR Sensors</div>
+            <div class="settings-desc">Stand off the insoles, then tap to zero all 6 sensors</div>
+          </div>
+          <button class="btn-cal" onclick="zeroSensors()">Zero</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Calibrate IMU</div>
+            <div class="settings-desc">Place insole flat on a level surface, then tap</div>
+          </div>
+          <button class="btn-cal" onclick="zeroIMU()">Zero IMU</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Account</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Signed in as</div>
+            <div class="settings-desc" id="settings-username">—</div>
+          </div>
+          <button class="btn-cal" onclick="confirmLogout()">Log out</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Device Info</div>
+      <div class="settings-card">
+        <div class="settings-row"><div><div class="settings-label">Firmware version</div></div><div class="settings-val" id="fw-ver">—</div></div>
+        <div class="settings-row"><div><div class="settings-label">Free heap</div></div><div class="settings-val" id="fw-heap">—</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sample rate</div></div><div class="settings-val">500 Hz</div></div>
+        <div class="settings-row"><div><div class="settings-label">Sensors</div></div><div class="settings-val">6× FSR + IMU</div></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <button class="btn-danger" onclick="clearData()">Clear All Run Data</button>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;font-size:12px;color:var(--text3);padding-bottom:12px">
+      SoleSense · UCI · Spring 2026
+    </div>
+
+  </div>
+</div>
+
+<div id="loading-overlay"><div class="spinner"></div><span id="loading-msg">Processing your run…</span></div>
+<div id="toast"></div>
+
+<script>
+/* ── AUTH ───────────────────────────────────────────────────────────────────
+ * Single-session model. Token + body_kg cached in localStorage so a reload
+ * doesn't bounce the user back to login. Any 401 from a protected endpoint
+ * wipes the cache and returns to login. */
+const AUTH_TOKEN_KEY    = 'solesense_token';
+const AUTH_BODYKG_KEY   = 'solesense_body_kg';
+const AUTH_USERNAME_KEY = 'solesense_username';
+let authMode = 'login';   // 'login' or 'claim'
+
+function authToken(){ return localStorage.getItem(AUTH_TOKEN_KEY) || ''; }
+
+async function authFetch(url, opts = {}){
+  const tok = authToken();
+  const headers = Object.assign({}, opts.headers || {});
+  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+  const r = await fetch(url, Object.assign({}, opts, { headers }));
+  if (r.status === 401) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_BODYKG_KEY);
+    showScreen('auth');
+    refreshAuthScreen();
+    throw new Error('unauthorized');
+  }
+  return r;
+}
+
+// authMode ∈ { 'login', 'signup' }. When ownerExists is false the user has
+// no choice — signup is forced and the toggle is hidden.
+let authForced = false;
+
+function setText(id, t){ const el = document.getElementById(id); if (el) el.textContent = t; }
+
+function applyAuthMode(){
+  const isSignup = authMode === 'signup';
+  document.getElementById('auth-bodykg-field').style.display = isSignup ? 'flex' : 'none';
+  setText('auth-submit-label', isSignup ? 'Create account' : 'Log in');
+  setText('auth-headline',     isSignup ? (authForced ? 'Claim your insole.' : 'Create account.') : 'Sign in.');
+  setText('auth-eyebrow',      isSignup ? (authForced ? 'First-time setup' : 'New here?')         : 'Welcome back');
+  setText('auth-subtitle',     isSignup
+    ? (authForced
+        ? 'Pick a username and PIN. Body weight is used for honest loading-rate readings.'
+        : 'Pick a username, PIN, and your body weight to set up your account.')
+    : 'Enter your username and PIN to start a run.');
+  setText('auth-toggle-text',  isSignup ? 'Already have an account?' : "Don't have an account?");
+  setText('auth-toggle-action',isSignup ? 'Sign in'                  : 'Create one');
+  // Hide the toggle entirely when claim is forced (nobody to log in as).
+  document.getElementById('auth-toggle-row').style.display = authForced ? 'none' : 'flex';
+  document.getElementById('auth-error').textContent = '';
+}
+
+function toggleAuthMode(){
+  if (authForced) return;
+  authMode = (authMode === 'login') ? 'signup' : 'login';
+  applyAuthMode();
+}
+
+async function refreshAuthScreen(){
+  // Always blank the form when entering the auth screen — we don't want
+  // the previous user's username pre-populated (or worse, autofilled by
+  // the browser's password manager). Username is only meant to be visible
+  // on the Settings screen for the currently signed-in user.
+  ['auth-username','auth-pin','auth-bodykg'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('auth-error').textContent = '';
+  try {
+    const r = await fetch('/api/auth/state');
+    const d = await r.json();
+    if (!d.ownerExists) {
+      authMode = 'signup';
+      authForced = true;     // no owner yet → can only claim
+    } else {
+      authMode = 'login';
+      authForced = false;
+    }
+    applyAuthMode();
+  } catch (e) {
+    document.getElementById('auth-error').textContent = 'Could not reach device — is the SoleSense WiFi connected?';
+  }
+}
+
+async function submitAuth(){
+  const u  = document.getElementById('auth-username').value.trim();
+  const p  = document.getElementById('auth-pin').value;
+  const bk = document.getElementById('auth-bodykg').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+
+  // Client-side checks mirror the server so users get instant feedback for
+  // obvious mistakes. The server still has the authoritative validation.
+  if (!u) { errEl.textContent = 'Enter a username.'; return; }
+  if (u.length < 4 || u.length > 13) {
+    errEl.textContent = 'Username must be 4–13 characters.'; return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(u)) {
+    errEl.textContent = 'Username can only have letters, digits, or _.'; return;
+  }
+  if (!p) { errEl.textContent = 'Enter your PIN.'; return; }
+  if (authMode === 'signup'){
+    if (!/^\d{4,16}$/.test(p)) {
+      errEl.textContent = 'PIN must be 4–16 digits.'; return;
+    }
+    if (!bk || +bk < 25 || +bk > 250) {
+      errEl.textContent = 'Body weight must be between 25 and 250 kg.'; return;
+    }
+  }
+
+  const url = (authMode === 'signup') ? '/api/auth/register' : '/api/auth/login';
+  const body = new URLSearchParams({ username: u, pin: p });
+  if (authMode === 'signup') body.append('body_kg', bk);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    const d = await r.json();
+    if (!d.ok) { errEl.textContent = d.error || 'Authentication failed.'; return; }
+    localStorage.setItem(AUTH_TOKEN_KEY, d.token);
+    localStorage.setItem(AUTH_BODYKG_KEY, String(d.body_kg));
+    if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
+    document.getElementById('auth-pin').value = '';
+    showScreen('home');
+  } catch (e) {
+    errEl.textContent = 'Network error — check the SoleSense WiFi.';
+  }
+}
+
+async function logout(){
+  // Best-effort server logout; the client always wipes regardless so a
+  // network blip can't strand the user in a half-authed state.
+  try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch {}
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_BODYKG_KEY);
+  localStorage.removeItem(AUTH_USERNAME_KEY);
+  showScreen('auth');
+  refreshAuthScreen();
+}
+
+function confirmLogout(){
+  const u = localStorage.getItem(AUTH_USERNAME_KEY) || '';
+  const msg = u
+    ? `Log out of "${u}"? You will need your username and PIN to sign back in.`
+    : 'Log out? You will need your username and PIN to sign back in.';
+  if(!confirm(msg)) return;
+  logout();
+}
+
+
+/* Populate the settings screen with the current user's profile + the
+ * device-info fields. Called when the settings screen is shown. */
+async function refreshSettings(){
+  document.getElementById('settings-username').textContent = '—';
+  try {
+    const r = await authFetch('/api/auth/profile');
+    if(r.ok){
+      const d = await r.json();
+      const el = document.getElementById('settings-username');
+      if(el) el.textContent = d.username + (d.body_kg ? ` · ${d.body_kg} kg` : '');
+      // Sync the cache so confirmLogout (and anything else that needs the
+      // username before a /profile round-trip) always has it available.
+      if (d.username) localStorage.setItem(AUTH_USERNAME_KEY, d.username);
+    }
+  } catch {/* offline / 401 already redirects */}
+  try {
+    const r = await fetch('/api/device');
+    if(r.ok){
+      const d = await r.json();
+      const v = document.getElementById('fw-ver');   if(v) v.textContent = d.firmware || '—';
+      const h = document.getElementById('fw-heap');  if(h) h.textContent = d.heap_free ? Math.round(d.heap_free/1024) + ' KB' : '—';
+    }
+  } catch {/* device unreachable — leave dashes */}
+}
+
+/* ── NAV ── */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  window.scrollTo(0,0);
+  if(id === 'settings') refreshSettings();
+}
+
+/* On first paint, decide which screen to show. */
+window.addEventListener('DOMContentLoaded', () => {
+  if (authToken()) {
+    showScreen('home');
+  } else {
+    showScreen('auth');
+    refreshAuthScreen();
+  }
+});
+
+/* ── RECORDING (v0.2: timer + paused state come from /api/run-state;
+       chips and steps come from /api/run-report polled during recording) ── */
+let stateInterval=null,barInterval=null,reportInterval=null;
+let recSeconds=0;   // last value reported by MCU (decoupled from wall clock)
+
+function startRun(){
+  stateFetchFailures = 0;
+  setDisconnectBadge(false);
+  authFetch('/api/start',{method:'POST'}).catch(()=>{});
+  recSeconds=0;
+  document.getElementById('rec-timer').textContent='0:00';
+  setPausedBadge(false);
+  // Reset chips so stale values from a prior run don't linger.
+  ['rec-steps','chip-cadence','chip-contact','chip-rate'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='—';
+  });
+  document.getElementById('rec-steps').textContent='0';
+  showScreen('recording');
+  buildBars();
+  // 1 Hz timer + paused-state poll. Truth comes from MCU, not JS.
+  stateInterval=setInterval(pollRunState,1000);
+  // 5 Hz live FSR snapshot for the bars.
+  barInterval=setInterval(animateBars,200);
+  // 0.5 Hz report poll for the live cadence/contact/rate chips + step counter.
+  // Don't run this faster than ~2 sec — /api/run-report walks all FFT bins
+  // and the outlier buffer to assemble its JSON, so it's heavier than
+  // /api/run-state. Report values only meaningfully refresh once per FFT
+  // window anyway (FFT_WIN_SIZE=256 / Fs=50 = ~5 sec).
+  reportInterval=setInterval(pollLiveReport,2000);
+}
+
+/* Retry a small POST a few times with backoff. Used by Stop/Cancel so a
+ * connectivity blip when the user hits the button doesn't leave the device
+ * stuck in RECORDING with no way to view the report. */
+async function authPostRetry(url, attempts = 4){
+  for(let i = 0; i < attempts; i++){
+    try {
+      const r = await authFetch(url, { method: 'POST' });
+      if(r.ok) return true;
+      // 409 (already in/out of state) is fine — treat as success.
+      if(r.status === 409) return true;
+    } catch (e) { /* network blip; retry */ }
+    await new Promise(res => setTimeout(res, 250 * (i + 1)));
+  }
+  return false;
+}
+
+async function stopRun(){
+  clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
+  showLoading('Processing your run…');
+  await authPostRetry('/api/stop');
+  // Either way (success or repeated failure), try to load the report.
+  // If the device is unreachable, loadReport()'s own catch will toast.
+  setTimeout(()=>loadReport(), 1200);
+}
+
+async function cancelRun(){
+  clearInterval(stateInterval); clearInterval(barInterval); clearInterval(reportInterval);
+  authPostRetry('/api/stop').catch(()=>{});
+  showScreen('home');
+}
+
+let liveReportInFlight=false;
+async function pollLiveReport(){
+  if(liveReportInFlight) return;
+  liveReportInFlight=true;
+  try{
+    const r=await fetch('/api/run-report');
+    if(!r.ok) return;
+    const d=await r.json();
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    set('rec-steps', d.steps ?? 0);
+    set('chip-cadence', (d.cadence>0)? d.cadence : '—');
+    // GCT not measured in v0.2 — firmware always returns 0; render '—'.
+    set('chip-contact', (d.contactMs>0)? Math.round(d.contactMs)+' ms' : '—');
+    // Impact category — plain English instead of BW/s.
+    set('chip-rate',    impactCategory(d.loadingRate).label);
+  }catch(e){/* network blip — keep last displayed values */}
+  finally{ liveReportInFlight=false; }
+}
+
+let stateFetchInFlight=false;
+let stateFetchFailures=0;
+const STATE_FAIL_THRESHOLD=3;   // consecutive failures before showing "device unreachable"
+async function pollRunState(){
+  if(stateFetchInFlight) return;
+  stateFetchInFlight=true;
+  try{
+    const r=await fetch('/api/run-state');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    stateFetchFailures=0;
+    setDisconnectBadge(false);
+    // Elapsed_ms is sourced from the latest valid flash slot in v0.2 — pauses on disconnect.
+    const ms=Number(d.elapsed_ms)||0;
+    recSeconds=Math.floor(ms/1000);
+    const m=Math.floor(recSeconds/60), s=String(recSeconds%60).padStart(2,'0');
+    document.getElementById('rec-timer').textContent=m+':'+s;
+    setPausedBadge(d.run_active===false);
+  }catch(e){
+    // Successive failures = the phone has lost the AP. Don't fabricate
+    // timer values; surface the disconnect to the user instead.
+    stateFetchFailures++;
+    if(stateFetchFailures >= STATE_FAIL_THRESHOLD) setDisconnectBadge(true);
+  }
+  finally{ stateFetchInFlight=false; }
+}
+
+function setDisconnectBadge(disconnected){
+  let el = document.getElementById('rec-disconnected');
+  if(!el){
+    // Lazily create — only injected when first needed.
+    const host = document.getElementById('rec-paused')?.parentElement || document.body;
+    el = document.createElement('div');
+    el.id = 'rec-disconnected';
+    el.className = 'rec-disconnect-badge';
+    el.textContent = 'Device unreachable — reconnect to SoleSense WiFi';
+    el.style.display = 'none';
+    host.appendChild(el);
+  }
+  el.style.display = disconnected ? 'block' : 'none';
+}
+
+function setPausedBadge(paused){
+  const el=document.getElementById('rec-paused');
+  if(!el) return;
+  el.style.display = paused ? 'inline-block' : 'none';
+}
+
+/* Recording-screen foot diagrams: each of 6 FSR channels lights up its own
+   anatomically-positioned circle on the left foot. Polled at 5 Hz from
+   /api/sensor. The right foot stays greyed-out to communicate "single insole,
+   second one not connected." If a circle doesn't fill in when you press the
+   matching FSR, the wiring or firmware is wrong. */
+const ADC_MAX = 4095;
+
+function buildBars(){
+  // No-op now — the foot-diagram SVG is static markup. Keeping the function
+  // name so startRun's call site doesn't have to change.
+  // Reset all left-foot sensor circles to baseline colour.
+  for(let i=0;i<6;i++){
+    const el=document.getElementById('L-ch'+i);
+    if(el) el.style.fill='rgba(37,99,235,0.10)';
+  }
+}
+
+let barFetchInFlight=false;
+async function animateBars(){
+  if(barFetchInFlight) return;
+  barFetchInFlight=true;
+  try{
+    const r=await fetch('/api/sensor');
+    if(!r.ok) return;
+    const d=await r.json();
+    if(!Array.isArray(d.fsr)) return;
+    for(let i=0;i<6;i++){
+      const dot=document.getElementById('L-ch'+i);
+      if(!dot) continue;
+      const v=Math.max(0,Math.min(ADC_MAX,Number(d.fsr[i])||0));
+      const intensity = v / ADC_MAX;                     // 0..1
+      const alpha = 0.10 + intensity * 0.90;             // baseline 0.10 → max 1.0
+      dot.style.fill=`rgba(37, 99, 235, ${alpha.toFixed(3)})`;
+    }
+  }catch(e){/* network blip — keep last fill colours, no fake data */}
+  finally{ barFetchInFlight=false; }
+}
+
+/* Impact Rate is what we used to call "loading rate (BW/s)". The number
+ * itself is body-weights-per-second — an honest biomechanics metric, but
+ * incomprehensible to a runner who hasn't read Milner 2006. We display
+ * a plain-English category instead, with the number tucked alongside for
+ * runners who care. The firmware payload still uses loading_rate_bws so
+ * the LLM coach has the precision it needs. */
+function impactCategory(bws){
+  if (!bws || bws < 1)   return { label: '—',         num: '' };
+  if (bws < 60)          return { label: 'Healthy',   num: Math.round(bws).toString() };
+  if (bws < 80)          return { label: 'Elevated',  num: Math.round(bws).toString() };
+  return                       { label: 'High',      num: Math.round(bws).toString() };
+}
+
+/* ── AI COACH (LLM analysis via Cloudflare Worker proxy) ────────────────────
+ * The worker URL holds the OpenAI key as an encrypted secret. Hitting it
+ * requires real internet, so this is a graceful-fallback feature: if the
+ * phone is still on the SoleSense AP (no internet), or the worker is down,
+ * we keep the rule-based flags above and show an error instead. */
+const ANALYZE_WORKER_URL = 'https://solesense-analyze.daodoan.workers.dev';
+
+let lastReport = null;   // cached run-report from /api/run-report
+
+/* Tiny markdown → HTML for the LLM response. The system prompt locks the
+ * shape (block section headers + bulleted lists with optional inline bold),
+ * so the renderer only needs three constructs: section headers, bullets,
+ * and paragraphs. Block-level headers and inline bold are kept separate
+ * so a CSS display:block on headers doesn't orphan trailing colons or
+ * break inline `**term**:` patterns inside bullets. */
+function renderMarkdown(md){
+  if(!md) return '';
+  // Escape HTML defensively first.
+  const esc = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = esc.split('\n');
+  const out = []; let inList = false;
+
+  const flushList = () => { if(inList){ out.push('</ul>'); inList = false; } };
+  const inlineBold = (s) => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  for(const raw of lines){
+    const ln = raw.trim();
+    if(!ln){ flushList(); continue; }
+
+    // Section header: a line that's just **text** (with an optional trailing
+    // colon and whitespace). Strip the colon — the visual treatment already
+    // separates sections, so the punctuation is redundant and was producing
+    // a stray ":" on its own line.
+    let m;
+    if((m = ln.match(/^\*\*([^*]+)\*\*\s*:?\s*$/))){
+      flushList();
+      const title = m[1].replace(/\s*:\s*$/, '').trim();
+      out.push('<h3>' + title + '</h3>');
+      continue;
+    }
+
+    // Bullet (- or *)
+    if((m = ln.match(/^[-*]\s+(.+)$/))){
+      if(!inList){ out.push('<ul>'); inList = true; }
+      out.push('<li>' + inlineBold(m[1]) + '</li>');
+      continue;
+    }
+
+    // Paragraph
+    flushList();
+    out.push('<p>' + inlineBold(ln) + '</p>');
+  }
+  flushList();
+  return out.join('\n');
+}
+
+async function runAiAnalysis(){
+  if(!lastReport){ return; }
+  document.getElementById('ai-empty').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-result').innerHTML = '';
+  document.getElementById('ai-loading').style.display = 'flex';
+
+  const bodyKg = parseFloat(localStorage.getItem(AUTH_BODYKG_KEY) || '0') || null;
+
+  // Map firmware run-report → worker schema. The worker prompt names these
+  // exactly so anything else is ignored. Skip undefined fields rather than
+  // sending zeros that the LLM might over-interpret.
+  const payload = {
+    user: { body_kg: bodyKg },
+    run: {
+      duration_sec:     Math.round((lastReport.durationMs || 0) / 1000) || undefined,
+      steps:            lastReport.steps || undefined,
+      cadence_spm:      lastReport.cadence || undefined,
+      contact_ms:       lastReport.contactMs || undefined,
+      loading_rate_bws: lastReport.loadingRate || undefined,
+      pronation_dps:    lastReport.pronate || undefined,
+      medial_pct:       lastReport.medialPct || undefined,
+      lateral_pct:      lastReport.lateralPct || undefined,
+      zones: lastReport.zoneAvg ? {
+        heel:     pctOfTotal(lastReport.zoneAvg, 'heel'),
+        midfoot:  pctOfTotal(lastReport.zoneAvg, 'midfoot'),
+        forefoot: pctOfTotal(lastReport.zoneAvg, 'forefoot'),
+      } : undefined,
+      fsr_saturated: lastReport.flags?.some(f => f.key === 'fsr_saturated') || false,
+      imu_validated: !!lastReport.imuConnected,
+      raw_flags: (lastReport.flags || []).map(f => f.key),
+    },
+  };
+
+  try {
+    const r = await fetch(ANALYZE_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    document.getElementById('ai-loading').style.display = 'none';
+    if(!d.ok){
+      showAiError('Analysis failed: ' + (d.error || 'unknown') + '. The rule-based findings above still apply.');
+      return;
+    }
+    document.getElementById('ai-result').innerHTML = renderMarkdown(d.analysis || '');
+  } catch (e) {
+    document.getElementById('ai-loading').style.display = 'none';
+    showAiError('Couldn\'t reach the AI coach. Make sure your phone has internet (the SoleSense WiFi has none on its own). The rule-based findings above still apply.');
+  }
+}
+
+function showAiError(msg){
+  const el = document.getElementById('ai-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('ai-empty').style.display = 'block';
+}
+
+function pctOfTotal(zoneAvg, key){
+  const total = (zoneAvg.heel || 0) + (zoneAvg.midfoot || 0) + (zoneAvg.forefoot || 0);
+  if(total <= 0) return 0;
+  return Math.round((zoneAvg[key] || 0) / total * 100);
+}
+
+function resetAiPanel(){
+  document.getElementById('ai-empty').style.display = 'block';
+  document.getElementById('ai-loading').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-result').innerHTML = '';
+}
+
+/* ── REPORT LOAD (v0.2: MCU computes the analysis, frontend just renders) ── */
+async function loadReport(){
+  try{
+    const res=await fetch('/api/run-report');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const result=await res.json();
+    hideLoading();
+    if(!result||typeof result!=='object'){toast('No run data');showScreen('home');return;}
+    lastReport = result;
+    resetAiPanel();
+    render(result);
+    const now=new Date();
+    document.getElementById('last-report-sub').textContent='Today '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+    showScreen('report');
+  }catch(e){hideLoading();toast('Could not load report');showScreen('home');}
+}
+
+function viewLastReport(){
+  showLoading('Loading last run…');
+  setTimeout(()=>loadReport(), 300);
+}
+
+/* The v0.1 frontend used to parse the raw CSV and run the analysis pipeline
+   (cadence, GCT, pronation, flags) in JS here. In v0.2 the firmware computes
+   all of that on the MCU and returns the result via /api/run-report. The
+   browser is a thin viewer — no parseCSV, no detectSteps, no thresholds. */
+
+/* ── FLAG DEFS ── */
+const FLAG_DEFS={
+  heel_strike:{name:'Heel Striking',severity:'medium',what:'Your heel is making heavy contact before the rest of your foot. This creates a braking force with every step that sends a shock wave up through your knee and hip.',fix:'Try landing with your foot closer under your hips. A slight forward lean from the ankles naturally encourages a midfoot landing. Shorter, quicker steps help more than consciously changing foot placement.'},
+  high_loading:{name:'High Impact Rate',severity:'high',what:"Force is building through your foot very quickly when you land. A high impact rate is one of the strongest predictors of stress fractures and shin splints — your muscles aren't absorbing the landing gradually enough.",fix:'Focus on landing softly — imagine running quietly. Increasing your cadence by 5–10 % is the most reliable way to reduce impact rate. A slightly more bent knee at landing also helps.'},
+  low_cadence:{name:'Low Cadence',severity:'medium',what:'Your step rate is below 160 steps per minute. Slower cadence usually means longer strides and landing further in front of your body, putting more stress on your knees and hips.',fix:"Try increasing cadence by 5–10% — don't jump straight to 180. A metronome app set to your target BPM can help. Shorter steps feel awkward at first but become natural quickly."},
+  overpronation:{name:'Overpronation',severity:'medium',what:"Your foot is rolling inward too much after landing. Some inward roll is healthy — it absorbs impact. But too much strains structures along your ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats, hip bridges) is the most effective long-term fix. A stability running shoe can reduce stress short-term.'},
+  supination:{name:'Supination',severity:'low',what:"Your foot is staying rolled outward through your stride, reducing natural shock absorption. This is associated with IT band syndrome and stress fractures along the outer leg.",fix:'Neutral or cushioned shoes suit supinators better. Stretch your calves and peroneal muscles regularly.'},
+  medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other side. On a single insole this is medial vs lateral pressure imbalance — not left foot vs right foot. Persistent asymmetry can lead to overuse injuries on the overloaded side.',fix:'Stretching the underloaded side and strengthening hip stabilisers tends to help. Single-leg exercises — deadlifts, step-ups, calf raises — even out strength differences. (Detecting true left vs right asymmetry needs a second insole.)'},
+};
+
+/* ── RENDER ── */
+function render(r){
+  const fmt=(v,d=0)=>isNaN(v)?'—':Number(v).toFixed(d);
+  set('s-steps',r.steps);
+  // v0.2 keys: loadingSigma (σ, no unit conversion), medialPct/lateralPct.
+  // Cadence and contactMs may be 0 — render '—' instead of '0' to be honest.
+  const dashIfZero=(v,decimals=0)=>(!v||v===0)?'—':fmt(v,decimals);
+  set('s-cadence',dashIfZero(r.cadence));
+  const m=Math.floor(r.durSec/60),s=Math.round(r.durSec%60);
+  set('s-duration',m>0?m+'m '+String(s).padStart(2,'0')+'s':s+'s');
+  set('m-cadence',dashIfZero(r.cadence));
+  set('m-contact',dashIfZero(r.contactMs));
+  // Impact rate: render category + the precise number in parentheses for
+  // those who want it. e.g. "Healthy (45)" / "Elevated (72)" / "High (90)".
+  const ic = impactCategory(r.loadingRate);
+  set('m-loading', ic.num ? `${ic.label} (${ic.num})` : ic.label);
+  set('m-pronate',dashIfZero(r.pronate,1));
+  if(r.medialPct>0 || r.lateralPct>0){
+    set('m-balance',fmt(r.medialPct,0)+'% med / '+fmt(r.lateralPct,0)+'% lat');
+  } else {
+    set('m-balance','—');
+  }
+  set('m-steps',r.steps);
+  // Express each zone as a fraction of total foot pressure across the run (sums to 100%).
+  // This is more meaningful than % of ADC max — it shows how the runner distributed load.
+  const zoneRaw=[{label:'Heel',val:r.zoneAvg.heel},{label:'Midfoot',val:r.zoneAvg.midfoot},{label:'Forefoot',val:r.zoneAvg.forefoot}];
+  const zoneSum=zoneRaw.reduce((s,z)=>s+z.val,0)||1;
+  const zones=zoneRaw.map(z=>({label:z.label,pct:z.val/zoneSum*100}));
+  document.getElementById('zone-bars').innerHTML=zones.map(z=>`<div class="zone-row"><span class="zone-label">${z.label}</span><div class="zone-track"><div class="zone-fill" style="width:${z.pct.toFixed(1)}%"></div></div><span class="zone-pct">${z.pct.toFixed(0)}%</span></div>`).join('');
+  const container=document.getElementById('flags-container');
+  if(!r.flags.length){container.innerHTML='<div class="all-clear"><div class="all-clear-check">✓</div><div class="all-clear-title">No issues detected</div><div class="all-clear-sub">Your run looks clean across all 7 biomechanical checks.</div></div>';return;}
+  const order={high:0,medium:1,low:2};
+  const sorted=[...r.flags].sort((a,b)=>order[FLAG_DEFS[a.key]?.severity||'low']-order[FLAG_DEFS[b.key]?.severity||'low']);
+  container.innerHTML=sorted.map(f=>{
+    const def=FLAG_DEFS[f.key];if(!def)return'';const sev=def.severity;
+    return`<div class="flag-card" onclick="this.classList.toggle('open')">
+      <div class="flag-header">
+        <span class="flag-pill pill-${sev}">${sev}</span>
+        <div class="flag-name">${def.name}</div>
+        <div class="flag-val">${f.val}</div>
+        <div class="flag-chevron">▼</div>
+      </div>
+      <div class="flag-body">
+        <p class="flag-what">${def.what}</p>
+        <div class="flag-fix fix-${sev}"><span class="fix-label">What to do</span>${def.fix}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── SETTINGS ── */
+async function zeroSensors(){try{await authFetch('/api/calibrate/zero',{method:'POST'});toast('Sensors zeroed ✓');}catch{toast('Error');}}
+async function zeroIMU(){try{await authFetch('/api/calibrate/imu',{method:'POST'});toast('IMU zeroed ✓');}catch{toast('Error');}}
+async function clearData(){if(!confirm('Clear all run data from flash?'))return;try{await authFetch('/api/data/clear',{method:'POST'});toast('Run data cleared');}catch{toast('Error');}}
+async function fetchDeviceInfo(){try{const d=await(await fetch('/api/device')).json();if(d.version)set('fw-ver',d.version);if(d.heap_free)set('fw-heap',(d.heap_free/1024).toFixed(0)+' KB');}catch{}}
+
+/* ── HELPERS ── */
+function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+function showLoading(msg){document.getElementById('loading-msg').textContent=msg||'Loading…';document.getElementById('loading-overlay').classList.add('active');}
+function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
+
+/* ── CONNECTIVITY PING ─────────────────────────────────────────────────────
+ * Periodically pokes /api/device. Any HTTP response → connected (green).
+ * Network failure (phone left the AP, AP went down, captive portal) → red,
+ * pulsing. Polled every 5 seconds with a short 3-second timeout so we
+ * don't hang the UI on a slow disconnect. */
+async function pingDevice(){
+  const dot = document.getElementById('conn-dot');
+  if (!dot) return;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 3000);
+    await fetch('/api/device', { signal: ctrl.signal });
+    clearTimeout(t);
+    dot.className = 'status-dot';
+    set('conn-text', 'Connected');
+  } catch {
+    dot.className = 'status-dot danger';
+    set('conn-text', 'Disconnected — rejoin SoleSense WiFi');
+  }
+}
+function startConnectivityWatch(){
+  pingDevice();
+  if (window.__solesense_ping) return;
+  window.__solesense_ping = setInterval(pingDevice, 5000);
+}
+
+/* ── INIT ── */
+fetchDeviceInfo();
+startConnectivityWatch();
+</script>
+</body>
+</html>
