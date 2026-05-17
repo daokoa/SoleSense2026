@@ -4,41 +4,41 @@
 
 ## Why
 
-Today, anyone connected to the `SoleSense` WiFi AP can hit `POST /api/start` and record a run. There is no notion of "who" recorded it. Two practical problems:
+Today, anyone connected to the `SoleSense` WiFi AP can hit `POST /api/start` and record a run. There is no notion of who recorded it. Two practical problems:
 
-1. **Privacy / fairness.** A stranger walking near the device can join the AP and overwrite an in-progress run.
-2. **Body-weight calibration.** The FSR-jerk -> BW/s loading-rate conversion currently assumes 70 kg. Real BW/s scales by `70 / actual_kg`. Without per-user body weight the number is a placeholder.
+1. **Privacy / fairness.** A stranger walking past the device can join the AP and overwrite an in-progress run.
+2. **Body-weight calibration.** The FSR-jerk -> BW/s loading-rate conversion currently assumes 70 kg. Real BW/s scales by `70 / actual_kg`, so without per-user body weight the number is a placeholder.
 
-Both close with a per-user profile system stored on-device in NVS.
+Both are solved by a per-user profile system stored on-device in NVS.
 
 ## Scope
 
 **In scope (this iteration):**
 - On-device user accounts: username + PIN, hashed and stored in NVS.
-- Login -> session token. Token in `Authorization: Bearer ...` header for protected endpoints.
-- Per-user `body_kg` field used in loading-rate calc.
-- Frontend login screen, blocks the rest of the UI until logged in.
-- "Owner" model: first registration claims the device. Subsequent registrations are walk-up self-signup (the shared WiFi password is the access gate), capped by `MAX_USERS = 50` and a 3-per-60-s sliding-window rate limit.
+- Login -> session token, passed in the `Authorization: Bearer ...` header on protected endpoints.
+- Per-user `body_kg` field used in the loading-rate calc.
+- Frontend login screen that blocks the rest of the UI until logged in.
+- "Owner" model: the first registration claims the device. Subsequent registrations are walk-up self-signup (the shared WiFi password is the access gate), capped by `MAX_USERS = 50` and a 3-per-60-s sliding-window rate limit.
 
 **Out of scope:**
-- Multi-device sync -- there's no internet, no cloud.
-- Email / password reset -- PIN reset is via USB-serial `factory_reset` command only.
+- Multi-device sync -- there's no internet and no cloud.
+- Email / password reset -- PIN reset is via the USB-serial `factory_reset` command only.
 - Multi-session -- exactly one session-token slot in RAM at a time.
 - Per-run history per user -- added in a later iteration.
 
 ## Threat model
 
 We are protecting against:
-- A guest joining the AP and starting/stopping runs that aren't theirs.
+- A guest joining the AP and starting or stopping runs that aren't theirs.
 - Someone reading the LittleFS data partition off a stolen device and recovering PINs (so we hash + salt).
 
 We are NOT protecting against:
-- Someone with USB access (they can re-flash firmware and bypass everything; physical access wins).
-- Someone with prolonged WiFi access trying to brute-force a 4-digit PIN -- we add a simple rate limit (3 wrong -> 30 s lockout).
+- Someone with USB access -- they can re-flash firmware and bypass everything; physical access wins.
+- Someone with prolonged WiFi access brute-forcing a 4-digit PIN. We add a simple rate limit (3 wrong -> 30 s lockout) to slow this down, not stop it.
 
 ## Storage (NVS)
 
-Namespace: `solesense_auth`. Per-user data is stored as four flat keys, prefixed by a single-character type tag (`Preferences` library limits key length to 15 chars, so `<tag>_<username>` keeps everything in budget for a 13-char username).
+Namespace: `solesense_auth`. Per-user data is stored as four flat keys, each prefixed by a single-character type tag. The `Preferences` library caps key length at 15 chars, so `<tag>_<username>` stays in budget for a 13-char username.
 
 | Key | Type | Notes |
 |---|---|---|
@@ -49,7 +49,7 @@ Namespace: `solesense_auth`. Per-user data is stored as four flat keys, prefixed
 | `owner_user`        | string    | username of the device owner |
 | `uc`                | u16       | total user count (incremented atomically on each register) |
 
-About ~250 B per user with NVS overhead. The 24 KB default NVS partition fits 50 users comfortably (the cap is set by `MAX_USERS`, not by capacity).
+About 250 B per user with NVS overhead. The 24 KB default NVS partition fits 50 users comfortably; the cap is set by `MAX_USERS`, not by capacity.
 
 ## Session model
 
@@ -66,9 +66,9 @@ struct Session {
 } gSession;
 ```
 
-Token is 32 random bytes from `esp_random()`. Expiry default: 30 minutes after the last protected request (idle timeout, refreshed on each successful auth check).
+The token is 32 random bytes from `esp_random()`. Default expiry: 30 minutes after the last protected request (idle timeout, refreshed on each successful auth check).
 
-Logout clears the slot. Re-login replaces the slot.
+Logout clears the slot. Re-login replaces it.
 
 ## API
 
@@ -98,7 +98,7 @@ Logout clears the slot. Re-login replaces the slot.
 
 ### Read-only diagnostic (intentionally still public)
 
-`GET /api/sensor`, `GET /api/run-state`, `GET /api/run-report`, `GET /api/run-spectrum`, `GET /api/run-outliers`. These don't change device state and are useful for "is the device alive" probes.
+`GET /api/sensor`, `GET /api/run-state`, `GET /api/run-report`, `GET /api/run-spectrum`, `GET /api/run-outliers`. These don't change device state and are useful as "is the device alive" probes.
 
 ## Failure modes
 
@@ -115,15 +115,15 @@ Logout clears the slot. Re-login replaces the slot.
 
 ## Frontend changes
 
-Login screen as the new first screen. Stored token in `localStorage` survives reload. On any 401 response, frontend wipes localStorage and bounces to login.
+The login screen is the new first screen. The token in `localStorage` survives reload. On any 401 response, the frontend wipes localStorage and bounces back to login.
 
-Loading-rate display reads `r.loadingRate` as before; the firmware now divides by the logged-in user's body weight, so the displayed BW/s is honest per-user.
+The loading-rate display still reads `r.loadingRate`, but the firmware now divides by the logged-in user's body weight, so the displayed BW/s is honest per-user.
 
 ## Implementation order
 
 1. `auth.h/cpp` -- NVS helpers, SHA-256, session struct, token generation.
 2. New HTTP routes (`/api/auth/*`).
 3. `require_auth()` middleware applied to protected routes.
-4. Body-weight wiring into the loading-rate calc (replaces hardcoded 70 kg).
+4. Wire body weight into the loading-rate calc (replaces the hardcoded 70 kg).
 5. Frontend: login screen, localStorage token, Authorization header on every protected fetch.
-6. Edge cases: PIN-attempt rate limit, 401-handler in frontend, factory-reset over USB serial.
+6. Edge cases: PIN-attempt rate limit, 401 handler in the frontend, factory-reset over USB serial.

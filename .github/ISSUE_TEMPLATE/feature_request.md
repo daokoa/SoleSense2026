@@ -6,16 +6,16 @@ labels: enhancement
 
 ## What
 
-A one-sentence description of the feature.
+One sentence on the feature.
 
 ## Why
 
-The problem it solves or the user need it addresses. (Bonus: link to a relevant paper if it's a new metric.)
+The problem it solves or the user need it covers. (Bonus: link a paper if it's a new metric.)
 
 ## Sketch
 
-What the implementation might look like — endpoints touched, frontend screens, new firmware modules. Rough is fine.
+How it might work -- endpoints touched, frontend screens, new firmware modules. Rough is fine.
 
 ## Out of scope
 
-Things this *isn't* trying to do, so the conversation stays bounded.
+What this *isn't* trying to do, so we keep the discussion focused.

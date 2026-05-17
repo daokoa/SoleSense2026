@@ -10,7 +10,7 @@ software/frontend/
     `-- index.html        <- the SPA (auth, recording, report, AI Coach)
 ```
 
-The SPA is a single self-contained file using system fonts -- no build step, no external resources. The recording screen shows a 3-zone x medial/lateral foot diagram (the actual insole CAD render, cut out with a transparent background) with live FSR fill on the six visible sensor pads.
+The SPA is a single self-contained file using system fonts: no build step, no external resources. The recording screen shows a 3-zone medial/lateral foot diagram (the actual insole CAD render, cut out with a transparent background) with live FSR fill on the six visible sensor pads.
 
 ## Verify what's flashed
 
@@ -29,7 +29,7 @@ cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.htm
 bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 
-The flash script auto-detects mklittlefs / esptool / the USB port. Close any open Serial Monitor first -- it locks the USB port and the upload fails with `exit status 2`.
+The flash script auto-detects mklittlefs, esptool, and the USB port. Close any open Serial Monitor first -- it locks the USB port and the upload fails with `exit status 2`.
 
 ## Preview locally without flashing
 
@@ -39,16 +39,16 @@ The flash script auto-detects mklittlefs / esptool / the USB port. Close any ope
 python3 software/frontend/mock-server.py
 ```
 
-Open <http://localhost:8080/>. The mock implements a subset of the HTTP API (live `/api/sensor` polls, `/api/start`, `/api/stop`, `/api/calibrate/*`). The run-state, run-report, and `/api/auth/*` endpoints aren't mocked -- use real firmware to validate those.
+Open <http://localhost:8080/>. The mock implements a subset of the HTTP API: live `/api/sensor` polls, `/api/start`, `/api/stop`, and `/api/calibrate/*`. The run-state, run-report, and `/api/auth/*` endpoints aren't mocked, so use real firmware to validate those.
 
 ## Auth flow
 
 The SPA loads the auth screen first. It polls `/api/auth/state` to decide what to show:
 
-- **No owner yet** -- claim mode. User picks a username + PIN + body weight, becomes the device owner.
+- **No owner yet** -- claim mode. The user picks a username, PIN, and body weight, and becomes the device owner.
 - **Owner exists** -- sign-in form, with a "Create one" toggle that flips to self-signup (subject to the firmware-side caps: max 20 accounts, 3 signups per 60 s).
 
-Token is cached in `localStorage` under `solesense_token`; `body_kg` and `username` are cached alongside so Settings can render "Signed in as ..." without a round-trip.
+The token is cached in `localStorage` under `solesense_token`. `body_kg` and `username` are cached alongside so Settings can render "Signed in as ..." without a round-trip.
 
 An `authFetch()` helper attaches `Authorization: Bearer <token>` to every protected call. Any 401 wipes localStorage and bounces the user back to login.
 
@@ -56,18 +56,18 @@ To factory-reset the user database, send `factory_reset\n` over USB serial; deta
 
 ## Pressure-distribution math
 
-Zone bars on the report screen render percentages of total foot pressure during the run, not raw ADC counts. The bars sum to 100 %. Three zones -- Heel, Midfoot, Forefoot -- match the 3-zone x medial/lateral sensor layout (two sensors per zone, averaged).
+Zone bars on the report screen render percentages of total foot pressure during the run, not raw ADC counts. The bars sum to 100 %. The three zones (Heel, Midfoot, Forefoot) match the 3-zone medial/lateral sensor layout (two sensors per zone, averaged).
 
 ## Medial / Lateral, not Left / Right
 
-The SPA labels the L/R-style split as **Medial / Lateral** because the system has one insole. We measure inside-of-foot vs outside-of-foot pressure on a single foot; we cannot measure left foot vs right foot without a second insole. The injury flag is named `medial_lateral_asym`.
+The SPA labels the L/R-style split as **Medial / Lateral** because the system has one insole. We measure inside-of-foot vs outside-of-foot pressure on a single foot; left foot vs right foot needs a second insole. The injury flag is named `medial_lateral_asym`.
 
 ## Injury-flag thresholds (hardcoded)
 
-Cadence < 160 spm, pronation > 15 deg/s, supination < -8 deg/s, asymmetry > 10 %, impact rate > 80 BW/s. All come from peer-reviewed biomechanics research (sources in [`../../docs/research.md`](../../docs/research.md)). Not user-tunable in the UI today; the firmware has a `/api/settings` endpoint and an NVS-backed thresholds struct for future tooling.
+Cadence < 160 spm, pronation > 15 deg/s, supination < -8 deg/s, asymmetry > 10 %, impact rate > 80 BW/s. All come from peer-reviewed gait research (sources in [`../../docs/research.md`](../../docs/research.md)). They are not user-tunable in the UI today; the firmware has a `/api/settings` endpoint and an NVS-backed thresholds struct for future tooling.
 
 ## Known limitations and gaps
 
-- **Loading rate / Impact rate** reports a real BW/s value via FSR-jerk extrapolation, with the UI showing a Healthy / Elevated / High category. The conversion uses the logged-in user's body weight from their profile; FSR saturation point is still hardcoded at full-scale ADC = 10 kg.
-- **Browser cache pitfall** -- when LittleFS gets a frontend update (new auth fields, renamed keys), iOS Safari and desktop browsers keep serving the cached old `index.html` and you'll see undefined values render as `NaN` or `26500 %`. Force-refresh after every LittleFS reflash.
-- **Mock server is incomplete** -- doesn't simulate `/api/run-state`, `/api/run-report`, or the auth endpoints, so those screens need real firmware to exercise.
+- **Loading rate / Impact rate** reports a real BW/s value via FSR-jerk extrapolation, with the UI showing a Healthy / Elevated / High category. The conversion uses the logged-in user's body weight from their profile; the FSR saturation point is still hardcoded at full-scale ADC = 10 kg.
+- **Browser cache pitfall.** When LittleFS gets a frontend update (new auth fields, renamed keys), iOS Safari and desktop browsers keep serving the cached old `index.html`, and you'll see undefined values render as `NaN` or `26500 %`. Force-refresh after every LittleFS reflash.
+- **Mock server is incomplete.** It doesn't simulate `/api/run-state`, `/api/run-report`, or the auth endpoints, so those screens need real firmware to exercise.

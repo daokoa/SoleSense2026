@@ -1,10 +1,10 @@
 # SoleSense Analyze Worker
 
-Cloudflare Worker that proxies LLM-powered run analysis. The SoleSense device is offline (its own AP, no internet), so this worker is the only thing that ever talks to OpenAI. The frontend POSTs a run-report + user profile here and gets back personalized injury-risk markdown.
+Cloudflare Worker that proxies LLM-powered run analysis. The SoleSense device is offline (its own AP, no internet), so this Worker is the only thing that ever talks to OpenAI. The frontend POSTs a run report and user profile here, and gets back personalized injury-risk markdown.
 
 ## Why a worker (not direct from the phone)
 
-The OpenAI API key would otherwise sit in the phone's localStorage or in the LittleFS-served HTML -- both trivially extractable. With the worker:
+The OpenAI API key would otherwise sit in the phone's localStorage or in the LittleFS-served HTML, both trivially extractable. With the Worker in front:
 
 ```
 phone (browser)  --POST run+profile--  Cloudflare Worker  --Bearer KEY--  OpenAI
@@ -12,7 +12,7 @@ phone (browser)  --POST run+profile--  Cloudflare Worker  --Bearer KEY--  OpenAI
        `-------------analysis markdown-----------'
 ```
 
-The key lives only as a Wrangler secret. It's never in git, never in client code, never in logs.
+The key lives only as a Wrangler secret. It is never in git, never in client code, and never in logs.
 
 ## One-time setup
 
@@ -31,9 +31,9 @@ wrangler secret put OPENAI_API_KEY
 # paste the key when prompted; wrangler encrypts it server-side
 ```
 
-You can verify it exists with `wrangler secret list` (shows the name only, not the value).
+Verify it exists with `wrangler secret list`, which shows the name but not the value.
 
-To rotate: just run `wrangler secret put OPENAI_API_KEY` again.
+To rotate, run `wrangler secret put OPENAI_API_KEY` again.
 
 ## Run locally
 
@@ -75,7 +75,7 @@ npm run deploy
 #   https://solesense-analyze.<your-account>.workers.dev
 ```
 
-That URL is what the frontend will call. Free-tier Workers give 100k requests/day -- plenty for this.
+That URL is what the frontend will call. Free-tier Workers give 100k requests/day, which is plenty for this.
 
 ## Tail live logs while testing
 
@@ -83,7 +83,7 @@ That URL is what the frontend will call. Free-tier Workers give 100k requests/da
 npm run tail
 ```
 
-Useful when debugging upstream errors. Logs never include the API key -- the code is careful to never echo `env.OPENAI_API_KEY` into log statements or response bodies.
+Useful when debugging upstream errors. Logs never include the API key; the code never echoes `env.OPENAI_API_KEY` into log statements or response bodies.
 
 ## Optional: per-IP rate limit
 
@@ -107,7 +107,7 @@ Body (JSON):
 {
   user: {
     username?: string;
-    body_kg?: number;        // strongly recommended; otherwise the LLM
+    body_kg?: number;        // strongly recommended; without it the LLM
                               // can't calibrate loading-rate guidance
     height_cm?: number;
     age?: number;
@@ -149,7 +149,7 @@ Status codes: `400` bad payload, `405` wrong method, `429` rate-limited, `502` u
 
 - `MAX_TOKENS = 800` and `gpt-4.1` keep each call to a predictable, sub-cent cost.
 - Set a hard monthly cap on the OpenAI dashboard (`Settings -> Billing -> Usage limits`).
-- Add the rate-limit KV binding above before exposing the worker URL publicly.
+- Add the rate-limit KV binding above before exposing the Worker URL publicly.
 
 ## Frontend integration
 
@@ -157,8 +157,8 @@ When the analysis feature lands in `software/frontend/solesense-v2/index.html`, 
 
 1. Reads the run-report JSON from the report state (already cached after `/api/run-report`).
 2. Reads `body_kg` and the rest of the profile from `localStorage` (cached at login).
-3. POSTs the combined object to the worker URL.
+3. POSTs the combined object to the Worker URL.
 4. Renders the returned markdown.
-5. Falls back to the existing static rule-based summary when offline / worker unreachable.
+5. Falls back to the existing static rule-based summary when offline or when the Worker is unreachable.
 
-The worker URL is configured in the frontend at build time -- the firmware's LittleFS-served `index.html` uses a constant `ANALYZE_WORKER_URL` that points at your deployed worker.
+The Worker URL is configured in the frontend at build time. The firmware's LittleFS-served `index.html` uses a constant `ANALYZE_WORKER_URL` that points at your deployed Worker.

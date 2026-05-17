@@ -1,14 +1,14 @@
 ---
 name: Bug report
-about: Something on the firmware, frontend, or hardware isn't working as expected.
+about: Something in the firmware, frontend, or hardware isn't working right.
 labels: bug
 ---
 
-## Summary
+## What's broken
 
-A one-sentence description of the bug.
+One sentence on the bug.
 
-## Where it shows up
+## Where it happens
 
 - [ ] Firmware (`firmware/SoleSenseV2/`)
 - [ ] Frontend SPA (`software/frontend/solesense-v2/`)
@@ -16,19 +16,19 @@ A one-sentence description of the bug.
 - [ ] Hardware (FSRs, MPU-6050, wiring)
 - [ ] Build / flash workflow
 
-## Steps to reproduce
+## How to reproduce
 
 1. ...
 2. ...
 3. ...
 
-## Expected vs actual
+## What you saw
 
 **Expected:** ...
 **Actual:** ...
 
-## Environment
+## Setup
 
 - Firmware version (`curl http://192.168.4.1/api/device | jq .firmware`):
 - Phone / browser (e.g. iPhone 14, iOS 18, Safari):
-- XIAO board revision (if known):
+- XIAO board revision (if you know it):

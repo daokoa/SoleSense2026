@@ -6,7 +6,7 @@
 [![Backend](https://img.shields.io/badge/backend-Cloudflare%20Worker-f38020)](software/backend/analyze-worker/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A 3D-printed smart running insole that delivers full biomechanical analysis offline — cadence, ground contact time, impact rate, pronation, foot-pressure heatmap, and research-backed injury flags — over the device's own WiFi access point. No app, no cloud, no internet.
+A 3D-printed smart running insole that runs a full gait analysis offline -- cadence, ground contact time, impact rate, pronation, foot-pressure heatmap, and research-backed injury flags -- and serves it over the device's own WiFi access point. No app, no cloud, no internet.
 
 *UCI · Spring 2026*
 
@@ -23,24 +23,24 @@ A 3D-printed smart running insole that delivers full biomechanical analysis offl
 
 ## Features
 
-**Firmware** — ESP32-C3 @ 500 Hz
-- Six-FSR matrix-scan + MPU-6050 IMU. All analysis on-device.
-- Incremental Goertzel FFT, top-N outlier buffer, Welford running stats — no raw sample storage.
+**Firmware** -- ESP32-C3 at 500 Hz
+- Six-FSR matrix scan plus MPU-6050 IMU. All analysis runs on-device.
+- Incremental Goertzel FFT, top-N outlier buffer, Welford running stats -- no raw samples are stored.
 - Multi-slot crash-recoverable run snapshots in flash; runs survive WiFi blips and phone disconnects.
 - NVS-backed user accounts with SHA-256 + per-user salt PIN hashing. One in-RAM session at a time.
 
-**Frontend** — single self-contained HTML file
-- Sign-in / device-claim flow, live timer, anatomical foot diagram with real-time FSR fill.
-- Report screen with verdict card, foot-pressure heatmap, findings cards, and optional AI Coach (proxied through a Cloudflare Worker that holds the OpenAI key — the device never touches it).
+**Frontend** -- single self-contained HTML file
+- Sign-in and device-claim flow, live timer, anatomical foot diagram with real-time FSR fill.
+- Report screen with verdict card, foot-pressure heatmap, findings cards, and an optional AI Coach. The Coach is proxied through a Cloudflare Worker that holds the OpenAI key -- the device never touches it.
 
-**Injury flags** — research-backed thresholds (full citations in [`docs/research.md`](docs/research.md))
+**Injury flags** -- research-backed thresholds (full citations in [`docs/research.md`](docs/research.md))
 - Heel striking · high impact rate · low cadence · overpronation · supination · medial/lateral asymmetry · FSR saturation diagnostic
 
 ---
 
 ## How it works
 
-The MCU samples 6 FSRs + 6 IMU axes at 500 Hz, runs the full analysis on-device (FFT magnitudes + Welford stats + outlier buffer flushed every 3 s to a 10-slot ring buffer in flash). The phone is a thin renderer: it polls `/api/run-state` for the timer and `/api/run-report` for the metrics. Disconnects pause the run cleanly; reconnects resume from the latest valid flash slot.
+The MCU samples 6 FSRs and 6 IMU axes at 500 Hz and runs the full analysis on-device. FFT magnitudes, Welford stats, and the outlier buffer flush every 3 s to a 10-slot ring buffer in flash. The phone is a thin renderer: it polls `/api/run-state` for the timer and `/api/run-report` for the metrics. Disconnects pause the run cleanly; reconnects resume from the latest valid flash slot.
 
 Full architecture rationale: [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md).
 
@@ -76,7 +76,7 @@ Per [`hardware/electricalpins.pdf`](hardware/electricalpins.pdf); pin constants 
 
 ### FSR wiring
 
-**Three pull-down resistors total**, one per ADC pin — *not* one per FSR. Each pull-down forms the bottom half of a voltage divider with whichever of the two FSRs on that ADC is currently powered.
+**Three pull-down resistors total**, one per ADC pin -- *not* one per FSR. Each pull-down forms the bottom half of a voltage divider with whichever of the two FSRs on that ADC is currently powered.
 
 ```
 D7 ──[FSR 1A]──┐
@@ -84,7 +84,7 @@ D7 ──[FSR 1A]──┐
 D8 ──[FSR 2A]──┘
 ```
 
-The firmware time-multiplexes which set is active. Only one FSR is ever in the divider at a time; the inactive set's power pin is driven LOW so any ghost-current path through the unpowered FSR shorts to ground rather than perturbing the active read.
+The firmware time-multiplexes which set is active. Only one FSR is ever in the divider at a time; the inactive set's power pin is driven LOW, so any ghost-current path through the unpowered FSR shorts to ground rather than perturbing the active read.
 
 ### FSR → zone mapping (Choi 2024, +E-at-heel)
 
@@ -112,7 +112,7 @@ The firmware time-multiplexes which set is active. Only one FSR is ever in the d
 | `GET`  | `/api/run-outliers`      | public  | Top-N outliers (`ts, channel, value, sigma`) |
 | `GET`  | `/api/storage-state`     | public  | Slot count + per-slot byte usage |
 | `POST` | `/api/storage-selftest`  | public  | On-bench validation of the ring buffer |
-| `POST` | `/api/fft-selftest`      | public  | 1.95 Hz sine validation — expect ~100 mag on the on-bin frequency |
+| `POST` | `/api/fft-selftest`      | public  | 1.95 Hz sine validation -- expect ~100 mag on the on-bin frequency |
 | `GET`  | `/api/auth/state`        | public  | `ownerExists, sessionActive, username, userCount, maxUsers` |
 | `POST` | `/api/auth/register`     | public, capped (`MAX_USERS=50`, 3-per-60-s) | Walk-up signup; first call claims the device |
 | `POST` | `/api/auth/login`        | rate-limited | `username, pin → token, body_kg` |
@@ -134,7 +134,7 @@ Protected endpoints require `Authorization: Bearer <token>`. Handler-by-handler 
 
 ### One-time Arduino IDE setup
 
-**Arduino IDE 2.3.8+** — Tools menu:
+**Arduino IDE 2.3.8+** -- Tools menu:
 - Board: `XIAO_ESP32C3`
 - Partition Scheme: `Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)`
 - USB CDC On Boot: `Enabled`
@@ -155,7 +155,7 @@ cp software/frontend/solesense-v2/index.html firmware/SoleSenseV2/data/index.htm
 bash firmware/SoleSenseV2/flash-littlefs.sh
 ```
 
-Close any open Serial Monitor before flashing — Arduino IDE auto-spawns a `serial-mo` process that holds the port.
+Close any open Serial Monitor before flashing -- Arduino IDE auto-spawns a `serial-mo` process that holds the port.
 
 ### Expected boot output
 
@@ -217,21 +217,21 @@ solesense/
 ## Roadmap
 
 ### Shipped
-- All run state on the MCU. Run timer derived from the latest valid flash slot, so disconnects pause cleanly and reconnects resume from persisted state.
+- All run state lives on the MCU. The run timer is derived from the latest valid flash slot, so disconnects pause cleanly and reconnects resume from persisted state.
 - 500 Hz sampling with incremental Goertzel FFT; RAM usage is rate-independent.
-- Time-domain step counter + ground contact time (any-zone OR-gate, 250 ms refractory, IMU sensor-fusion when wired).
+- Time-domain step counter and ground contact time (any-zone OR-gate, 250 ms refractory, IMU sensor fusion when wired).
 - FSR-jerk loading rate (BW/s), converted using the logged-in user's body weight.
-- Three-zone × medial/lateral sensor layout (Choi 2024, +E-at-heel).
-- Anatomical foot diagram with live FSR fill on the recording screen and a pressure heatmap on the report.
-- NVS-backed user accounts (PIN auth + walk-up self-signup), mDNS hostname, captive-portal-free flow.
-- AI Coach via Cloudflare Worker — keeps the OpenAI key off the device.
+- Three-zone medial/lateral sensor layout (Choi 2024, +E-at-heel).
+- Anatomical foot diagram with live FSR fill on the recording screen, plus a pressure heatmap on the report.
+- NVS-backed user accounts (PIN auth and walk-up self-signup), mDNS hostname, captive-portal-free flow.
+- AI Coach via Cloudflare Worker, which keeps the OpenAI key off the device.
 
 ### Open follow-ups
-- Per-FSR saturation calibration (the loading-rate conversion currently assumes `ADC = 4095 ↔ 10 kg of force` uniformly).
-- EMA-baseline tracking in the step detector for FSR baseline drift (sweat / temperature).
-- 30-second real-run validation on a fully-wired insole.
+- Per-FSR saturation calibration. The loading-rate conversion currently assumes `ADC = 4095 ↔ 10 kg of force` uniformly across channels.
+- EMA-baseline tracking in the step detector to absorb FSR drift from sweat and temperature.
+- 30-second real-run validation on a fully wired insole.
 - Pick a canonical firmware build system (Arduino IDE vs PlatformIO).
-- Inline Google Fonts as base64 so the AI-Coach offline fallback survives even when the UI uses webfonts.
+- Inline Google Fonts as base64 so the AI Coach offline fallback survives even when the UI uses webfonts.
 
 ---
 
@@ -255,16 +255,16 @@ solesense/
 
 ## Documentation
 
-- [`firmware/README.md`](firmware/README.md) — firmware overview + flash instructions
-- [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) — module status, security model, caveats
-- [`software/README.md`](software/README.md) · [`software/frontend/README.md`](software/frontend/README.md) — frontend + mock-server
-- [`software/backend/analyze-worker/README.md`](software/backend/analyze-worker/README.md) — Cloudflare Worker (AI Coach)
-- [`docs/research.md`](docs/research.md) — peer-reviewed sources backing the thresholds + sample rate
-- [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) — data architecture
-- [`docs/design/specs/2026-05-09-profile-system.md`](docs/design/specs/2026-05-09-profile-system.md) — auth / profile system
+- [`firmware/README.md`](firmware/README.md) -- firmware overview and flash instructions
+- [`firmware/SoleSenseV2/README.md`](firmware/SoleSenseV2/README.md) -- module status, security model, caveats
+- [`software/README.md`](software/README.md) · [`software/frontend/README.md`](software/frontend/README.md) -- frontend and mock server
+- [`software/backend/analyze-worker/README.md`](software/backend/analyze-worker/README.md) -- Cloudflare Worker (AI Coach)
+- [`docs/research.md`](docs/research.md) -- peer-reviewed sources backing the thresholds and sample rate
+- [`docs/design/specs/2026-05-06-v0.2-data-architecture.md`](docs/design/specs/2026-05-06-v0.2-data-architecture.md) -- data architecture
+- [`docs/design/specs/2026-05-09-profile-system.md`](docs/design/specs/2026-05-09-profile-system.md) -- auth and profile system
 
 ---
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT -- see [`LICENSE`](LICENSE).
