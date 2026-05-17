@@ -205,6 +205,9 @@ def mock_run_report():
 # -- Other endpoint payloads -------------------------------------------------
 
 def mock_device():
+    # Simulate a slowly draining battery (starts at 78%, drifts down over time).
+    elapsed_min = (time.monotonic() - state["started_at_mono"]) / 60
+    battery_pct = max(5, round(78 - elapsed_min * 0.5))
     return {
         "firmware":      "SoleSense v0.2 (mock)",
         "version":       "v0.2",
@@ -214,6 +217,7 @@ def mock_device():
         "state":         "recording" if state["recording"] else "idle",
         "fs":            {"totalBytes": 1_441_792, "usedBytes": 184_320},
         "hasData":       state["has_report"],
+        "battery_pct":   battery_pct,
     }
 
 def mock_auth_state():

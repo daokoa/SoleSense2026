@@ -485,9 +485,31 @@ button{ font-family:inherit; }
 .auth-toggle-btn:hover{ background:var(--blue-bg); }
 
 .home-status{
-  display:inline-flex;align-items:center;gap:8px;
+  display:inline-flex;align-items:center;gap:12px;
   font-size:14px;color:var(--text3);
 }
+.battery-indicator{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:600;color:var(--text2);
+}
+.battery-icon{
+  position:relative;display:inline-flex;align-items:center;
+  width:24px;height:13px;
+}
+.battery-icon-body{
+  width:21px;height:13px;border:1.8px solid var(--text3);border-radius:3px;
+  overflow:hidden;position:relative;
+}
+.battery-icon-tip{
+  width:3px;height:6px;background:var(--text3);border-radius:0 2px 2px 0;
+  position:absolute;right:-4px;top:50%;transform:translateY(-50%);
+}
+.battery-icon-fill{
+  height:100%;border-radius:1px;transition:width .4s ease, background .4s ease;
+  background:var(--green);
+}
+.battery-icon-fill.warn{ background:#eab308; }
+.battery-icon-fill.low{ background:var(--red); }
 .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;
   transition:background .3s; box-shadow:0 0 0 3px rgba(34,197,94,.18);}
 .status-dot.warn{background:var(--amber); box-shadow:0 0 0 3px rgba(245,158,11,.18);}
@@ -1479,10 +1501,21 @@ button{ font-family:inherit; }
 
   <nav class="home-nav">
     <div class="home-wordmark">Sole<span>Sense</span></div>
-    <button class="btn-power" onclick="confirmPowerOff()" aria-label="Power off insole">
-      <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-      Power Off
-    </button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="battery-indicator" id="battery-indicator" style="display:none">
+        <div class="battery-icon" aria-hidden="true">
+          <div class="battery-icon-body">
+            <div class="battery-icon-fill" id="battery-fill"></div>
+          </div>
+          <div class="battery-icon-tip"></div>
+        </div>
+        <span id="battery-text">--%</span>
+      </div>
+      <button class="btn-power" onclick="confirmPowerOff()" aria-label="Power off insole">
+        <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        Power Off
+      </button>
+    </div>
   </nav>
 
   <div class="home-hero">
@@ -1544,7 +1577,18 @@ button{ font-family:inherit; }
       </button>
       <div class="home-wordmark">Sole<span>Sense</span></div>
     </div>
-    <div class="screen-nav-context">Recording</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="battery-indicator" id="rec-battery-indicator" style="display:none">
+        <div class="battery-icon" aria-hidden="true">
+          <div class="battery-icon-body">
+            <div class="battery-icon-fill" id="rec-battery-fill"></div>
+          </div>
+          <div class="battery-icon-tip"></div>
+        </div>
+        <span id="rec-battery-text">--%</span>
+      </div>
+      <div class="screen-nav-context">Recording</div>
+    </div>
   </nav>
 
   <div class="rec-mid">
@@ -3561,6 +3605,25 @@ function confirmDialog({title, body, confirmLabel = 'Confirm', cancelLabel = 'Ca
  * Network failure (phone left the AP, AP went down, captive portal) -> red,
  * pulsing. Polled every 5 seconds with a short 3-second timeout so we
  * don't hang the UI on a slow disconnect. */
+function updateBattery(pct){
+  if (pct == null) return;
+  const colorClass = pct <= 20 ? ' low' : pct <= 40 ? ' warn' : '';
+  const w = `${Math.max(0, Math.min(100, pct))}%`;
+  [
+    ['battery-indicator',     'battery-fill',     'battery-text'],
+    ['rec-battery-indicator', 'rec-battery-fill',  'rec-battery-text'],
+  ].forEach(([indId, fillId, textId]) => {
+    const ind  = document.getElementById(indId);
+    const fill = document.getElementById(fillId);
+    const text = document.getElementById(textId);
+    if (!ind) return;
+    ind.style.display  = 'inline-flex';
+    fill.style.width   = w;
+    fill.className     = 'battery-icon-fill' + colorClass;
+    text.textContent   = `${pct}%`;
+  });
+}
+
 async function pingDevice(){
   const dot = document.getElementById('conn-dot');
   const eyebrow = document.getElementById('eyebrow-dot');
@@ -3568,11 +3631,13 @@ async function pingDevice(){
   try {
     const ctrl = new AbortController();
     const t = setTimeout(()=>ctrl.abort(), 3000);
-    await fetch('/api/device', { signal: ctrl.signal });
+    const res = await fetch('/api/device', { signal: ctrl.signal });
     clearTimeout(t);
     dot.className = 'status-dot';
     if (eyebrow) eyebrow.classList.remove('disconnected');
     set('conn-text', 'Connected');
+    const d = await res.json().catch(()=>({}));
+    if (d.battery_pct != null) updateBattery(d.battery_pct);
   } catch {
     dot.className = 'status-dot danger';
     if (eyebrow) eyebrow.classList.add('disconnected');
