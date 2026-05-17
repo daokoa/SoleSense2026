@@ -10,7 +10,7 @@ html{font-size:16px;-webkit-text-size-adjust:100%}
 
 :root{
   /* Surfaces - subtle warm-cool off-white system, more neutral than pure blue tint */
-  --bg:        #f7f8fc;
+  --bg:        #f8f7fc;
   --surface:   #ffffff;
   --surface2:  #f1f3f9;
   --surface3:  #e8ecf3;
@@ -203,7 +203,7 @@ button{ font-family:inherit; }
 .home-eyebrow-dot{
   width:7px;height:7px;border-radius:50%;background:var(--green);
   box-shadow:0 0 0 4px rgba(4,120,87,0.15);
-  animation:pulse-dot 2s var(--ease-out) infinite;
+  animation:pulse-dot 1.6s var(--ease-out) infinite;
   transition:background .3s;
 }
 @keyframes pulse-dot{
@@ -246,7 +246,7 @@ button{ font-family:inherit; }
 .btn-start{
   display:inline-flex;
   align-items:center;gap:12px;
-  background:linear-gradient(135deg,#3b82f6,var(--blue2));
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
   border:none;border-radius:var(--r-full);cursor:pointer;
   padding:18px 42px;
   font-size:17px;font-weight:600;color:white;
@@ -537,7 +537,7 @@ button{ font-family:inherit; }
   border-radius:var(--r-lg);
   padding:18px 16px;
   cursor:pointer;
-  box-shadow:var(--shadow-1);
+  box-shadow:var(--shadow-2);
   transition:transform var(--d-fast) var(--ease-spring),
              box-shadow var(--d-base) var(--ease-out);
   display:flex;align-items:center;gap:14px;
@@ -637,14 +637,14 @@ button{ font-family:inherit; }
   margin-bottom:14px;
 }
 .rec-timer{
-  font-size:108px;font-weight:200;color:var(--text);
+  font-size:108px;font-weight:300;color:var(--text);
   letter-spacing:-.04em;line-height:1;
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum" 1, "ss01" 1;
   margin-bottom:10px;
 }
 
-.rec-steps{font-size:15px;color:var(--text2);margin-bottom:14px;letter-spacing:var(--tracking-tight)}
+.rec-steps{font-size:16px;color:var(--text2);margin-bottom:14px;letter-spacing:var(--tracking-tight)}
 /* Live cadence sparkline on the recording screen. Scrolls right as
    new samples arrive; the rec poll feeds it via pushRecCadenceSample(). */
 .rec-spark{
@@ -661,7 +661,7 @@ button{ font-family:inherit; }
   vector-effect:non-scaling-stroke;
   transition:stroke .25s var(--ease-out);
 }
-.rec-steps span{font-weight:700;color:var(--text)}
+.rec-steps span{font-weight:700;color:var(--text);font-size:17px}
 
 /* stat chips row */
 .rec-chips{
@@ -1429,7 +1429,7 @@ button{ font-family:inherit; }
   position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);
   background:var(--text);color:white;
   font-size:13px;font-weight:500;
-  padding:11px 22px;border-radius:24px;
+  padding:11px 22px;border-radius:16px;
   opacity:0;transition:all .24s ease;pointer-events:none;
   white-space:nowrap;z-index:200;
   box-shadow:0 4px 16px rgba(15,26,58,.22);
@@ -3252,6 +3252,7 @@ function paintAllSparklines(r){
 }
 
 /* -- RENDER -- */
+// Jet colormap: dark-blue → blue → cyan → green → yellow → orange → red
 function render(r){
   const fmt=(v,d=0)=>isNaN(v)?'--':Number(v).toFixed(d);
   const dashIfZero=(v,decimals=0)=>(!v||v===0)?'--':fmt(v,decimals);
