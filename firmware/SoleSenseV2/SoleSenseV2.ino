@@ -34,27 +34,97 @@ static void start_sample_timer() {
   timerAlarm(gTimer, SAMPLE_PERIOD_US, true, 0);
 }
 
-// -- Deep sleep ---------------------------------------------------------------
-static void enter_deep_sleep() {
-  Serial.println("[Sleep] entering deep sleep, wake on GPIO9 LOW");
+// -- Standby + foot-press wake ------------------------------------------------
+//
+// The housing seals over the on-board BOOT button, which means a true deep
+// sleep with GPIO9 as the wake source would brick the device until someone
+// pried the case open. The ESP32-C3 only exposes GPIO0-5 as RTC-capable
+// pins, and all of ours are tied up (3x shared ADCs + 2x I2C), so we
+// can't tie the MPU-6050 INT line to a deep-sleep wake pin either.
+//
+// Workaround: light sleep with a 1.5 s RTC timer. On each wake we briefly
+// power one FSR set, take three ADC reads, and check whether the runner
+// is stepping on the insole. If yes -> full wake. If no -> back to sleep.
+// Total active time per cycle is ~250 us out of 1.5 s = ~0.02% duty cycle,
+// so average current sits around the ~150 uA light-sleep floor of the C3.
+// On a 360 mAh pack that is roughly three weeks of standby with the
+// "step on the insole to turn it back on" UX we want.
+//
+// We also tear WiFi down before entering the loop to save the ~30 mA the
+// soft-AP otherwise draws continuously, and bring it back up after wake.
+static void enter_foot_press_standby() {
+  Serial.println("[Standby] foot-press wake armed -- step on insole to wake");
   Serial.flush();
 
-  // Drain any in-flight HTTP requests before tearing the chip down. Deep
-  // sleep wipes WiFi / LittleFS / heap atomically, so we deliberately do
-  // NOT call WiFi.softAPdisconnect() or LittleFS.end() ourselves -- those
-  // free resources the AsyncWebServer task can still hold pointers to,
-  // and a poll landing mid-teardown would crash the device on stage.
+  // Drain any in-flight HTTP requests before tearing the WiFi stack down,
+  // same race that bit us with the old deep-sleep teardown.
   delay(500);
 
-  // Hold the wake pin high during sleep so a press-to-GND triggers wake.
-  // Using the older esp-idf 4.x API that's available across Arduino-ESP32
-  // core 2.x and 3.x. (The newer esp_deep_sleep_enable_gpio_wakeup is
-  // 3.x-only and not present in some installations.)
-  gpio_pullup_en((gpio_num_t)PIN_WAKE);
-  gpio_pulldown_dis((gpio_num_t)PIN_WAKE);
-  gpio_wakeup_enable((gpio_num_t)PIN_WAKE, GPIO_INTR_LOW_LEVEL);
-  esp_sleep_enable_gpio_wakeup();
-  esp_deep_sleep_start();
+  // Park both FSR sets LOW (defensive -- avoids any phantom current paths
+  // while the chip is asleep).
+  pinMode(PIN_PWR_SET1, OUTPUT);
+  pinMode(PIN_PWR_SET2, OUTPUT);
+  digitalWrite(PIN_PWR_SET1, LOW);
+  digitalWrite(PIN_PWR_SET2, LOW);
+
+  // Drop the WiFi AP so the radio stops drawing ~30 mA. Light sleep alone
+  // would only get us "modem sleep" which still costs ~15 mA average.
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_OFF);
+
+  // Wake-detection loop. esp_light_sleep_start() preserves RAM and CPU
+  // state, so when we wake from the timer we just continue executing
+  // the next instruction.
+  const uint32_t SLEEP_US        = 1500000;   // 1.5 s between checks
+  const int      WAKE_THRESHOLD  = 250;        // ADC counts above unloaded baseline
+  uint32_t       cycle_count     = 0;
+
+  while (true) {
+    esp_sleep_enable_timer_wakeup(SLEEP_US);
+    esp_light_sleep_start();
+    cycle_count++;
+
+    // Brief FSR check: power Set 1, settle 200 us, read 3 ADCs, power off.
+    digitalWrite(PIN_PWR_SET1, HIGH);
+    delayMicroseconds(200);
+    int a = analogRead(PIN_ADC_A);
+    int b = analogRead(PIN_ADC_B);
+    int c = analogRead(PIN_ADC_C);
+    digitalWrite(PIN_PWR_SET1, LOW);
+    int max_a = a > b ? (a > c ? a : c) : (b > c ? b : c);
+
+    int max_b = 0;
+    if (max_a <= WAKE_THRESHOLD) {
+      // Set 1 quiet -- check Set 2 too so a foot strike on the forefoot
+      // half of the insole also wakes us.
+      digitalWrite(PIN_PWR_SET2, HIGH);
+      delayMicroseconds(200);
+      int d = analogRead(PIN_ADC_A);
+      int e = analogRead(PIN_ADC_B);
+      int f = analogRead(PIN_ADC_C);
+      digitalWrite(PIN_PWR_SET2, LOW);
+      max_b = d > e ? (d > f ? d : f) : (e > f ? e : f);
+    }
+
+    if (max_a > WAKE_THRESHOLD || max_b > WAKE_THRESHOLD) {
+      Serial.printf("[Wake] foot pressure (set1 max=%d, set2 max=%d) after %u cycles\n",
+                    max_a, max_b, (unsigned)cycle_count);
+      break;
+    }
+  }
+
+  // Bring the WiFi AP back up. mDNS has to be re-bound since its task tied
+  // to the old WiFi event-loop state.
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(SS_AP_SSID, SS_AP_PASS);
+  IPAddress ip = WiFi.softAPIP();
+  Serial.printf("[Wake] WiFi AP '%s' restored at %s\n", SS_AP_SSID, ip.toString().c_str());
+
+  MDNS.end();
+  if (MDNS.begin("solesense")) {
+    MDNS.addService("http", "tcp", 80);
+    Serial.println("[Wake] mDNS solesense.local rebound");
+  }
 }
 
 // Per-sample processing. Vertical IMU jerk and FSR-jerk are tracked as
@@ -201,8 +271,10 @@ void loop() {
 
   if (gSleepRequested) {
     gSleepRequested = false;
-    enter_deep_sleep();
-    return;   // never reached
+    enter_foot_press_standby();
+    // Returns here on wake (light sleep preserves stack + RAM, unlike
+    // the old deep_sleep flow). WiFi AP is back up; loop continues.
+    return;
   }
 
   if (gRunActive && gNewSample) {
