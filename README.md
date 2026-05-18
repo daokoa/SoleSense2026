@@ -53,6 +53,7 @@ Full architecture rationale: [`docs/design/specs/2026-05-06-v0.2-data-architectu
 | Seeed XIAO ESP32-C3 | MCU, WiFi AP, HTTP server | flashed, running |
 | MPU-6050 | 6-axis accel + gyro (I²C @ `0x68`) | wired, reads validated |
 | FSR 402 × 6 | Pressure sensors (3-zone × medial/lateral) | wiring in progress |
+| 1N5819 Schottky × 6 | One per FSR -- prevent voltage leakage between sensors during matrix scan | wired in WD4 |
 | LIR2450 × 3 (parallel) | 3.7 V Li-ion coin cells, ~360 mAh | pending |
 | TPU 85A | 3D-printed insole shell | pending |
 

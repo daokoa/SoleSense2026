@@ -20,7 +20,7 @@ Six FSRs, three zones, two sensors per zone (one medial, one lateral). Drawn fro
 | ch4 | Forefoot medial | Under 1st MT (just below hallux base) |
 | ch5 | Forefoot lateral | Under 5th MT, near pinky toe |
 
-The matrix-scan wiring (2 power sets x 3 ADC pins) is unchanged; only the physical FSR positions differ. See [`../README.md#pin-map`](../README.md) for the wiring detail.
+The matrix-scan wiring (2 power sets x 3 ADC pins, with six 1N5819 Schottky diodes -- one per FSR -- preventing voltage leakage between sensors that share an ADC line) is unchanged; only the physical FSR positions differ. See [`../README.md#pin-map`](../README.md) for the wiring detail.
 
 ## Module status
 
