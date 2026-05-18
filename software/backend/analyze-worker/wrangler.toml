@@ -1,0 +1,19 @@
+name = "solesense-analyze"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# OPENAI_API_KEY is set via:  wrangler secret put OPENAI_API_KEY
+# Do NOT put it here. wrangler.toml is checked into git.
+
+# Optional: Cloudflare KV namespace for per-IP rate limiting (30 calls/hr/IP).
+# To enable, run once:
+#   wrangler kv namespace create RATE_LIMIT
+# Then uncomment and paste the printed id below, then redeploy:
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id      = "<id from wrangler kv namespace create RATE_LIMIT>"
+
+# Optional: bind a custom domain (paid plan or workers.dev subdomain).
+# [routes]
+# pattern = "analyze.solesense.example.com"
+# zone_name = "solesense.example.com"
