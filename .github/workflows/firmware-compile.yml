@@ -45,10 +45,3 @@ jobs:
             --fqbn esp32:esp32:XIAO_ESP32C3 \
             --warnings default \
             firmware/SoleSenseV2
-
-      - name: Compile firmware/imu-test
-        run: |
-          arduino-cli compile \
-            --fqbn esp32:esp32:XIAO_ESP32C3 \
-            --warnings default \
-            firmware/imu-test
