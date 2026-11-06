@@ -41,3 +41,11 @@ uint32_t stats_get_count(uint8_t c) {
   if (c >= N_CHANNELS_TOTAL) return 0;
   return sN[c];
 }
+
+void stats_restore(uint8_t c, uint32_t n, float mean, float stddev) {
+  if (c >= N_CHANNELS_TOTAL) return;
+  sN[c]   = n;
+  sMean[c] = mean;
+  // stddev = sqrt(M2 / (n-1))  ->  M2 = stddev^2 * (n-1)
+  sM2[c] = (n > 1) ? stddev * stddev * (float)(n - 1) : 0.0f;
+}

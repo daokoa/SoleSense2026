@@ -44,7 +44,12 @@ constexpr float   GYRO_LSB_PER_DPS = 131.0f;
 // (a disconnected MPU leaves gAccel pinned, so stddev sits at exactly 0).
 constexpr float IMU_CONNECTED_STDDEV_FLOOR = 0.05f;
 // |accel_z - running_mean| above this many m/s^2 is registered as an impact.
-constexpr float IMU_IMPACT_DELTA_MS2       = 8.0f;
+// Raised from 8.0 -> 12.0: at 8.0 the threshold was barely above sensor
+// noise (~5-10 m/s^2 stddev on a foot-worn accelerometer), causing every
+// vibration ring during stance to register. A real foot-strike spike
+// is 20-50 m/s^2, so 12.0 still catches real impacts but stops counting
+// the ringing tail.
+constexpr float IMU_IMPACT_DELTA_MS2       = 12.0f;
 
 // -- Sampling -----------------------------------------------------------------
 // 500 Hz: chosen to oversample running-impact rising edges (~5-20 ms wide) by

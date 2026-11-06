@@ -26,3 +26,9 @@ float stats_get_stddev(uint8_t channel);
 
 // Number of samples seen by this channel since last reset.
 uint32_t stats_get_count(uint8_t channel);
+
+// Restore a channel's running stats from saved (count, mean, stddev) -- used
+// by storage flash-restore so /api/run-report survives a reboot. Reconstructs
+// the Welford M2 accumulator from stddev so stats_get_stddev() reads back the
+// same value. n < 2 leaves variance at 0.
+void stats_restore(uint8_t channel, uint32_t n, float mean, float stddev);

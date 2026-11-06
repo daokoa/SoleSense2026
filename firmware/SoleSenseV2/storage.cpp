@@ -19,15 +19,21 @@
 #include "fft.h"
 #include "outliers.h"
 #include "config.h"
+#include "state.h"
+#include "stats.h"
+#include "auth.h"
 
 #include <LittleFS.h>
 #include <string.h>
 
 // -- Body layout --------------------------------------------------------------
-// [ FFT magnitudes ][ outlier_count u32 ][ Outlier[OUTLIER_CAPACITY] ][ 32 bytes reserved ]
+// [ FFT magnitudes ][ outlier_count u32 ][ Outlier[OUTLIER_CAPACITY] ][ RunMeta ]
+// RunMeta replaced the old 32-byte reserved area; it carries the scalar run
+// state + Welford stats needed to rebuild /api/run-report after a power cut.
 static constexpr size_t SS_FFT_BYTES      = (size_t)N_CHANNELS_TOTAL * FFT_BINS_PER_CHAN * sizeof(float);
 static constexpr size_t SS_OUTLIER_BYTES  = (size_t)OUTLIER_CAPACITY * sizeof(Outlier);
-static constexpr size_t SS_BODY_BYTES     = SS_FFT_BYTES + sizeof(uint32_t) + SS_OUTLIER_BYTES + 32;
+static constexpr size_t SS_META_OFFSET    = SS_FFT_BYTES + sizeof(uint32_t) + SS_OUTLIER_BYTES;
+static constexpr size_t SS_BODY_BYTES     = SS_META_OFFSET + sizeof(RunMeta);
 static constexpr size_t SS_TOTAL_BYTES    = sizeof(SlotHeader) + SS_BODY_BYTES + sizeof(SlotTrailer);
 
 // Single static buffer used for both write and read. ~3 KB.
@@ -85,9 +91,28 @@ static void serialise_body(uint8_t* dst) {
     off += sizeof(Outlier);
   }
 
-  // 4. Reserved meta (32 bytes for forward compat)
-  memset(dst + off, 0, 32);
-  off += 32;
+  // 4. RunMeta: scalar run state + Welford stats for report reconstruction.
+  RunMeta meta;
+  memset(&meta, 0, sizeof(meta));
+  meta.version             = RUNMETA_VERSION;
+  meta.stepCount           = gStepCount;
+  meta.contactSumMs        = gContactSumMs;
+  meta.contactCount        = gContactCount;
+  meta.imuImpactCount      = gImuImpactCount;
+  meta.imuConnected        = gImuConnected ? 1u : 0u;
+  meta.maxHeelJerk         = gMaxHeelJerk;
+  meta.maxJerkZ            = gMaxJerkZ;
+  meta.maxTotalPressure    = gMaxTotalPressure;
+  meta.effectiveSampleRate = gEffectiveSampleRate;
+  meta.bodyKg              = gRunBodyKg;
+  meta.heightCm            = gRunHeightCm;
+  for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
+    meta.statMean[c]   = stats_get_mean(c);
+    meta.statStddev[c] = stats_get_stddev(c);
+    meta.statN[c]      = stats_get_count(c);
+  }
+  memcpy(dst + off, &meta, sizeof(meta));
+  off += sizeof(meta);
 
   // Sanity check
   if (off != SS_BODY_BYTES) {
@@ -229,6 +254,63 @@ bool storage_load_latest(SlotHeader& outHeader) {
     }
   }
   return found;
+}
+
+bool storage_restore_latest() {
+  // 1. Find the newest valid slot index.
+  int bestSlot = -1;
+  uint32_t bestSeq = 0;
+  SlotHeader hdr;
+  for (uint8_t i = 0; i < STORAGE_SLOT_COUNT; i++) {
+    if (!read_and_validate_slot(i, hdr)) continue;
+    if (bestSlot < 0 || hdr.slot_n > bestSeq) { bestSlot = i; bestSeq = hdr.slot_n; }
+  }
+  if (bestSlot < 0) return false;
+
+  // 2. Re-read the winner into sBuf (the loop above may have left a different
+  //    slot in the buffer) and re-validate.
+  if (!read_and_validate_slot((uint8_t)bestSlot, hdr)) return false;
+  const uint8_t* body = sBuf + sizeof(SlotHeader);
+
+  // 3. FFT magnitudes (section 1 of the body) -> fft.cpp.
+  fft_restore_magnitudes(reinterpret_cast<const float*>(body));
+
+  // 4. RunMeta (final section) -> state + stats globals.
+  RunMeta meta;
+  memcpy(&meta, body + SS_META_OFFSET, sizeof(meta));
+  if (meta.version != RUNMETA_VERSION) {
+    Serial.printf("[Storage] restore: RunMeta version %lu != %lu, skipping scalars\n",
+                  (unsigned long)meta.version, (unsigned long)RUNMETA_VERSION);
+    return false;
+  }
+
+  gStepCount        = meta.stepCount;
+  gContactSumMs     = meta.contactSumMs;
+  gContactCount     = meta.contactCount;
+  gImuImpactCount   = meta.imuImpactCount;
+  gImuConnected     = (meta.imuConnected != 0);
+  gMaxHeelJerk      = meta.maxHeelJerk;
+  gMaxJerkZ         = meta.maxJerkZ;
+  gMaxTotalPressure = meta.maxTotalPressure;
+  gEffectiveSampleRate = (meta.effectiveSampleRate > 1.0f)
+                       ? meta.effectiveSampleRate : (float)SAMPLE_RATE_HZ;
+  gRunBodyKg        = (meta.bodyKg   > 1.0f) ? meta.bodyKg   : 70.0f;
+  gRunHeightCm      = (meta.heightCm > 1.0f) ? meta.heightCm : 170.0f;
+  for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
+    stats_restore(c, meta.statN[c], meta.statMean[c], meta.statStddev[c]);
+  }
+
+  // The run timer + sample count live in the header. /api/run-report reads
+  // gRunElapsedMs for duration and the FFT-window check for cadence.
+  gRunElapsedMs = hdr.timestamp_ms;
+  gSampleCount  = hdr.sample_count;
+
+  Serial.printf("[Storage] restored run from slot_n=%lu: %lu ms, %lu samples, "
+                "%lu steps, run_done=%lu\n",
+                (unsigned long)hdr.slot_n, (unsigned long)hdr.timestamp_ms,
+                (unsigned long)hdr.sample_count, (unsigned long)meta.stepCount,
+                (unsigned long)hdr.run_done);
+  return true;
 }
 
 uint8_t storage_valid_slot_count() {

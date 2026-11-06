@@ -23,7 +23,13 @@
 // distinguish cadences (1.5-3 Hz) cleanly. RAM cost per channel is independent
 // of WIN_SIZE (Goertzel only stores 2 floats per bin), so window length is
 // purely a frequency-resolution-vs-latency knob.
-constexpr uint16_t FFT_WIN_SIZE = 1024;
+// 2048 (was 1024): at the real ~250 Hz effective sample rate, frequency
+// resolution is Fs/N. N=1024 gave 0.244 Hz = ~29 total spm per bin — too
+// coarse to separate a 160 spm runner from a 190 spm one (they shared a bin).
+// N=2048 halves that to ~15 spm. Goertzel state is independent of N (2 floats
+// per bin), so the only cost is latency: the first spectrum needs N samples
+// (~8 s at 250 Hz). Steady-cadence runs are stationary over that window.
+constexpr uint16_t FFT_WIN_SIZE = 2048;
 
 // Frequencies (Hz) tracked per channel. Same set used for every channel for
 // simplicity -- tune per-channel later if needed.
@@ -35,6 +41,13 @@ void fft_init();
 
 // Reset all bin states + finalized magnitudes (call on /api/start).
 void fft_reset();
+
+// Recompute the per-bin Goertzel coefficients against a runtime-measured
+// sample rate. Goertzel's k → omega mapping is fs-dependent; the canonical
+// fft_init() locks coefs to compile-time SAMPLE_RATE_HZ, but in practice
+// the loop sustains ~250 Hz. Call this once a stable measurement is
+// available (e.g. after the first ~512 samples of a run).
+void fft_recompute_coefs(float actualFsHz);
 
 // Push one sample into one channel's bins.
 //   channel:      0..N_FSR-1 = FSR; N_FSR..N_FSR+5 = IMU axes
@@ -54,6 +67,12 @@ uint8_t fft_peak_bin(uint8_t channel, float* outMagnitude = nullptr);
 // Number of completed windows for a channel (0 means we don't have a
 // magnitude reading yet for it).
 uint16_t fft_window_count(uint8_t channel);
+
+// Restore finalized magnitudes from a flash snapshot (storage flash-restore).
+// mags points to N_CHANNELS_TOTAL * FFT_BINS_PER_CHAN floats in channel-major
+// order. Marks every channel as having one completed window so the cadence
+// path in /api/run-report treats the restored spectrum as live.
+void fft_restore_magnitudes(const float* mags);
 
 // Optional self-test: feeds a known synthetic 2.0 Hz sine wave at amplitude
 // 100 into channel 0 for one full window's worth of samples, then prints the

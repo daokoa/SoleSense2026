@@ -9,6 +9,7 @@
 #include "outliers.h"
 #include "stats.h"
 #include "storage.h"
+#include "auth.h"
 
 #include <WiFi.h>
 
@@ -17,6 +18,7 @@ volatile bool gRunActive        = false;
 volatile uint32_t gRunElapsedMs = 0;
 volatile uint32_t gLastActiveMs = 0;
 volatile uint32_t gSampleCount  = 0;
+float    gEffectiveSampleRate   = (float)SAMPLE_RATE_HZ;   // refreshed from runtime
 volatile float    gMaxJerkZ     = 0.0f;
 volatile bool gNewSample        = false;
 volatile bool gStartRequested   = false;
@@ -33,6 +35,8 @@ volatile uint32_t gLastImuImpactMs = 0;
 volatile bool     gImuConnected    = false;
 volatile uint32_t gImuImpactCount  = 0;
 volatile float    gMaxTotalPressure = 0.0f;
+float    gRunBodyKg   = 70.0f;
+float    gRunHeightCm = 170.0f;
 
 static uint32_t sLastFlushMs = 0;
 
@@ -49,7 +53,6 @@ static float    sStepPeak               = 0.0f;   // peak heel ADC seen during c
 struct KalmanCV {
   float x0, x1;                 // state: pressure, velocity (ADC counts, counts/s)
   float P00, P01, P10, P11;     // 2x2 covariance
-  static constexpr float DT  = 1.0f / (float)SAMPLE_RATE_HZ;
   static constexpr float Q00 = 4.0e-2f;
   static constexpr float Q01 = 4.0e1f;
   static constexpr float Q11 = 4.0e4f;
@@ -61,6 +64,11 @@ struct KalmanCV {
   }
 
   void update(float z) {
+    // DT pulled from runtime — measured sample rate, not the compile-time
+    // nominal — so the filter tunes itself to whatever rate the loop is
+    // actually sustaining (~250 Hz in practice).
+    const float DT = (gEffectiveSampleRate > 1.0f) ? 1.0f / gEffectiveSampleRate
+                                                   : 1.0f / (float)SAMPLE_RATE_HZ;
     // Predict
     x0 = x0 + DT * x1;
     float pp00 = P00 + DT * (P10 + P01) + DT * DT * P11 + Q00;
@@ -112,6 +120,11 @@ static void enter_recording() {
   gImuConnected     = false;
   gImuImpactCount   = 0;
   gMaxTotalPressure = 0.0f;
+  gEffectiveSampleRate = (float)SAMPLE_RATE_HZ;  // refit by process_sample()
+  // Snapshot the runner's profile so the report (and a flash-restored report
+  // after a power cut) uses real body weight / height, not the 70 kg default.
+  gRunBodyKg   = gSession.active ? gSession.body_kg   : 70.0f;
+  gRunHeightCm = gSession.active ? gSession.height_cm : 170.0f;
   sHeelInContact      = false;
   sStepContactStartMs = 0;
   sStepLastImpactMs   = 0;
@@ -202,11 +215,16 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
   const float p = sHeelKalman.x0;   // filtered pressure (ADC counts)
   const float v = sHeelKalman.x1;   // filtered velocity (ADC counts / sec)
 
-  constexpr float    STEP_RISE_THRESHOLD =  400.0f;   // filtered pressure floor
-  constexpr float    STEP_RISE_VEL       =  8000.0f;  // rising at >= this rate
-  constexpr float    STEP_FALL_VEL       = -5000.0f;  // falling at <= this rate
-  constexpr uint32_t STEP_REFRACTORY_MS  = 250;       // covers a stride contact
-  constexpr uint32_t MIN_CONTACT_MS      = 50;        // shorter = bounce, drop
+  // Thresholds tuned for forefoot-strike and pivot/turning gait — a hard
+  // heel-strike profile easily clears the old 8000 ADC/s velocity gate, but
+  // a softer forefoot landing or a pivot step rolls the pressure in more
+  // gradually and was being missed. Pressure floor lowered to catch lighter
+  // strikes; velocity floors halved to admit slower rises/releases.
+  constexpr float    STEP_RISE_THRESHOLD =  200.0f;   // filtered pressure floor
+  constexpr float    STEP_RISE_VEL       =  3000.0f;  // rising at >= this rate
+  constexpr float    STEP_FALL_VEL       = -2500.0f;  // falling at <= this rate
+  constexpr uint32_t STEP_REFRACTORY_MS  = 200;       // 200 ms → max 300 spm
+  constexpr uint32_t MIN_CONTACT_MS      = 40;        // shorter = bounce, drop
   constexpr uint32_t MAX_CONTACT_MS      = 800;       // longer  = lean, drop
 
   // IMU sensor-fusion gate (only when IMU is producing real samples).
@@ -248,8 +266,10 @@ void step_detector_update(float heelValue, float heelMean, float heelStddev,
                         contactSoFar <= MAX_CONTACT_MS);
     if (valid) {
       gStepCount++;
-      gContactSumMs += contactSoFar;
-      gContactCount++;
+      // Contact-time accounting is owned by the total-pressure tracker in
+      // SoleSenseV2.ino::process_sample(). The Kalman-velocity gate here is
+      // for step counting only — it drops out on the dominant-FSR fall
+      // edge and underreports true ground contact for forefoot/pivot gait.
     }
     Serial.printf("[Step] %s p=%.0f v=%.0f peak=%.0f contact=%lu ms #%lu%s\n",
                   valid ? "STEP    " : "discard ",

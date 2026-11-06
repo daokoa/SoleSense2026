@@ -8,6 +8,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <esp_sleep.h>
+#include <esp_wifi.h>   // esp_wifi_set_ps, esp_wifi_set_max_tx_power — single-cell power tuning
 #include <math.h>
 
 #include "config.h"
@@ -101,8 +102,13 @@ static void enter_foot_press_standby() {
   // Wake-detection loop. esp_light_sleep_start() preserves RAM and CPU
   // state, so when we wake from the timer we just continue executing
   // the next instruction.
+  //
+  // *** DIAGNOSTIC MODE *** — threshold lowered + per-cycle ADC dump so
+  // we can see exactly what the chip reads when you press a pad. Restore
+  // WAKE_FSR_THRESHOLD = 250 and remove the Serial.printf below once we
+  // know the real numbers.
   const uint32_t SLEEP_US                = 1500000;  // 1.5 s between checks
-  const int      WAKE_FSR_THRESHOLD      = 250;       // ADC counts above unloaded baseline
+  const int      WAKE_FSR_THRESHOLD      = 80;        // DIAG: was 250
   const float    WAKE_MOTION_DELTA_MS2   = 2.0f;      // |accel| - 1g threshold (~0.2g)
   uint32_t       cycle_count             = 0;
   const char*    wake_cause              = "?";
@@ -120,7 +126,6 @@ static void enter_foot_press_standby() {
     int c = analogRead(PIN_ADC_C);
     digitalWrite(PIN_PWR_SET1, LOW);
     int max_a = a > b ? (a > c ? a : c) : (b > c ? b : c);
-    if (max_a > WAKE_FSR_THRESHOLD) { wake_cause = "foot-press (set1)"; break; }
 
     // -- 2. Foot-press check (Set 2) ------------------------------------
     digitalWrite(PIN_PWR_SET2, HIGH);
@@ -130,14 +135,20 @@ static void enter_foot_press_standby() {
     int f = analogRead(PIN_ADC_C);
     digitalWrite(PIN_PWR_SET2, LOW);
     int max_b = d > e ? (d > f ? d : f) : (e > f ? e : f);
-    if (max_b > WAKE_FSR_THRESHOLD) { wake_cause = "foot-press (set2)"; break; }
 
     // -- 3. IMU motion check --------------------------------------------
-    // At rest the accel magnitude reads ~9.81 (gravity only). Picking the
-    // insole up, shaking it, or any nontrivial movement shifts it. The
-    // ~0.2g delta threshold is loose enough to catch a deliberate "pick
-    // it up" gesture and tight enough to ignore bench-vibration noise.
     float mag = read_imu_accel_magnitude();
+
+    // DIAGNOSTIC: dump everything we just read so the serial monitor
+    // shows what the chip sees on each cycle. Always prints, no break-cond.
+    Serial.printf("[Diag] cycle=%u  set1=[%d,%d,%d] max=%d  set2=[%d,%d,%d] max=%d  |g|=%.2f (delta %.2f)\n",
+      (unsigned)cycle_count, a, b, c, max_a, d, e, f, max_b,
+      isnan(mag) ? -1.0f : mag,
+      isnan(mag) ? -1.0f : fabsf(mag - G_TO_MS2));
+    Serial.flush();
+
+    if (max_a > WAKE_FSR_THRESHOLD) { wake_cause = "foot-press (set1)"; break; }
+    if (max_b > WAKE_FSR_THRESHOLD) { wake_cause = "foot-press (set2)"; break; }
     if (!isnan(mag) && fabsf(mag - G_TO_MS2) > WAKE_MOTION_DELTA_MS2) {
       wake_cause = "motion (IMU)";
       break;
@@ -197,6 +208,14 @@ static float sPrevAccelZ  = 0.0f;
 static bool  sJerkHasPrev = false;
 static float sPrevAny     = 0.0f;
 static bool  sAnyHasPrev  = false;
+// Total-pressure contact tracker: gated on the SUM of all 6 FSRs against a
+// fixed noise floor. Step detector's Kalman-velocity contact gate drops out
+// when the *loudest* FSR's velocity falls, which underreports ground time
+// for forefoot strikers and pivots. Summing across all sensors stays high
+// for the entire foot-down interval.
+static bool     sFootDown        = false;
+static uint32_t sFootDownStartMs = 0;
+static bool     sFftCoefsRefit   = false;
 
 static void process_sample() {
   sensors_read_all();
@@ -205,12 +224,32 @@ static void process_sample() {
   if (gResetSampleTracking) {
     sJerkHasPrev = false;
     sAnyHasPrev  = false;
+    sFootDown    = false;
     gResetSampleTracking = false;
   }
 
-  // Vertical jerk: |accel_z| / t over the last sample interval.
+  // Periodically refresh the measured sample rate. The bool gNewSample
+  // flag coalesces ISR fires the loop can't drain (loop iteration > 2 ms),
+  // so the effective rate is typically ~250 Hz, not the nominal 500. Every
+  // 256 samples (~1 s at real rate) recompute Fs from the wall clock so
+  // jerk + Kalman use the right dt. Once we have a stable measurement, also
+  // refit the Goertzel coefficients so FFT bin labels match reality.
+  if ((gSampleCount & 0xFF) == 0 && gRunElapsedMs > 500UL) {
+    gEffectiveSampleRate = (float)gSampleCount * 1000.0f / (float)gRunElapsedMs;
+    if (!sFftCoefsRefit && gSampleCount >= 512) {
+      fft_recompute_coefs(gEffectiveSampleRate);
+      sFftCoefsRefit = true;
+      Serial.printf("[FFT] coefs refit to %.1f Hz (after %lu samples)\n",
+                    gEffectiveSampleRate, (unsigned long)gSampleCount);
+    }
+  }
+
+  // Vertical jerk: |accel_z| / t over the last sample interval. dt comes
+  // from the measured rate, not the nominal config — see comment above.
   if (sJerkHasPrev) {
-    constexpr float DT_S = 1.0f / (float)SAMPLE_RATE_HZ;
+    const float DT_S = (gEffectiveSampleRate > 1.0f)
+                         ? 1.0f / gEffectiveSampleRate
+                         : 1.0f / (float)SAMPLE_RATE_HZ;
     float jerk = fabsf(gAccel[2] - sPrevAccelZ) / DT_S;
     if (jerk > gMaxJerkZ) gMaxJerkZ = jerk;
   }
@@ -267,11 +306,38 @@ static void process_sample() {
                        stats_get_stddev(0),
                        gRunElapsedMs);
 
+  // Total-foot contact tracker (decoupled from the step counter). Foot is
+  // "down" while the SUM across all 6 FSRs sits above a generous noise
+  // floor (~100 ADC counts per sensor average). Interval start→end is the
+  // true ground-contact time, regardless of strike pattern. Floor 600 was
+  // chosen to clear EMA settling + ADC quiescent noise but admit even
+  // soft forefoot landings (forefoot pads alone clear 1000+ on contact).
+  constexpr float TOTAL_PRESSURE_FLOOR  = 600.0f;
+  constexpr uint32_t CONTACT_MIN_VALID  = 40;
+  constexpr uint32_t CONTACT_MAX_VALID  = 1500;
+  if (totalPressure > TOTAL_PRESSURE_FLOOR) {
+    if (!sFootDown) {
+      sFootDown        = true;
+      sFootDownStartMs = gRunElapsedMs;
+    }
+  } else if (sFootDown) {
+    sFootDown = false;
+    uint32_t contact = gRunElapsedMs - sFootDownStartMs;
+    if (contact >= CONTACT_MIN_VALID && contact <= CONTACT_MAX_VALID) {
+      gContactSumMs += contact;
+      gContactCount++;
+    }
+  }
+
   // FSR-jerk loading rate: track per-sample d(anyZoneMax)/dt and keep the
-  // peak. Same OR-gate: peak rate-of-rise wherever the impact lands counts.
-  // sPrevAny/sAnyHasPrev are file-scope so they reset on pause/resume.
+  // peak. Multiplied by the *measured* Fs so the BW/s number is honest;
+  // the old constant SAMPLE_RATE_HZ over-reported jerk by ~2× at the
+  // actual ~250 Hz effective rate. sPrevAny/sAnyHasPrev are file-scope so
+  // they reset on pause/resume.
   if (sAnyHasPrev) {
-    float jerk = (anyZoneMax - sPrevAny) * (float)SAMPLE_RATE_HZ;
+    const float fs = (gEffectiveSampleRate > 1.0f) ? gEffectiveSampleRate
+                                                   : (float)SAMPLE_RATE_HZ;
+    float jerk = (anyZoneMax - sPrevAny) * fs;
     if (jerk > gMaxHeelJerk) gMaxHeelJerk = jerk;
   }
   sPrevAny    = anyZoneMax;
@@ -283,6 +349,23 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println("=== SoleSense v0.2 booting ===");
+  // Reset-reason diagnostic. ESP_RST_BROWNOUT (9) here = the cell sagged
+  // below the LDO dropout under load on the previous boot. ESP_RST_POWERON
+  // (1) = clean start. Anything else (PANIC 4, WDT 5/6/7) = firmware bug.
+  esp_reset_reason_t reset_reason = esp_reset_reason();
+  const char* rr_name =
+      (reset_reason == ESP_RST_POWERON)   ? "POWERON" :
+      (reset_reason == ESP_RST_EXT)       ? "EXT_PIN" :
+      (reset_reason == ESP_RST_SW)        ? "SW_RESTART" :
+      (reset_reason == ESP_RST_PANIC)     ? "PANIC_EXC" :
+      (reset_reason == ESP_RST_INT_WDT)   ? "WDT_INT" :
+      (reset_reason == ESP_RST_TASK_WDT)  ? "WDT_TASK" :
+      (reset_reason == ESP_RST_WDT)       ? "WDT_OTHER" :
+      (reset_reason == ESP_RST_DEEPSLEEP) ? "DEEPSLEEP" :
+      (reset_reason == ESP_RST_BROWNOUT)  ? "BROWNOUT  <-- cell sag, single-LIR2450 cannot sustain load" :
+      (reset_reason == ESP_RST_SDIO)      ? "SDIO" :
+                                            "UNKNOWN";
+  Serial.printf("[Reset] reason=%d (%s)\n", (int)reset_reason, rr_name);
 
   if (!LittleFS.begin()) {
     Serial.println("[FS] mount FAILED");
@@ -300,9 +383,27 @@ void setup() {
   state_init();
   auth_init();
 
+  // Crash/power-cut recovery: rebuild the last run's report inputs into RAM
+  // (aggregates + Welford stats + FFT magnitudes) so /api/run-report serves
+  // the last run instead of zeros if the device lost power before the report
+  // was fetched. Must run AFTER state_init() (which zeroes the run timer).
+  if (storage_restore_latest()) {
+    Serial.println("[Boot] restored last run from flash -- /api/run-report ready");
+  }
+
   WiFi.softAP(SS_AP_SSID, SS_AP_PASS);
   IPAddress ip = WiFi.softAPIP();
   Serial.printf("[WiFi] AP '%s' up at %s\n", SS_AP_SSID, ip.toString().c_str());
+
+  // DEMO POWER PROFILE: max TX power, modem-sleep OFF. Running on USB-C
+  // power bank for the pitch, so the single-cell sag that forced the
+  // 8.5 dBm + MIN_MODEM compromise isn't a constraint. ~19.5 dBm + no
+  // modem-sleep gives full ~50 m range, fastest beacon cadence, and the
+  // shortest phone-association latency. Peak current ~300-400 mA, but
+  // the power bank handles it without sagging the rails.
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+  Serial.println("[WiFi] DEMO profile: TX=19.5dBm, modem-sleep OFF (USB power bank)");
 
   // mDNS: lets users on iOS/macOS visit http://solesense.local/ instead
   // of typing the IP. Doesn't trigger any captive-portal auto-popup --
@@ -321,6 +422,18 @@ void setup() {
 
   start_sample_timer();
   Serial.printf("[Timer] %u Hz sampling armed\n", (unsigned)SAMPLE_RATE_HZ);
+
+  // DEMO BUILD: post-boot auto-standby DISABLED. Wake from light-sleep was
+  // unreliable on this hardware (USB-CDC didn't re-enumerate post-wake and
+  // wake-trigger never fired during testing), so the device now stays
+  // awake from boot to power loss. AP stays up the whole time; ~72 min
+  // runtime on a single LIR2450. The /api/sleep endpoint + UI Sleep
+  // button still exist but should NOT be tapped during the demo --
+  // tapping bricks the device until USB hardware reset.
+  // To re-enable: uncomment the two lines below.
+  // sWakeGraceExpiresMs = millis() + WAKE_GRACE_MS;
+  // Serial.println("[Boot] post-boot grace armed -- 60s to first connection or standby");
+  Serial.println("[Boot] DEMO BUILD: auto-standby disabled, AP stays up indefinitely");
 }
 
 // -- loop() -------------------------------------------------------------------

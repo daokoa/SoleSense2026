@@ -30,6 +30,12 @@ extern volatile uint32_t gLastActiveMs;
 // Total sample count for the current run (rolls back to 0 on /api/start).
 extern volatile uint32_t gSampleCount;
 
+// Effective (measured) sample rate in Hz. Initialised to the nominal
+// SAMPLE_RATE_HZ; recomputed at runtime from gSampleCount / gRunElapsedMs so
+// jerk + Kalman + Goertzel math survive ISR-flag coalescing (loop iteration
+// occasionally exceeds the 2 ms ISR period and drops samples).
+extern float gEffectiveSampleRate;
+
 // Time-domain step detection. Updated by step_detector_update() from
 // process_sample() once per sample. Reset to 0 on /api/start.
 //   gStepCount    -- total heel-strikes detected this run
@@ -60,6 +66,13 @@ extern volatile uint32_t gImuImpactCount;   // count of IMU impacts during the r
 // /api/run-report for diagnostics and for cross-checking against the
 // any-zone-max strike signal.
 extern volatile float gMaxTotalPressure;   // peak SUM(ch0..5) seen this run
+
+// Body profile snapshot for the CURRENT run's report. Captured from gSession
+// at run start so the loading-rate + stride math has the right body weight,
+// and so a flash-restored report (after a power cut, when no session is
+// active) still uses the runner's real profile rather than the 70 kg default.
+extern float gRunBodyKg;
+extern float gRunHeightCm;
 
 // Time-domain step detector. Call once per sample from process_sample(),
 // after the per-channel stats are fresh. Strike fires on a rising edge

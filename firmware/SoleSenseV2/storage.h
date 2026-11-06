@@ -28,6 +28,28 @@ struct __attribute__((packed)) SlotTrailer {
   uint32_t magic;           // STORAGE_MAGIC_TRAILER (proves write completed)
 };
 
+// Scalar run state needed to rebuild /api/run-report from a slot (the FFT
+// magnitudes are stored separately in the slot body). Stored where the old
+// 32-byte "reserved" area used to be. Versioned for forward compat.
+constexpr uint32_t RUNMETA_VERSION = 1;
+struct __attribute__((packed)) RunMeta {
+  uint32_t version;            // RUNMETA_VERSION
+  uint32_t stepCount;          // gStepCount (single-foot strikes)
+  uint32_t contactSumMs;       // gContactSumMs
+  uint32_t contactCount;       // gContactCount
+  uint32_t imuImpactCount;     // gImuImpactCount
+  uint32_t imuConnected;       // gImuConnected (bool)
+  float    maxHeelJerk;        // gMaxHeelJerk
+  float    maxJerkZ;           // gMaxJerkZ
+  float    maxTotalPressure;   // gMaxTotalPressure
+  float    effectiveSampleRate;// gEffectiveSampleRate
+  float    bodyKg;             // session body weight snapshot
+  float    heightCm;           // session height snapshot
+  float    statMean  [N_CHANNELS_TOTAL];   // Welford mean per channel
+  float    statStddev[N_CHANNELS_TOTAL];   // Welford stddev per channel
+  uint32_t statN     [N_CHANNELS_TOTAL];   // sample count per channel
+};
+
 // One-time setup. Opens or creates /run.bin and reserves
 // STORAGE_SLOT_COUNT * STORAGE_SLOT_SIZE_BYTES of LittleFS space.
 void storage_init();
@@ -55,6 +77,14 @@ void storage_clear();
 //
 // Used on boot and when the phone reconnects to display the run-in-progress.
 bool storage_load_latest(SlotHeader& outHeader);
+
+// Restore the newest valid slot's run state into RAM: the scalar aggregates
+// (step count, contact, jerk, max pressure, profile), the per-channel Welford
+// stats, and the FFT magnitudes. After this, /api/run-report reconstructs the
+// last run even though RAM was cleared by a reboot/power-cut. Returns true if
+// a slot was restored. Call once on boot, after storage_init(). Does NOT set
+// gState to recording -- it only repopulates the report inputs.
+bool storage_restore_latest();
 
 // Diagnostic: how many slots currently contain valid data.
 uint8_t storage_valid_slot_count();

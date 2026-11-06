@@ -23,11 +23,19 @@
 //   * 15-80 Hz: ground-impact transient content; FSR rising-edge harmonics
 //                that the FSR-jerk extrapolation will key off of
 //   * 150 Hz: vibration / shoe-slap content, high-frequency anomaly probe
+// Bin layout is tuned for a SINGLE insole (one foot). One foot strikes the
+// ground once per stride, so a runner at 150-200 total spm loads this insole
+// at only 75-100 strikes/min = 1.25-1.67 Hz. The cadence band is therefore
+// packed fine in 0.75-1.83 Hz (single-foot) to resolve total cadence to
+// ~12 spm after the x2 single-foot->total conversion in http_routes.cpp.
+// The old 0.5 Hz-spaced bins lumped the entire running range into one 1.5 Hz
+// bin. Top bins capped at 100 Hz: at the real ~250 Hz effective sample rate,
+// Nyquist is ~125 Hz, so 120/150 Hz bins aliased and are dropped.
 const float FFT_BIN_FREQS_HZ[FFT_BINS_PER_CHAN] = {
-  0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f,        // cadence (6)
-  3.5f, 4.0f, 5.0f, 7.5f, 10.0f,             // stride harmonics (5)
-  15.0f, 20.0f, 30.0f, 50.0f, 80.0f, 120.0f, // impact band (6)
-  150.0f                                      // vibration probe (1)
+  0.75f, 1.0f, 1.17f, 1.33f, 1.5f, 1.67f, 1.83f,  // single-foot cadence (7): 90-220 total spm
+  2.5f, 3.0f, 4.0f, 5.0f,                          // stride harmonics / 2x cadence (4)
+  10.0f, 15.0f, 20.0f, 30.0f, 50.0f, 80.0f,        // impact band (6)
+  100.0f                                            // high-freq probe, Nyquist-safe at 250 Hz (1)
 };
 
 // Per-bin precomputed factors. Goertzel coef = 2*cos(omega) drives the
@@ -53,17 +61,22 @@ static float sMag[N_CHANNELS_TOTAL][FFT_BINS_PER_CHAN];
 
 // -----------------------------------------------------------------------------
 void fft_init() {
+  fft_recompute_coefs((float)SAMPLE_RATE_HZ);
+  fft_reset();
+}
+
+void fft_recompute_coefs(float actualFsHz) {
+  if (actualFsHz < 1.0f) return;
   for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
-    // Quantise to the closest representable bin frequency for this window.
-    // (Goertzel still works for arbitrary frequencies, but accuracy is best
-    // when the frequency is at an exact bin centre.)
-    float k     = roundf(FFT_BIN_FREQS_HZ[b] * (float)FFT_WIN_SIZE / (float)SAMPLE_RATE_HZ);
+    // Quantise to the closest representable bin frequency at the given Fs.
+    // Goertzel still works for arbitrary frequencies, but accuracy is best
+    // when the frequency lands on an exact bin centre.
+    float k     = roundf(FFT_BIN_FREQS_HZ[b] * (float)FFT_WIN_SIZE / actualFsHz);
     float omega = 2.0f * (float)M_PI * k / (float)FFT_WIN_SIZE;
     sCos [b] = cosf(omega);
     sSin [b] = sinf(omega);
     sCoef[b] = 2.0f * sCos[b];
   }
-  fft_reset();
 }
 
 void fft_reset() {
@@ -121,6 +134,17 @@ float fft_get_magnitude(uint8_t c, uint8_t b) {
 uint16_t fft_window_count(uint8_t c) {
   if (c >= N_CHANNELS_TOTAL) return 0;
   return sWinDone[c];
+}
+
+void fft_restore_magnitudes(const float* mags) {
+  if (!mags) return;
+  size_t idx = 0;
+  for (uint8_t c = 0; c < N_CHANNELS_TOTAL; c++) {
+    for (uint8_t b = 0; b < FFT_BINS_PER_CHAN; b++) {
+      sMag[c][b] = mags[idx++];
+    }
+    if (sWinDone[c] == 0) sWinDone[c] = 1;  // mark spectrum available
+  }
 }
 
 uint8_t fft_peak_bin(uint8_t c, float* outMagnitude) {

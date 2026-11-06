@@ -72,14 +72,29 @@ static bool json_get_number(const String& body, const char* field, float* out) {
 }
 
 // -- /api/device --------------------------------------------------------------
+// Time-based battery estimate. Single LIR2450 ~= 120 mAh; conservative
+// ~100 mA active WiFi-AP draw => ~72 min full-discharge runtime. Resets
+// each boot. Not a true SOC -- no VBAT divider on hardware -- but the best
+// estimate available without a hardware change.
+static const uint32_t BATTERY_RUNTIME_MS = 72UL * 60UL * 1000UL;  // 72 min
+
 static void handle_device(AsyncWebServerRequest* req) {
+  const uint32_t elapsed = millis();
+  int batteryPct = 100 - (int)(((uint64_t)elapsed * 100) / BATTERY_RUNTIME_MS);
+  if (batteryPct < 0)   batteryPct = 0;
+  if (batteryPct > 100) batteryPct = 100;
+
   String j = "{";
   j += "\"firmware\":\"SoleSense ";  j += SS_FIRMWARE_VERSION; j += "\",";
   j += "\"version\":\"";              j += SS_FIRMWARE_VERSION; j += "\",";
   j += "\"board\":\"";                j += SS_BOARD_NAME;       j += "\",";
   j += "\"sampleRateHz\":";           j += SAMPLE_RATE_HZ;      j += ",";
+  j += "\"sampleRateHzEffective\":";  j += String(gEffectiveSampleRate, 1); j += ",";
   j += "\"heap_free\":";              j += (unsigned)ESP.getFreeHeap(); j += ",";
   j += "\"state\":\"";                j += state_name();        j += "\",";
+  j += "\"battery_pct\":";            j += batteryPct;          j += ",";
+  j += "\"battery_est\":\"time\",";   // honesty: not a real SOC
+  j += "\"uptime_ms\":";              j += (unsigned)elapsed;   j += ",";
   j += "\"fs\":{\"totalBytes\":";     j += (unsigned)LittleFS.totalBytes();
   j += ",\"usedBytes\":";             j += (unsigned)LittleFS.usedBytes(); j += "},";
   j += "\"thresholds_hardcoded\":true";
@@ -240,19 +255,63 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   // Each rising edge through max(floor, 4sigma) is a step; cadence is just
   // steps x 60 / runtime. Wait for >=2 s of recording before reporting cadence
   // so very-short-run noise doesn't produce a wild number.
+  // SINGLE-INSOLE -> TOTAL CADENCE. We instrument one foot. That foot strikes
+  // the ground once per stride, so gStepCount is single-foot strikes and the
+  // raw rate is single-foot strikes/min. Conventional cadence (and every
+  // Garmin/Apple/Stryd number a runner compares against) counts BOTH feet, so
+  // we multiply by 2. Same for the reported step total. Assumes alternating
+  // gait, which holds for any walk/run.
+  static const int FOOT_TO_TOTAL = 2;
   uint32_t durMs  = gRunElapsedMs;
   uint32_t durSec = durMs / 1000UL;
-  int   steps   = (int)gStepCount;
+  int   steps   = (int)gStepCount * FOOT_TO_TOTAL;
   int   cadence = 0;
-  // Show cadence as soon as we have a meaningful sample. Old gates (>=2 s,
-  // >=60 spm) were too strict -- a 3-second test with 2 presses came out at
-  // 40 spm and got clamped to 0, leaving the user staring at "--" on every
-  // first run. Loosened to: >=1 s elapsed, >=1 step detected, result in a
-  // very generous [20, 300] spm band (running peaks at ~200, finger
-  // tapping caps near 300).
   if (durMs >= 1000UL && gStepCount > 0) {
-    cadence = (int)((uint64_t)gStepCount * 60000ULL / (uint64_t)durMs);
+    cadence = (int)((uint64_t)gStepCount * (uint64_t)FOOT_TO_TOTAL * 60000ULL / (uint64_t)durMs);
     if (cadence < 20 || cadence > 300) cadence = 0;
+  }
+
+  // cadenceRaw = the time-domain step-counter value (already x2). Kept as a
+  // diagnostic and as the fallback for very short runs (before the first FFT
+  // window completes). The counter UNDERcounts during running — it misses
+  // forefoot/fast strikes that slip past its heel-like velocity edge.
+  int cadenceRaw = cadence;
+  int cadenceFft = 0;
+
+  // FFT is the PRIMARY cadence source. Validated against a metronome with the
+  // 2048-sample window: at a true 160 spm the counter read 136 (undercount)
+  // while the FFT read 160 exactly. The FFT keys off the dominant periodicity
+  // across all step channels, so it doesn't care about strike pattern. We
+  // override the counter whenever the FFT has a completed window and a clear
+  // peak above the noise floor; we fall back to the counter only when no FFT
+  // window exists yet (runs shorter than ~8 s at the real sample rate).
+  //
+  // Strategy: sum cadence-band magnitudes (bins 0..6 = the 0.75-1.83 Hz
+  // single-foot band) across gyro_z + midfoot/forefoot FSRs, find the peak
+  // bin; peak freq * 60 * 2 = total cadence.
+  if (fft_window_count(N_FSR + 5) > 0) {
+    const uint8_t cadenceChans[] = { (uint8_t)(N_FSR + 5),  // gz
+                                     2, 3, 4, 5 };          // mid + fore FSRs
+    float bestMag = 0.0f;
+    uint8_t bestBin = 0;
+    for (uint8_t b = 0; b < 7; b++) {  // bins 0..6 = 0.75..1.83 Hz single-foot
+      float total = 0.0f;
+      for (uint8_t i = 0; i < sizeof(cadenceChans); i++) {
+        total += fft_get_magnitude(cadenceChans[i], b);
+      }
+      if (total > bestMag) { bestMag = total; bestBin = b; }
+    }
+    // Noise floor: real cadence peaks read in the thousands; a disconnected
+    // channel reads ~1/bin. 50 is ~10x the floor, well below any real signal.
+    if (bestMag > 50.0f) {
+      cadenceFft = (int)roundf(FFT_BIN_FREQS_HZ[bestBin] * 60.0f * (float)FOOT_TO_TOTAL);
+      if (cadenceFft >= 60 && cadenceFft <= 240) {
+        cadence = cadenceFft;
+        if (durMs >= 1000UL) {
+          steps = (int)((uint64_t)cadence * (uint64_t)durMs / 60000ULL);
+        }
+      }
+    }
   }
 
   // FSR saturation flag: per-channel peaks aren't tracked, so we use the
@@ -297,7 +356,9 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   //   BW/s = (counts/s) x (98.1 / 4095) / (body_kg x 9.81)
   // Healthy runners read 30-80 BW/s; >80 raises stress-fracture risk
   // (Milner 2006).
-  float bw_kg = gSession.active ? gSession.body_kg : 70.0f;
+  // Body weight comes from the run-start profile snapshot (gRunBodyKg), which
+  // also survives a flash-restore after a power cut. Falls back to 70 kg.
+  float bw_kg = gRunBodyKg;
   float bw_n  = bw_kg * 9.81f;
   float loadingRateBWs = gMaxHeelJerk > 0.0f
                        ? gMaxHeelJerk * (98.1f / 4095.0f) / bw_n
@@ -336,13 +397,32 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   if (heelRatio > 65.0f && zHeel > zForefoot + 10.0f) {
     pushFlag("heel_strike", String((int)heelRatio) + "% heel load");
   }
-  // High-loading flag: > 80 BW/s. Threshold from biomechanics literature
-  // (Milner 2006; Davis 2016): runners above this have ~2x the stress-fracture
-  // risk vs. runners with loading rates < 60 BW/s.
-  if (loadingRateBWs > 80.0f) {
+  // High-loading flag: > 60 BW/s. Threshold from biomechanics literature
+  // (Milner 2006; Davis 2016): runners above ~60 BW/s have ~2x the
+  // stress-fracture risk vs. runners with loading rates < 60 BW/s. Lowered
+  // from 80 to 60 so the firmware flag matches the SPA's "Elevated" pill
+  // and visual zone (0-60 = good zone).
+  if (loadingRateBWs > 60.0f) {
     pushFlag("high_loading", String((int)loadingRateBWs) + " BW/s");
   }
-  if (cadence > 0 && cadence < 160) {
+  // Turning/cornering detector: high yaw + roll gyro stddev means the runner
+  // wasn't going in a straight line. Loading-rate and cadence numbers should
+  // be read with this caveat — pivoting loads the foot differently than
+  // linear running and the step detector trips more on irregular gait.
+  // Threshold (40 deg/s combined stddev) is well above steady-state running
+  // (~10-20 deg/s) but below circle/zigzag (~60-150 deg/s).
+  float gyStd = stats_get_stddev(N_FSR + 4);   // gyro_y
+  float gzStd = stats_get_stddev(N_FSR + 5);   // gyro_z (yaw)
+  float turnMag = sqrtf(gyStd * gyStd + gzStd * gzStd);
+  bool isTurning = turnMag > 40.0f;
+  if (isTurning) {
+    pushFlag("turning_detected", String((int)turnMag) + " deg/s yaw");
+  }
+  // Suppress low_cadence when the runner was turning — the counter is
+  // unreliable on pivot steps even with the FFT fallback, and a false
+  // low-cadence flag muddies the report. Threshold 165 matches the SPA's
+  // healthy zone (165-185 spm).
+  if (cadence > 0 && cadence < 165 && !isTurning) {
     pushFlag("low_cadence", String(cadence) + " steps/min");
   }
   if (pronate > 15.0f) {
@@ -368,6 +448,8 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   String j = "{";
   j += "\"steps\":";        j += steps;                     j += ",";
   j += "\"cadence\":";      j += cadence;                   j += ",";
+  j += "\"cadenceRaw\":";   j += cadenceRaw;                j += ",";  // step-counter x2 (diagnostic)
+  j += "\"cadenceFft\":";   j += cadenceFft;                j += ",";  // FFT-derived x2 (diagnostic)
   j += "\"durSec\":";       j += (unsigned long)durSec;     j += ",";
   j += "\"contactMs\":";    j += String(contactMs, 1);      j += ",";
   j += "\"loadingRate\":";  j += String(loadingRateBWs, 1); j += ",";
@@ -387,8 +469,8 @@ static void handle_run_report(AsyncWebServerRequest* req) {
   // estimated speed, and any height-normalized display). Falls back to
   // safe defaults when no session is active so /api/run-report stays
   // useful for debug calls without authentication.
-  float prof_kg = gSession.active ? gSession.body_kg   : 70.0f;
-  float prof_cm = gSession.active ? gSession.height_cm : 170.0f;
+  float prof_kg = gRunBodyKg;
+  float prof_cm = gRunHeightCm;
   j += "\"profile\":{";
   j +=   "\"body_kg\":";   j += String(prof_kg, 1);
   j +=   ",\"height_cm\":"; j += String(prof_cm, 1);

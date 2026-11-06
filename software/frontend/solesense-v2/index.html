@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SoleSense</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -77,7 +77,8 @@ body{
   font-family:var(--font-display);
   line-height:1.55;
   letter-spacing:-0.003em;
-  min-height:100vh;
+  min-height:100vh;          /* fallback */
+  min-height:100dvh;         /* iOS 15.4+: viewport that follows address-bar resize */
   overflow-x:hidden;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
@@ -105,7 +106,7 @@ button{ font-family:inherit; }
 /* Selection - branded */
 ::selection{ background:var(--blue-bg); color:var(--blue2); }
 
-.screen{display:none;min-height:100vh;flex-direction:column}
+.screen{display:none;min-height:100vh;min-height:100dvh;flex-direction:column}
 .screen.active{display:flex}
 
 /* Screen enter animation - runs whenever the .active class is applied.
@@ -283,7 +284,8 @@ button{ font-family:inherit; }
 .modal{
   position:fixed; inset:0; z-index:1000;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(15,26,58,0.55); backdrop-filter:blur(4px);
+  background:rgba(15,26,58,0.55);
+  -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
   padding:24px;
 }
 .modal-card{
@@ -755,7 +757,7 @@ button{ font-family:inherit; }
 /* 
    REPORT
  */
-#screen-report{flex-direction:column;padding:0 0 100px;background:#f5f7fb}
+#screen-report{flex-direction:column;padding:0 0 100px;padding-bottom:calc(100px + env(safe-area-inset-bottom));background:#f5f7fb}
 
 /* .report-header etc. are now styled via .screen-nav (defined above). */
 
@@ -816,8 +818,10 @@ button{ font-family:inherit; }
    Apple Fitness / Garmin Connect "stat tile" idiom -- replaces a
    uniform key:value row list. */
 .metrics-grid{
-  display:grid;
-  grid-template-columns:repeat(2, 1fr);
+  /* Phone-first: stack as a vertical list rather than a 2-up grid so
+   * long metric names + values + units never get squeezed. */
+  display:flex;
+  flex-direction:column;
   gap:12px;
 }
 /* Findings live at the top of the grid as full-width cards, above the
@@ -957,9 +961,15 @@ button{ font-family:inherit; }
   position:absolute;top:0;bottom:0;
   /* Typical band sits at 30% - 70% of the track width. */
   left:30%;right:30%;
-  background:rgba(4,120,87,.18);     /* emerald-700 at 18% */
+  background:rgba(4,120,87,.18);     /* emerald-700 at 18% (default) */
   border-radius:999px;
+  transition:background .4s var(--ease-out);
 }
+/* Bar + dot take the metric's status color: green in range, amber low/watch,
+   red elevated -- matching the pill so the whole card reads one verdict. */
+.range-zone.good{background:rgba(4,120,87,.18)}
+.range-zone.warn{background:rgba(161,98,7,.20)}   /* amber-700 */
+.range-zone.high{background:rgba(185,28,28,.20)}  /* red-700 */
 .range-marker{
   position:absolute;
   top:50%;left:50%;
@@ -969,8 +979,11 @@ button{ font-family:inherit; }
   border-radius:50%;
   transform:translate(-50%, -50%);
   box-shadow:0 1px 3px rgba(15,23,42,.20);
-  transition:left .8s var(--ease-out);
+  transition:left .8s var(--ease-out), background .4s var(--ease-out);
 }
+.range-marker.good{background:#047857}   /* emerald-700 */
+.range-marker.warn{background:#a16207}   /* amber-700 */
+.range-marker.high{background:#b91c1c}   /* red-700 */
 .range-axis{
   display:flex;justify-content:space-between;
   margin-top:6px;
@@ -1023,6 +1036,11 @@ button{ font-family:inherit; }
   justify-content:center;
   gap:32px;padding:4px 0 12px;     /* 8-grid */
 }
+/* Narrow phones (iPhone SE / 12 / 13 / 14 widths): stack the two feet
+ * vertically so neither overflows the card. Heatmap stays at 150px wide. */
+@media (max-width:420px){
+  .foot-report-wrap{ flex-direction:column; gap:18px; align-items:center; }
+}
 .foot-side{
   display:flex;flex-direction:column;align-items:center;gap:8px;
   flex:0 0 auto;
@@ -1040,6 +1058,11 @@ button{ font-family:inherit; }
      look like floating stickers on top of the card. */
   filter:drop-shadow(0 2px 6px rgba(15,23,42,.10));
 }
+/* SoleSense ships as a single right insole. Hide the left foot panel
+ * and the "L" side of each zone label since there's no left-foot data. */
+.foot-report-wrap .foot-side:first-child{ display:none; }
+.zone-values .zone-side:first-child{ display:none; }
+.zone-side-tag{ display:none; }   /* hide the lone "R" tag when only right is shown */
 /* Heatmap image MORPHS into view: starts desaturated + slightly dim and
    eases to full color over 700 ms once the data URL is set. Reads as
    "data is being revealed" rather than "image suddenly appeared". */
@@ -1620,44 +1643,33 @@ button{ font-family:inherit; }
     </div>
 
     <div class="feet-wrap" id="feet-wrap">
-      <!-- Left foot -- the source PNG is anatomically a RIGHT foot, so the
-           Left-foot card mirrors it horizontally via SVG transform so it
-           reads as a left foot on screen. Sensor circles inside the
-           transformed group are mirrored along with the image; channel
-           IDs stay correct because circle coords ride the same transform. -->
-      <div class="foot-card" id="foot-left">
-        <div class="foot-card-label">Left foot</div>
-        <svg class="foot-svg" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet">
-          <g transform="translate(185 0) scale(-1 1)">
-            <image href="solesense.png" x="0" y="0" width="185" height="511"/>
-            <!-- ch5 forefoot lateral (top-left displayed) -->
-            <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="110" cy="70"  r="18"/>
-            <!-- ch4 forefoot medial (top-right displayed) -->
-            <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="55"  cy="75"  r="18"/>
-            <!-- ch3 midfoot lateral (left-most displayed) -->
-            <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="140" cy="120" r="18"/>
-            <!-- ch2 midfoot medial (right-most displayed) -->
-            <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="40"  cy="135" r="18"/>
-            <!-- ch1 heel lateral (heel-left displayed; nudged inward to sit on the heel pad) -->
-            <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="125" cy="450" r="20"/>
-            <!-- ch0 heel medial (heel-right displayed) -- pinned, perfect -->
-            <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="65"  cy="455" r="20"/>
-          </g>
-        </svg>
+      <!-- SoleSense v0.2 ships as a single RIGHT insole. The right foot card
+           below carries the live FSR sensor circles (id="L-ch0..5" kept for
+           JS compatibility); the left foot card is hidden in CSS. -->
+      <div class="foot-card" id="foot-left" style="display:none;">
+        <!-- Left foot kept in DOM only to preserve historical mirroring
+             metadata; not rendered. -->
       </div>
 
-      <!-- Right foot -- original PNG orientation (anatomically a right foot),
-           no mirror, greyed out via .disabled. -->
-      <div class="foot-card disabled" id="foot-right" title="Add a second insole for full bilateral analysis">
-        <div class="foot-card-label">Right (v0.2 ships single insole)</div>
+      <!-- Right foot — anatomical orientation, no mirror. This is the LIVE
+           foot card now: each circle is bound to a logical channel and gets
+           colored by the /api/sensor poll. -->
+      <div class="foot-card" id="foot-right">
+        <div class="foot-card-label">Right foot</div>
         <svg class="foot-svg" viewBox="0 0 185 511" preserveAspectRatio="xMidYMid meet">
           <image href="solesense.png" x="0" y="0" width="185" height="511"/>
-          <circle class="foot-sensor" cx="110" cy="70"  r="18"/>
-          <circle class="foot-sensor" cx="55"  cy="75"  r="18"/>
-          <circle class="foot-sensor" cx="140" cy="120" r="18"/>
-          <circle class="foot-sensor" cx="40"  cy="135" r="18"/>
-          <circle class="foot-sensor" cx="140" cy="450" r="20"/>
-          <circle class="foot-sensor" cx="65"  cy="455" r="20"/>
+          <!-- ch5 forefoot lateral (top-right of viewer = anatomically lateral on a right foot) -->
+          <circle class="foot-sensor" id="L-ch5" data-ch="5" cx="110" cy="70"  r="18"/>
+          <!-- ch4 forefoot medial (top-left of viewer = anatomically medial on a right foot) -->
+          <circle class="foot-sensor" id="L-ch4" data-ch="4" cx="55"  cy="75"  r="18"/>
+          <!-- ch3 midfoot lateral -->
+          <circle class="foot-sensor" id="L-ch3" data-ch="3" cx="140" cy="120" r="18"/>
+          <!-- ch2 midfoot medial -->
+          <circle class="foot-sensor" id="L-ch2" data-ch="2" cx="40"  cy="135" r="18"/>
+          <!-- ch1 heel lateral -->
+          <circle class="foot-sensor" id="L-ch1" data-ch="1" cx="140" cy="450" r="20"/>
+          <!-- ch0 heel medial -->
+          <circle class="foot-sensor" id="L-ch0" data-ch="0" cx="65"  cy="455" r="20"/>
         </svg>
       </div>
     </div>
@@ -1784,7 +1796,7 @@ button{ font-family:inherit; }
       <div class="section-title">Pressure map</div>
       <div class="foot-report-card">
       <div class="zone-legend">
-        Warmer colors mark heavier landing zones. Compare left and right for asymmetric loading.
+        Warmer colors mark heavier landing zones across the right foot.
       </div>
       <div class="foot-report-wrap">
         <!-- Left foot: mirrored so it reads as a left foot on screen (the
@@ -2063,6 +2075,19 @@ button{ font-family:inherit; }
             <div class="settings-desc">Resets the motion sensor's zero point. Set the insole flat on a table, then tap to zero — do this if step count or cadence seems off.</div>
           </div>
           <button class="btn-cal" onclick="zeroIMU()">Zero IMU</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Power</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Sleep</div>
+            <div class="settings-desc">Drop the device into light-sleep standby (~150 µA). Step on any insole pad — or pick the insole up — to wake. Use this before unplugging so the device is asleep on the battery.</div>
+          </div>
+          <button class="btn-cal" onclick="sleepDevice()">Sleep</button>
         </div>
       </div>
     </div>
@@ -2606,14 +2631,20 @@ function impactCategory(bws){
  * the findings card never disagree. */
 function cadenceBand(spm){
   if (!spm || spm < 1) return null;
-  return spm >= 160 ? { label: 'In range', tone: 'good' } : { label: 'Too low', tone: 'warn' };
+  if (spm < 165) return { label: 'Too low',  tone: 'warn' };
+  if (spm > 185) return { label: 'Elevated', tone: 'high' };
+  return                 { label: 'In range', tone: 'good' };
 }
 function contactBand(ms){
   if (!ms || ms < 1) return null;
-  return ms <= 300 ? { label: 'In range', tone: 'good' } : { label: 'Elevated', tone: 'high' };
+  if (ms < 200) return { label: 'Quick',    tone: 'warn' };
+  if (ms > 300) return { label: 'Elevated', tone: 'high' };
+  return                { label: 'In range', tone: 'good' };
 }
 function pronateBand(deg){
-  if (deg == null || isNaN(deg)) return null;
+  // 0 is the firmware's "no-data" sentinel; a real pronation reading is
+  // almost never exactly 0 deg/s over a full run, so treat it as missing.
+  if (deg == null || isNaN(deg) || deg === 0) return null;
   if (deg >  15) return { label: 'Elevated', tone: 'high' };
   if (deg < -8)  return { label: 'Too low',  tone: 'warn' };
   return              { label: 'In range',  tone: 'good' };
@@ -2859,6 +2890,7 @@ const FLAG_DEFS={
   overpronation:{name:'Overpronation',severity:'medium',what:"Your foot rolls inward too much after landing, straining the ankle, knee, and shin.",fix:'Hip and glute strengthening (clamshells, single-leg squats) is the most reliable long-term fix.'},
   supination:{name:'Supination',severity:'low',what:"Your foot stays rolled outward, reducing natural shock absorption.",fix:'Neutral or cushioned shoes suit supinators better; stretch your calves and peroneal muscles.'},
   medial_lateral_asym:{name:'Medial/Lateral Asymmetry',severity:'low',what:'One side of your foot is carrying noticeably more load than the other, raising overuse-injury risk on the loaded side.',fix:'Single-leg work (deadlifts, step-ups, calf raises) evens out strength differences and rebalances loading.'},
+  turning_detected:{name:'Turning Detected',severity:'low',what:'This run included significant turns or cornering. Pivot steps load the foot asymmetrically and can skew cadence + loading-rate metrics on tight courses.',fix:'For the cleanest gait read, take a few minutes on a straight, flat surface. Turns themselves are biomechanically normal -- this flag is a quality-of-measurement note, not an injury risk.'},
 };
 
 /* -- HEATMAP RENDERER (canvas-based, IDW + foot mask, 2x retina) --
@@ -3180,16 +3212,36 @@ function renderSparkline(metricEl, finalValue, opts){
      - No chart for total steps (cumulative value).
    The range-indicator pattern unifies five metrics under one visual
    idiom so they read as a coherent dashboard, not a mixed bag. */
-function placeRangeMarker(visibleMin, visibleMax, zoneMin, zoneMax, value, zoneEl, markerEl){
-  if (!zoneEl || !markerEl) return;
-  const span = visibleMax - visibleMin || 1;
-  const zStart = Math.max(0, Math.min(1, (zoneMin - visibleMin) / span));
-  const zEnd   = Math.max(0, Math.min(1, (zoneMax - visibleMin) / span));
-  zoneEl.style.left  = (zStart * 100) + '%';
-  zoneEl.style.width = ((zEnd - zStart) * 100) + '%';
+function placeRangeMarker(visibleMin, visibleMax, zoneMin, zoneMax, value, zoneEl, markerEl, tone){
+  // Color the bar + dot to match the metric's status (good/warn/high). Falls
+  // back to 'good' (green) when no tone is supplied. markerEl is required;
+  // zoneEl may be null (stride uses a CSS-fixed zone).
+  const toneClass = (tone === 'warn' || tone === 'high') ? tone : 'good';
+  if (markerEl) {
+    markerEl.classList.remove('good','warn','high');
+    markerEl.classList.add(toneClass);
+  }
+  if (zoneEl) {
+    zoneEl.classList.remove('good','warn','high');
+    zoneEl.classList.add(toneClass);
+  }
+  if (!markerEl) return;
+  // Hide the entire range indicator (zone + marker + "Low / Typical / High"
+  // axis labels) when the run had no usable data for this metric. Otherwise
+  // the static "Typical" axis label reads as a verdict on a 0-value reading.
+  const indicator = (zoneEl || markerEl).closest('.metric-range');
   if (!isFinite(value) || value === 0) {
+    if (indicator) indicator.style.display = 'none';
     markerEl.style.display = 'none';
     return;
+  }
+  if (indicator) indicator.style.display = '';
+  const span = visibleMax - visibleMin || 1;
+  if (zoneEl) {
+    const zStart = Math.max(0, Math.min(1, (zoneMin - visibleMin) / span));
+    const zEnd   = Math.max(0, Math.min(1, (zoneMax - visibleMin) / span));
+    zoneEl.style.left  = (zStart * 100) + '%';
+    zoneEl.style.width = ((zEnd - zStart) * 100) + '%';
   }
   markerEl.style.display = '';
   const t = (value - visibleMin) / span;
@@ -3201,25 +3253,33 @@ function paintAllSparklines(r){
   const root = document.getElementById('screen-report');
   if (!root) return;
 
+  // Tone helper: pull the status tone from each metric's band fn so the
+  // bar + dot color match the pill (green in range, amber low/watch, red high).
+  const toneOf = (b) => (b && b.tone) ? b.tone : 'good';
+
   // Cadence: visible 140-220, typical band 165-185 (healthy distance running).
   placeRangeMarker(140, 220, 165, 185, r.cadence,
     document.getElementById('cadence-zone'),
-    document.getElementById('cadence-marker'));
+    document.getElementById('cadence-marker'),
+    toneOf(cadenceBand(r.cadence)));
 
   // Ground contact: visible 150-400 ms, typical band 200-300 ms.
   placeRangeMarker(150, 400, 200, 300, r.contactMs,
     document.getElementById('contact-zone'),
-    document.getElementById('contact-marker'));
+    document.getElementById('contact-marker'),
+    toneOf(contactBand(r.contactMs)));
 
   // Impact rate: visible 0-120 BW/s, healthy band 0-60.
   placeRangeMarker(0, 120, 0, 60, r.loadingRate,
     document.getElementById('loading-zone'),
-    document.getElementById('loading-marker'));
+    document.getElementById('loading-marker'),
+    toneOf(impactCategory(r.loadingRate)));
 
   // Pronation: visible -25 to 25 deg/s, neutral band -8 to 15.
   placeRangeMarker(-25, 25, -8, 15, r.pronate,
     document.getElementById('pronate-zone'),
-    document.getElementById('pronate-marker'));
+    document.getElementById('pronate-marker'),
+    toneOf(pronateBand(r.pronate)));
 
   // Speed gets a sparkline -- there's no clinical "typical" speed for
   // a runner (depends entirely on the individual), so the trend IS
@@ -3477,6 +3537,13 @@ function render(r){
 }
 
 /* -- SETTINGS -- */
+async function sleepDevice(){
+  if (!confirm("Put SoleSense into sleep mode?\n\nThe Wi-Fi network will drop. Press an insole pad (or pick the insole up) to wake.")) return;
+  try {
+    await authFetch('/api/sleep', { method: 'POST' });
+    toast('Device entering sleep — Wi-Fi will drop in ~1s');
+  } catch (e) { toast('Sleep request failed'); }
+}
 async function zeroSensors(){
   try { await authFetch('/api/calibrate/zero', { method: 'POST' }); toast('Sensors zeroed'); }
   catch { toast('Could not reach device. Reconnect to the SoleSense WiFi and try again.'); }
